@@ -632,6 +632,37 @@ input, select, textarea { font-family: inherit; }
           </li>
         </ul>
       </div>
+      <!-- In-app guide -->
+      <div class="card">
+        <div class="card-title" onclick="toggleGuide()" style="cursor:pointer;display:flex;justify-content:space-between;align-items:center;">
+          <span>📖 使い方ガイド</span>
+          <span id="guide-arrow" style="color:var(--text-sub);font-size:16px;">▼</span>
+        </div>
+        <div id="guide-content" style="display:none;">
+          <div style="font-size:13px;line-height:2;color:var(--text);">
+            <div style="font-weight:700;color:var(--green);margin-bottom:4px;">① 初期設定</div>
+            <div style="color:var(--text-sub);margin-bottom:12px;font-size:12px;">設定タブ→ お名前・都道府県・店舗名・月間目標を入力して「保存」</div>
+
+            <div style="font-weight:700;color:var(--green);margin-bottom:4px;">② 店舗メンバーとつながる</div>
+            <div style="color:var(--text-sub);margin-bottom:12px;font-size:12px;">設定タブ→「🔑 新しいコードを発行」→ そのコードをLINEなどでメンバーに共有。メンバーは同じコードを「グループコード」欄に入力して追加</div>
+
+            <div style="font-weight:700;color:var(--green);margin-bottom:4px;">③ 工賃を入力する</div>
+            <div style="color:var(--text-sub);margin-bottom:12px;font-size:12px;">工賃入力タブ→ ナンバー・車種（任意）・金額を入力→「登録する」</div>
+
+            <div style="font-weight:700;color:var(--green);margin-bottom:4px;">④ ランキングを確認</div>
+            <div style="color:var(--text-sub);margin-bottom:12px;font-size:12px;">ランキングタブ→「社内」で同じ店のメンバーを確認。「全国」「地域」「県内」で広範囲のランキングも見られる</div>
+
+            <div style="font-weight:700;color:var(--green);margin-bottom:4px;">⑤ 称号について</div>
+            <div style="color:var(--text-sub);margin-bottom:12px;font-size:12px;">月間工賃の合計でランクが変わる。称号タブで詳細を確認できる</div>
+
+            <div style="font-weight:700;color:var(--green);margin-bottom:4px;">⑥ 複数店舗の管理（担当エリア向け）</div>
+            <div style="color:var(--text-sub);margin-bottom:12px;font-size:12px;">複数の店舗コードを追加すると、社内タブで店舗を切り替えて確認できる</div>
+
+            <div style="font-weight:700;color:var(--green);margin-bottom:4px;">⑦ 忍びモード</div>
+            <div style="color:var(--text-sub);font-size:12px;">ランキングに表示されず閲覧だけしたい場合はONに。管理者・担当エリアの方向け</div>
+          </div>
+        </div>
+      </div>
       <!-- App info -->
       <div class="card">
         <div class="card-title">アプリ情報</div>
@@ -1499,6 +1530,14 @@ function joinGroup() {
   renderFollowedStores();
   renderStoreSwitcher();
   showToast(`✅ 「${name}」を追加しました`);
+}
+
+function toggleGuide() {
+  const c = document.getElementById('guide-content');
+  const a = document.getElementById('guide-arrow');
+  const open = c.style.display === 'none';
+  c.style.display = open ? 'block' : 'none';
+  a.textContent = open ? '▲' : '▼';
 }
 
 function toggleNinjaMode(on) {
