@@ -38,7 +38,7 @@ input, select, textarea { font-family: inherit; }
 #header .rank-badge { background: rgba(255,255,255,.2); border-radius: 20px; padding: 4px 12px; color: #fff; font-size: 12px; display: flex; align-items: center; gap: 4px; }
 #main { flex: 1; overflow-y: auto; overflow-x: hidden; }
 #tabs { height: var(--tab-h); background: #fff; border-top: 1px solid var(--border); display: flex; flex-shrink: 0; padding-bottom: var(--safe-bottom); }
-.tab-btn { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; font-size: 10px; color: var(--text-sub); transition: color .2s; border-top: 3px solid transparent; }
+.tab-btn { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; font-size: 9px; color: var(--text-sub); transition: color .2s; border-top: 3px solid transparent; }
 .tab-btn.active { color: var(--green); border-top-color: var(--green); }
 .tab-btn svg { width: 22px; height: 22px; }
 
@@ -236,13 +236,13 @@ input, select, textarea { font-family: inherit; }
     <!-- ===== PAGE: RANKING ===== -->
     <div class="page active" id="page-ranking">
       <div class="sub-tabs" id="ranking-sub-tabs">
-        <button class="sub-tab active" data-rtab="national">🏆 全国</button>
+        <button class="sub-tab active" data-rtab="store">🏪 社内</button>
+        <button class="sub-tab" data-rtab="national">🏆 全国</button>
         <button class="sub-tab" data-rtab="region">🗾 地域</button>
         <button class="sub-tab" data-rtab="pref">🏯 県内</button>
-        <button class="sub-tab" data-rtab="store">🏪 社内</button>
       </div>
       <!-- National -->
-      <div id="rtab-national">
+      <div id="rtab-national" style="display:none;">
         <div style="padding:12px 12px 0;display:flex;gap:8px;align-items:center;">
           <span style="font-size:13px;color:var(--text-sub);" id="rank-month-label"></span>
           <span class="chip chip-green">リアルタイム</span>
@@ -281,7 +281,7 @@ input, select, textarea { font-family: inherit; }
         </div>
       </div>
       <!-- Store (社内) -->
-      <div id="rtab-store" style="display:none;">
+      <div id="rtab-store">
         <div class="store-stat-row" style="padding-top:12px;">
           <div class="store-stat-card">
             <div class="sv" id="store-total">-</div>
@@ -298,6 +298,16 @@ input, select, textarea { font-family: inherit; }
         </div>
         <div class="card" style="padding:0;overflow:hidden;">
           <ul class="rank-list" id="store-list"></ul>
+        </div>
+        <!-- Member trend -->
+        <div class="card" style="margin-top:0;">
+          <div class="card-title">📊 メンバー今月進捗</div>
+          <div id="store-member-trend"></div>
+        </div>
+        <!-- Achievement notifications -->
+        <div id="store-achievements" style="display:none;" class="card" style="margin-top:0;">
+          <div class="card-title">🎉 今月の達成者</div>
+          <div id="store-achievement-list"></div>
         </div>
       </div>
     </div>
@@ -317,6 +327,16 @@ input, select, textarea { font-family: inherit; }
         <div class="form-group">
           <label class="form-label">ナンバー4桁（任意）</label>
           <input type="text" class="form-input" id="input-number" maxlength="4" placeholder="0000" inputmode="numeric" pattern="[0-9]*" style="letter-spacing:6px;font-size:22px;font-weight:700;text-align:center;">
+        </div>
+        <div class="form-group">
+          <label class="form-label">🚗 車種（任意）</label>
+          <input type="text" class="form-input" id="input-cartype" placeholder="例: プリウス" list="cartype-list" autocomplete="off">
+          <datalist id="cartype-list">
+            <option value="プリウス"><option value="カローラ"><option value="ノア"><option value="ヴォクシー">
+            <option value="アルファード"><option value="セレナ"><option value="フリード"><option value="N-BOX">
+            <option value="ヤリス"><option value="フィット"><option value="ルーミー"><option value="ライズ">
+            <option value="ハリアー"><option value="RAV4"><option value="CX-5"><option value="ステップワゴン">
+          </datalist>
         </div>
         <div class="form-group">
           <label class="form-label">工賃金額</label>
@@ -435,6 +455,24 @@ input, select, textarea { font-family: inherit; }
       </div>
     </div>
 
+    <!-- ===== PAGE: RANK GUIDE ===== -->
+    <div class="page" id="page-rankguide">
+      <div class="section-header">⚔️ 称号ガイド</div>
+      <div class="card">
+        <div class="card-title">称号は月間工賃の合計で決まります</div>
+        <div id="rank-guide-list"></div>
+      </div>
+      <div class="card" style="margin-top:0;">
+        <div class="card-title">🎯 ランクアップのコツ</div>
+        <div style="font-size:13px;color:var(--text-sub);line-height:2;">
+          <div>✅ 毎日こまめに入力する</div>
+          <div>✅ ナンバー・車種も記録しておく</div>
+          <div>✅ 月初から積み上げるのがコツ</div>
+          <div>✅ 社内メンバーで切磋琢磨しよう！</div>
+        </div>
+      </div>
+    </div>
+
     <!-- ===== PAGE: TREND ===== -->
     <div class="page" id="page-trend">
       <div class="section-header">📈 年間推移</div>
@@ -544,6 +582,10 @@ input, select, textarea { font-family: inherit; }
     <button class="tab-btn" data-tab="mypage" onclick="switchTab('mypage')">
       <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
       マイページ
+    </button>
+    <button class="tab-btn" data-tab="rankguide" onclick="switchTab('rankguide')">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+      称号
     </button>
     <button class="tab-btn" data-tab="settings" onclick="switchTab('settings')">
       <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg>
@@ -701,11 +743,11 @@ const REGION_MAP = {
 // TAB SWITCHING
 // ============================================================
 let currentTab = 'ranking';
-let currentRankTab = 'national';
+let currentRankTab = 'store';
 let calendarYear, calendarMonth;
 
 function switchTab(tab) {
-  const mainTabs = ['ranking','input','mypage','settings'];
+  const mainTabs = ['ranking','input','mypage','rankguide','settings'];
   const subPages = ['summary','trend'];
   const all = [...mainTabs, ...subPages];
 
@@ -723,7 +765,7 @@ function switchTab(tab) {
   currentTab = tab;
 
   // update header title
-  const titles = { ranking:'🏆 全国ランキング', input:'✏️ 工賃入力', mypage:'👤 マイページ', settings:'⚙️ 設定', summary:'📊 月間サマリー', trend:'📈 年間推移' };
+  const titles = { ranking:'🏪 社内ランキング', input:'✏️ 工賃入力', mypage:'👤 マイページ', rankguide:'⚔️ 称号ガイド', settings:'⚙️ 設定', summary:'📊 月間サマリー', trend:'📈 年間推移' };
   document.getElementById('header-title').textContent = titles[tab] || 'カーコン工賃管理';
 
   if (tab === 'ranking') renderRanking();
@@ -731,6 +773,7 @@ function switchTab(tab) {
   if (tab === 'summary') renderSummary();
   if (tab === 'trend') renderTrend();
   if (tab === 'input') renderInputHistory();
+  if (tab === 'rankguide') renderRankGuide();
 }
 
 // Ranking sub-tabs
@@ -852,11 +895,73 @@ function renderStore() {
   document.getElementById('store-cleared').textContent = `${cleared}/${total}`;
 
   document.getElementById('store-list').innerHTML = data.map(d => buildRankItem(d, userData.name)).join('');
+  renderStoreTrend(data, goal);
 
   // Check all cleared for rocket
   if (cleared === total && total > 0) {
     setTimeout(() => triggerRocket(), 500);
   }
+}
+
+// ============================================================
+// STORE MEMBER TREND
+// ============================================================
+function renderStoreTrend(data, goal) {
+  const el = document.getElementById('store-member-trend');
+  if (!el) return;
+  el.innerHTML = data.map(m => {
+    const pct = Math.min(m.amount / goal * 100, 100);
+    const isMe = m.isMe || (userData.name && m.name === userData.name);
+    const achieved = m.amount >= goal;
+    return `<div style="margin-bottom:14px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;">
+        <span style="font-size:13px;font-weight:${isMe?'700':'500'};color:${isMe?'var(--green)':'var(--text)'};">${achieved?'🎉 ':''}${m.name}${isMe?' (あなた)':''}</span>
+        <span style="font-size:12px;color:var(--text-sub);">${formatYen(m.amount)}万 / ${Math.round(pct)}%</span>
+      </div>
+      <div style="height:10px;background:var(--border);border-radius:5px;overflow:hidden;">
+        <div style="height:100%;width:${Math.round(pct)}%;background:${achieved?'#FFD700':isMe?'var(--green)':'#a5d6a7'};border-radius:5px;transition:width .6s ease;"></div>
+      </div>
+    </div>`;
+  }).join('');
+
+  // Show achievement list
+  const achieved = data.filter(m => m.amount >= goal);
+  const achEl = document.getElementById('store-achievements');
+  const achList = document.getElementById('store-achievement-list');
+  if (achieved.length > 0 && achEl && achList) {
+    achEl.style.display = '';
+    achList.innerHTML = achieved.map(m => `<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);">
+      <span style="font-size:20px;">🏅</span>
+      <span style="font-weight:700;">${m.name}</span>
+      <span style="font-size:12px;color:var(--text-sub);">${formatYen(m.amount)}万円達成！</span>
+    </div>`).join('');
+  }
+}
+
+// ============================================================
+// RANK GUIDE PAGE
+// ============================================================
+function renderRankGuide() {
+  const myTotal = getMyMonthlyTotal() / 10000;
+  const el = document.getElementById('rank-guide-list');
+  if (!el) return;
+  el.innerHTML = RANKS.map(r => {
+    const isCurrent = myTotal >= r.min && myTotal <= r.max;
+    const achieved = myTotal >= r.min;
+    return `<div style="display:flex;align-items:center;gap:12px;padding:14px 0;border-bottom:1px solid var(--border);${isCurrent?'background:#e8f7f2;margin:0 -16px;padding:14px 16px;border-radius:8px;':''}">
+      <span style="font-size:28px;">${r.emoji}</span>
+      <div style="flex:1;">
+        <div style="font-weight:700;font-size:15px;${isCurrent?'color:var(--green);':''}">${r.name}${isCurrent?' ← 現在':''}${achieved&&!isCurrent?'':''}
+        </div>
+        <div style="font-size:12px;color:var(--text-sub);margin-top:2px;">
+          ${r.max >= 9999 ? r.min + '万円以上' : r.min + '万円 〜 ' + r.max + '万円'}
+        </div>
+      </div>
+      <div style="text-align:right;">
+        ${achieved ? '<span style="background:#e8f7f2;color:var(--green);padding:3px 8px;border-radius:10px;font-size:11px;font-weight:700;">達成済</span>' : '<span style="background:#f0f0f0;color:#999;padding:3px 8px;border-radius:10px;font-size:11px;">未達成</span>'}
+      </div>
+    </div>`;
+  }).join('');
 }
 
 // ============================================================
@@ -1042,14 +1147,16 @@ function submitWage() {
   if (!amount || amount <= 0) { showToast('⚠️ 金額を入力してください'); return; }
   if (!userData.name) { showToast('⚠️ 先に設定でお名前を登録してください'); switchTab('settings'); return; }
 
-  wageData.push({ date, amount, number: number === '0000' ? '' : number });
+  const cartype = document.getElementById('input-cartype').value.trim();
+  wageData.push({ date, amount, number: number === '0000' ? '' : number, cartype });
   saveLocal();
   document.getElementById('input-amount').value = '';
   document.getElementById('input-number').value = '';
+  document.getElementById('input-cartype').value = '';
   renderInputHistory();
   showToast(`✅ ${formatYen(amount)}万円 登録しました！`);
   checkGoalAndRank();
-  postToGAS({ action: 'addWage', name: userData.name, store: userData.store, pref: userData.pref, date, amount, number });
+  postToGAS({ action: 'addWage', name: userData.name, store: userData.store, pref: userData.pref, date, amount, number, cartype });
 }
 
 function renderInputHistory() {
@@ -1062,6 +1169,7 @@ function renderInputHistory() {
     <div style="display:flex;align-items:center;padding:10px 12px;background:#fff;border-radius:10px;margin-bottom:8px;box-shadow:0 1px 4px rgba(0,0,0,.06);gap:8px;">
       <span style="font-size:12px;color:var(--text-sub);width:80px;">${e.date.slice(5).replace('-','月')+'日'}</span>
       ${e.number ? `<span class="chip chip-green">${e.number}</span>` : '<span style="width:52px;"></span>'}
+      ${e.cartype ? `<span class="chip" style="background:#e8f0fe;color:#1a73e8;font-size:10px;">${e.cartype}</span>` : ''}
       <span style="flex:1;text-align:right;font-weight:700;font-size:15px;">¥${e.amount.toLocaleString()}</span>
     </div>`).join('');
 }
@@ -1303,6 +1411,10 @@ function checkGoalAndRank() {
   // Personal goal achievement
   if (total >= goal && settings.notifGoal !== false) {
     setTimeout(() => triggerFireworks(), 300);
+    if (userData.name && userData.store) {
+      postToGAS({ action: 'notifyGoal', name: userData.name, store: userData.store, pref: userData.pref, amount: total });
+    }
+    showToast(`🎊 ${userData.name} が月間目標を達成！`, 5000);
   }
 
   // Rank up
