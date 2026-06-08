@@ -27,6 +27,23 @@
   --header-h: 56px;
   --safe-bottom: env(safe-area-inset-bottom, 0px);
 }
+/* ===== THEMES ===== */
+[data-theme="samurai"] {
+  --green: #C9A84C; --green-dark: #a8873a; --green-light: #2a2310;
+  --bg: #0d0d0d; --card: #1a1a1a; --text: #f0e6cc; --text-sub: #8a7a5a; --border: #2e2e2e;
+}
+[data-theme="ocean"] {
+  --green: #4A9ECC; --green-dark: #3a7ea8; --green-light: #0d1e2a;
+  --bg: #0a0f14; --card: #141e27; --text: #d0e8f5; --text-sub: #5a7a8a; --border: #1e2e3a;
+}
+[data-theme="crimson"] {
+  --green: #CC4444; --green-dark: #a83333; --green-light: #2a0d0d;
+  --bg: #0d0808; --card: #1a1010; --text: #f5d0d0; --text-sub: #8a5a5a; --border: #2e1a1a;
+}
+[data-theme="forest"] {
+  --green: #4ACC7A; --green-dark: #3aaa5a; --green-light: #0d2a15;
+  --bg: #080d0a; --card: #101a12; --text: #d0f5dd; --text-sub: #5a8a65; --border: #1a2e1e;
+}
 html, body { height: 100%; overflow: hidden; font-family: 'Hiragino Sans', 'Meiryo', sans-serif; background: #000; color: var(--text); }
 button { cursor: pointer; border: none; background: none; font-family: inherit; }
 input, select, textarea { font-family: inherit; }
@@ -37,7 +54,7 @@ input, select, textarea { font-family: inherit; }
 #header h1 { color: #fff; font-size: 17px; font-weight: 700; flex: 1; }
 #header .rank-badge { background: rgba(255,255,255,.2); border-radius: 20px; padding: 4px 12px; color: #fff; font-size: 12px; display: flex; align-items: center; gap: 4px; }
 #main { flex: 1; overflow-y: auto; overflow-x: hidden; }
-#tabs { height: var(--tab-h); background: #111; border-top: 1px solid #2a2208; display: flex; flex-shrink: 0; padding-bottom: var(--safe-bottom); }
+#tabs { height: var(--tab-h); background: #111; border-top: 1px solid var(--green-light); display: flex; flex-shrink: 0; padding-bottom: var(--safe-bottom); }
 .tab-btn { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; font-size: 9px; color: var(--text-sub); transition: color .2s; border-top: 3px solid transparent; }
 .tab-btn.active { color: var(--green); border-top-color: var(--green); }
 .tab-btn svg { width: 22px; height: 22px; }
@@ -51,7 +68,7 @@ input, select, textarea { font-family: inherit; }
 .card-title { font-size: 13px; color: var(--text-sub); margin-bottom: 12px; font-weight: 600; }
 
 /* ===== SUB TABS ===== */
-.sub-tabs { display: flex; background: #111; border-bottom: 1px solid #2a2208; padding: 0 12px; gap: 4px; position: sticky; top: 0; z-index: 10; }
+.sub-tabs { display: flex; background: #111; border-bottom: 1px solid var(--green-light); padding: 0 12px; gap: 4px; position: sticky; top: 0; z-index: 10; }
 .sub-tab { padding: 10px 14px; font-size: 13px; color: var(--text-sub); border-bottom: 3px solid transparent; white-space: nowrap; }
 .sub-tab.active { color: var(--green); border-bottom-color: var(--green); font-weight: 700; }
 
@@ -607,6 +624,141 @@ input, select, textarea { font-family: inherit; }
           <button onclick="copyGroupCode()" style="width:100%;padding:10px;background:var(--border);border-radius:8px;font-size:13px;font-weight:600;">📋 コピーする</button>
         </div>
       </div>
+      <!-- Theme Selector -->
+      <div class="card">
+        <div class="card-title">🎨 テーマカラー</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+
+          <!-- 侍ブラック -->
+          <div id="theme-wrap-samurai" onclick="setTheme('samurai')" style="cursor:pointer;border-radius:12px;border:3px solid transparent;overflow:hidden;transition:border-color .2s;">
+            <div style="background:#0d0d0d;padding:10px 8px 6px;">
+              <div style="background:#1a1a1a;border-radius:8px;overflow:hidden;">
+                <div style="background:linear-gradient(135deg,#0d0d0d,#1a1208);border-bottom:2px solid #C9A84C;padding:5px 8px;display:flex;align-items:center;gap:4px;">
+                  <span style="font-size:11px;color:#fff;font-weight:700;">⚔️ 社内</span>
+                </div>
+                <div style="padding:4px 6px;">
+                  <div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid #2e2e2e;">
+                    <span style="font-size:10px;color:#f0e6cc;font-weight:700;">田中 誠</span>
+                    <span style="font-size:10px;color:#C9A84C;font-weight:700;">168万</span>
+                  </div>
+                  <div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid #2e2e2e;border-left:2px solid #C9A84C;padding-left:4px;">
+                    <span style="font-size:10px;color:#f0e6cc;">あなた</span>
+                    <span style="font-size:10px;color:#C9A84C;font-weight:700;">92万</span>
+                  </div>
+                  <div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;">
+                    <span style="font-size:10px;color:#f0e6cc;">鈴木 光</span>
+                    <span style="font-size:10px;color:#8a7a5a;">65万</span>
+                  </div>
+                </div>
+                <div style="background:#111;border-top:1px solid #2a2208;display:flex;justify-content:space-around;padding:5px 0;">
+                  <span style="font-size:8px;color:#C9A84C;">⚔️ 社内</span>
+                  <span style="font-size:8px;color:#8a7a5a;">✏️ 入力</span>
+                  <span style="font-size:8px;color:#8a7a5a;">👤 マイ</span>
+                  <span style="font-size:8px;color:#8a7a5a;">⚙️ 設定</span>
+                </div>
+              </div>
+            </div>
+            <button style="width:100%;padding:8px;background:#C9A84C;color:#000;font-size:12px;font-weight:700;border:none;">🖤 侍ブラック</button>
+          </div>
+
+          <!-- カーコンレッド -->
+          <div id="theme-wrap-crimson" onclick="setTheme('crimson')" style="cursor:pointer;border-radius:12px;border:3px solid transparent;overflow:hidden;transition:border-color .2s;">
+            <div style="background:#0d0808;padding:10px 8px 6px;">
+              <div style="background:#1a1010;border-radius:8px;overflow:hidden;">
+                <div style="background:linear-gradient(135deg,#0d0808,#2a0d0d);border-bottom:2px solid #CC4444;padding:5px 8px;display:flex;align-items:center;gap:4px;">
+                  <span style="font-size:11px;color:#fff;font-weight:700;">⚔️ 社内</span>
+                </div>
+                <div style="padding:4px 6px;">
+                  <div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid #2e1a1a;">
+                    <span style="font-size:10px;color:#f5d0d0;font-weight:700;">田中 誠</span>
+                    <span style="font-size:10px;color:#CC4444;font-weight:700;">168万</span>
+                  </div>
+                  <div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid #2e1a1a;border-left:2px solid #CC4444;padding-left:4px;">
+                    <span style="font-size:10px;color:#f5d0d0;">あなた</span>
+                    <span style="font-size:10px;color:#CC4444;font-weight:700;">92万</span>
+                  </div>
+                  <div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;">
+                    <span style="font-size:10px;color:#f5d0d0;">鈴木 光</span>
+                    <span style="font-size:10px;color:#8a5a5a;">65万</span>
+                  </div>
+                </div>
+                <div style="background:#111;border-top:1px solid #2a1010;display:flex;justify-content:space-around;padding:5px 0;">
+                  <span style="font-size:8px;color:#CC4444;">⚔️ 社内</span>
+                  <span style="font-size:8px;color:#8a5a5a;">✏️ 入力</span>
+                  <span style="font-size:8px;color:#8a5a5a;">👤 マイ</span>
+                  <span style="font-size:8px;color:#8a5a5a;">⚙️ 設定</span>
+                </div>
+              </div>
+            </div>
+            <button style="width:100%;padding:8px;background:#CC4444;color:#fff;font-size:12px;font-weight:700;border:none;">🔥 カーコンレッド</button>
+          </div>
+
+          <!-- 蒼海ブルー -->
+          <div id="theme-wrap-ocean" onclick="setTheme('ocean')" style="cursor:pointer;border-radius:12px;border:3px solid transparent;overflow:hidden;transition:border-color .2s;">
+            <div style="background:#0a0f14;padding:10px 8px 6px;">
+              <div style="background:#141e27;border-radius:8px;overflow:hidden;">
+                <div style="background:linear-gradient(135deg,#0a0f14,#0d1e2a);border-bottom:2px solid #4A9ECC;padding:5px 8px;display:flex;align-items:center;gap:4px;">
+                  <span style="font-size:11px;color:#fff;font-weight:700;">⚔️ 社内</span>
+                </div>
+                <div style="padding:4px 6px;">
+                  <div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid #1e2e3a;">
+                    <span style="font-size:10px;color:#d0e8f5;font-weight:700;">田中 誠</span>
+                    <span style="font-size:10px;color:#4A9ECC;font-weight:700;">168万</span>
+                  </div>
+                  <div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid #1e2e3a;border-left:2px solid #4A9ECC;padding-left:4px;">
+                    <span style="font-size:10px;color:#d0e8f5;">あなた</span>
+                    <span style="font-size:10px;color:#4A9ECC;font-weight:700;">92万</span>
+                  </div>
+                  <div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;">
+                    <span style="font-size:10px;color:#d0e8f5;">鈴木 光</span>
+                    <span style="font-size:10px;color:#5a7a8a;">65万</span>
+                  </div>
+                </div>
+                <div style="background:#0d1520;border-top:1px solid #1e2e3a;display:flex;justify-content:space-around;padding:5px 0;">
+                  <span style="font-size:8px;color:#4A9ECC;">⚔️ 社内</span>
+                  <span style="font-size:8px;color:#5a7a8a;">✏️ 入力</span>
+                  <span style="font-size:8px;color:#5a7a8a;">👤 マイ</span>
+                  <span style="font-size:8px;color:#5a7a8a;">⚙️ 設定</span>
+                </div>
+              </div>
+            </div>
+            <button style="width:100%;padding:8px;background:#4A9ECC;color:#fff;font-size:12px;font-weight:700;border:none;">🌊 蒼海ブルー</button>
+          </div>
+
+          <!-- 深緑グリーン -->
+          <div id="theme-wrap-forest" onclick="setTheme('forest')" style="cursor:pointer;border-radius:12px;border:3px solid transparent;overflow:hidden;transition:border-color .2s;">
+            <div style="background:#080d0a;padding:10px 8px 6px;">
+              <div style="background:#101a12;border-radius:8px;overflow:hidden;">
+                <div style="background:linear-gradient(135deg,#080d0a,#0d2a15);border-bottom:2px solid #4ACC7A;padding:5px 8px;display:flex;align-items:center;gap:4px;">
+                  <span style="font-size:11px;color:#fff;font-weight:700;">⚔️ 社内</span>
+                </div>
+                <div style="padding:4px 6px;">
+                  <div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid #1a2e1e;">
+                    <span style="font-size:10px;color:#d0f5dd;font-weight:700;">田中 誠</span>
+                    <span style="font-size:10px;color:#4ACC7A;font-weight:700;">168万</span>
+                  </div>
+                  <div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid #1a2e1e;border-left:2px solid #4ACC7A;padding-left:4px;">
+                    <span style="font-size:10px;color:#d0f5dd;">あなた</span>
+                    <span style="font-size:10px;color:#4ACC7A;font-weight:700;">92万</span>
+                  </div>
+                  <div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;">
+                    <span style="font-size:10px;color:#d0f5dd;">鈴木 光</span>
+                    <span style="font-size:10px;color:#5a8a65;">65万</span>
+                  </div>
+                </div>
+                <div style="background:#0a130c;border-top:1px solid #1a2e1e;display:flex;justify-content:space-around;padding:5px 0;">
+                  <span style="font-size:8px;color:#4ACC7A;">⚔️ 社内</span>
+                  <span style="font-size:8px;color:#5a8a65;">✏️ 入力</span>
+                  <span style="font-size:8px;color:#5a8a65;">👤 マイ</span>
+                  <span style="font-size:8px;color:#5a8a65;">⚙️ 設定</span>
+                </div>
+              </div>
+            </div>
+            <button style="width:100%;padding:8px;background:#4ACC7A;color:#000;font-size:12px;font-weight:700;border:none;">🌿 深緑グリーン</button>
+          </div>
+
+        </div>
+      </div>
       <!-- Ninja Mode -->
       <div class="card">
         <div class="card-title">🥷 忍びモード</div>
@@ -776,6 +928,7 @@ if (!userData.groupCodes) userData.groupCodes = [];
 if (!userData.activeGroupCode) userData.activeGroupCode = '';
 if (!userData.avatar) userData.avatar = '';
 if (userData.ninjaMode === undefined) userData.ninjaMode = false;
+if (!userData.theme) userData.theme = 'samurai';
 if (!settings.notifRankup) settings.notifRankup = true;
 if (!settings.notifGoal) settings.notifGoal = true;
 if (!settings.notifRocket) settings.notifRocket = true;
@@ -1576,6 +1729,34 @@ function toggleGuide() {
   a.textContent = open ? '▲' : '▼';
 }
 
+function setTheme(name) {
+  userData.theme = name;
+  saveLocal();
+  applyTheme();
+  const labels = { samurai:'🖤 侍ブラック', ocean:'🌊 蒼海ブルー', crimson:'🔥 紅蓮レッド', forest:'🌿 深緑グリーン' };
+  showToast('テーマを変更しました: ' + (labels[name] || name));
+}
+
+function applyTheme() {
+  const t = userData.theme || 'samurai';
+  document.documentElement.setAttribute('data-theme', t);
+  // header gradient
+  const hdrGrads = {
+    samurai: '135deg, #0d0d0d 0%, #1a1208 100%',
+    ocean:   '135deg, #0a0f14 0%, #0d1e2a 100%',
+    crimson: '135deg, #0d0808 0%, #2a0d0d 100%',
+    forest:  '135deg, #080d0a 0%, #0d2a15 100%',
+  };
+  const hdr = document.getElementById('header');
+  if (hdr) hdr.style.background = 'linear-gradient(' + (hdrGrads[t] || hdrGrads.samurai) + ')';
+  // highlight active preview
+  const accentColors = { samurai:'#C9A84C', ocean:'#4A9ECC', crimson:'#CC4444', forest:'#4ACC7A' };
+  ['samurai','ocean','crimson','forest'].forEach(k => {
+    const wrap = document.getElementById('theme-wrap-' + k);
+    if (wrap) wrap.style.borderColor = k === t ? (accentColors[k] || '#fff') : 'transparent';
+  });
+}
+
 function toggleNinjaMode(on) {
   userData.ninjaMode = on;
   saveLocal();
@@ -1859,6 +2040,7 @@ function init() {
   initInputPage();
   initSettings();
   applyNinjaMode();
+  applyTheme();
   renderRanking();
 
   // Check if first launch
