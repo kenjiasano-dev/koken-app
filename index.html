@@ -57,7 +57,8 @@ input, select, textarea { font-family: inherit; }
 
 /* ===== RANKING ===== */
 .rank-list { list-style: none; }
-.rank-item { display: flex; align-items: center; padding: 12px 16px; border-bottom: 1px solid var(--border); gap: 12px; background: var(--card); }
+.rank-item { display: flex; align-items: center; padding: 14px 16px; border-bottom: 1px solid var(--border); gap: 12px; background: var(--card); transition: background .15s; }
+.rank-item.is-me { background: #1c1400; border-left: 3px solid var(--green); }
 .rank-item:first-child { border-radius: 12px 12px 0 0; }
 .rank-item:last-child { border-bottom: none; border-radius: 0 0 12px 12px; }
 .rank-num { width: 28px; text-align: center; font-size: 18px; font-weight: 900; color: var(--text-sub); }
@@ -117,18 +118,24 @@ input, select, textarea { font-family: inherit; }
 .cal-day.sat { color: #3498db; }
 
 /* ===== MY PAGE ===== */
-.my-hero { background: linear-gradient(135deg, #1a1208 0%, #0d0d0d 100%); border-bottom: 1px solid var(--green); padding: 24px 16px; display: flex; align-items: center; gap: 16px; }
-.my-avatar { width: 72px; height: 72px; border-radius: 50%; border: 3px solid rgba(255,255,255,.5); background: rgba(255,255,255,.2); display: flex; align-items: center; justify-content: center; font-size: 36px; overflow: hidden; flex-shrink: 0; }
+.my-hero { background: linear-gradient(160deg, #1c1400 0%, #0d0d0d 60%, #0a0a0a 100%); border-bottom: 2px solid var(--green); padding: 28px 16px 20px; display: flex; align-items: center; gap: 18px; position: relative; overflow: hidden; }
+.my-hero::before { content: '⚔️'; position: absolute; right: -10px; top: 50%; transform: translateY(-50%); font-size: 100px; opacity: .05; pointer-events: none; }
+.my-avatar { width: 80px; height: 80px; border-radius: 50%; border: 3px solid var(--green); box-shadow: 0 0 16px rgba(201,168,76,.4); background: rgba(255,255,255,.1); display: flex; align-items: center; justify-content: center; font-size: 36px; overflow: hidden; flex-shrink: 0; }
 .my-avatar img { width: 100%; height: 100%; object-fit: cover; }
 .my-info { color: #fff; flex: 1; }
-.my-info .my-name { font-size: 20px; font-weight: 700; }
-.my-info .my-store { font-size: 13px; opacity: .8; margin-top: 2px; }
-.my-info .my-rank { margin-top: 8px; }
+.my-info .my-name { font-size: 22px; font-weight: 900; letter-spacing: .5px; }
+.my-info .my-store { font-size: 12px; color: var(--text-sub); margin-top: 3px; }
+.my-info .my-rank { margin-top: 10px; }
 .goal-ring { padding: 16px; display: flex; flex-direction: column; align-items: center; }
 .goal-ring canvas { width: 180px !important; height: 180px !important; }
 .goal-ring .goal-text { text-align: center; margin-top: 12px; }
-.goal-ring .goal-amount { font-size: 28px; font-weight: 900; color: var(--green); }
+.goal-ring .goal-amount { font-size: 32px; font-weight: 900; color: var(--green); }
 .goal-ring .goal-label { font-size: 13px; color: var(--text-sub); }
+/* マイページ クイックスタット */
+.my-quick-stats { display: grid; grid-template-columns: repeat(3,1fr); gap: 1px; background: var(--border); border-top: 1px solid var(--border); }
+.my-qs-item { background: var(--card); padding: 12px 8px; text-align: center; }
+.my-qs-val { font-size: 18px; font-weight: 900; color: var(--green); }
+.my-qs-lbl { font-size: 10px; color: var(--text-sub); margin-top: 2px; }
 
 /* ===== MONTHLY SUMMARY ===== */
 .summary-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 12px; }
@@ -212,9 +219,10 @@ input, select, textarea { font-family: inherit; }
 
 /* ===== PAGE: STORE VIEW (社内) ===== */
 .store-stat-row { display: flex; gap: 8px; padding: 0 12px 12px; }
-.store-stat-card { flex: 1; background: #fff; border-radius: 10px; padding: 12px; text-align: center; box-shadow: 0 1px 4px rgba(0,0,0,.08); }
-.store-stat-card .sv { font-size: 20px; font-weight: 900; color: var(--green); }
-.store-stat-card .sl { font-size: 10px; color: var(--text-sub); margin-top: 2px; }
+.store-stat-card { flex: 1; background: var(--card); border-radius: 12px; padding: 14px 8px; text-align: center; border: 1px solid var(--border); position: relative; overflow: hidden; }
+.store-stat-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; background: var(--green); }
+.store-stat-card .sv { font-size: 20px; font-weight: 900; color: var(--green); line-height: 1.1; }
+.store-stat-card .sl { font-size: 10px; color: var(--text-sub); margin-top: 4px; font-weight: 600; letter-spacing: .3px; }
 
 /* Responsive - desktop preview */
 @media (min-width: 431px) {
@@ -313,6 +321,11 @@ input, select, textarea { font-family: inherit; }
       </div>
       <!-- Store (社内) -->
       <div id="rtab-store">
+        <!-- 監修チーム一覧 -->
+        <div id="managed-teams-panel" style="display:none;padding:12px 12px 0;">
+          <div style="font-size:12px;font-weight:700;color:var(--text-sub);margin-bottom:8px;">⚔️ 監修チーム一覧</div>
+          <div id="managed-teams-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;"></div>
+        </div>
         <!-- 店舗切り替え -->
         <div id="store-switcher" style="padding:12px 12px 0;display:flex;gap:8px;overflow-x:auto;white-space:nowrap;"></div>
         <div class="store-stat-row" style="padding-top:12px;">
@@ -412,6 +425,22 @@ input, select, textarea { font-family: inherit; }
         </div>
       </div>
       <input type="file" id="avatar-upload" accept="image/*" style="display:none;" onchange="uploadAvatar(this)">
+
+      <!-- クイックスタット -->
+      <div class="my-quick-stats">
+        <div class="my-qs-item">
+          <div class="my-qs-val" id="qs-monthly">0万</div>
+          <div class="my-qs-lbl">今月合計</div>
+        </div>
+        <div class="my-qs-item">
+          <div class="my-qs-val" id="qs-rate">0%</div>
+          <div class="my-qs-lbl">達成率</div>
+        </div>
+        <div class="my-qs-item">
+          <div class="my-qs-val" id="qs-days">0日</div>
+          <div class="my-qs-lbl">稼働日数</div>
+        </div>
+      </div>
 
       <!-- Goal ring -->
       <div class="card">
@@ -896,16 +925,16 @@ function buildRankItem(item, myName) {
   const numCls = rankNumClass(item.rank);
   const manyen = (item.amount / 10000).toFixed(1);
   const rank = getRank(item.amount / 10000);
-  return `<li class="rank-item" style="${isMe ? 'background:#e8f7f2;' : ''}">
+  return `<li class="rank-item${isMe ? ' is-me' : ''}">
     <span class="rank-num ${numCls}">${rankNumEmoji(item.rank)}</span>
     <div class="rank-avatar">${buildAvatarHtml(item, myName)}</div>
     <div class="rank-info">
-      <div class="rank-name">${item.name}${isMe ? ' <span style="color:var(--green);font-size:11px;">▶ あなた</span>' : ''}</div>
+      <div class="rank-name">${item.name}${isMe ? ' <span style="color:var(--green);font-size:11px;font-weight:700;">▶ あなた</span>' : ''}</div>
       <div class="rank-sub">${item.store || ''} ${item.pref ? '/ '+item.pref : ''}</div>
       <span class="rank-badge-title">${rank.emoji} ${rank.name}</span>
     </div>
     <div class="rank-score">
-      <div class="amount">${manyen}</div>
+      <div class="amount" style="font-size:18px;">${manyen}</div>
       <div class="unit">万円</div>
     </div>
   </li>`;
@@ -1079,6 +1108,15 @@ function renderGoalRing() {
   document.getElementById('my-goal-label').textContent = userData.goal + '万円';
   const rem = Math.max(0, goal - total);
   document.getElementById('my-goal-remaining').textContent = rem > 0 ? `残り${formatYen(rem)}万` : '🎉達成！';
+
+  // クイックスタット
+  const now = new Date(); const ym = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+  const days = new Set(wageData.filter(w => w.date && w.date.startsWith(ym)).map(w => w.date)).size;
+  if (document.getElementById('qs-monthly')) {
+    document.getElementById('qs-monthly').textContent = formatYen(total) + '万';
+    document.getElementById('qs-rate').textContent = Math.min(100, Math.round(pct * 100)) + '%';
+    document.getElementById('qs-days').textContent = days + '日';
+  }
 
   // rank badge
   const rb = document.getElementById('my-samurai-badge');
@@ -1516,8 +1554,32 @@ function renderStoreSwitcher() {
   if (!el) return;
   if (!userData.groupCodes.length) {
     el.innerHTML = '<div style="font-size:12px;color:var(--text-sub);">設定から店舗を追加してください</div>';
+    document.getElementById('managed-teams-panel').style.display = 'none';
     return;
   }
+
+  // 2店舗以上なら監修チームグリッドを表示
+  const panel = document.getElementById('managed-teams-panel');
+  const grid = document.getElementById('managed-teams-grid');
+  if (userData.groupCodes.length >= 2) {
+    panel.style.display = 'block';
+    grid.innerHTML = userData.groupCodes.map(g => {
+      const isActive = g.code === userData.activeGroupCode;
+      return `<button onclick="switchActiveGroup('${g.code}')" style="
+        padding:10px 8px;border-radius:10px;text-align:left;cursor:pointer;
+        border:2px solid ${isActive ? 'var(--green)' : 'var(--border)'};
+        background:${isActive ? 'var(--green-light)' : 'var(--card)'};
+        width:100%;">
+        <div style="font-size:11px;font-weight:700;color:${isActive ? 'var(--green)' : 'var(--text)'};margin-bottom:2px;">🏪 ${g.name}</div>
+        <div style="font-size:10px;color:var(--text-sub);">${g.code}</div>
+        ${isActive ? '<div style="font-size:10px;color:var(--green);margin-top:3px;">▶ 表示中</div>' : ''}
+      </button>`;
+    }).join('');
+  } else {
+    panel.style.display = 'none';
+  }
+
+  // 切り替えボタンも維持
   el.innerHTML = userData.groupCodes.map(g => {
     const isActive = g.code === userData.activeGroupCode;
     return `<button onclick="switchActiveGroup('${g.code}')" style="display:inline-flex;align-items:center;gap:4px;padding:6px 14px;border-radius:20px;font-size:12px;font-weight:700;border:2px solid ${isActive?'var(--green)':'var(--border)'};background:${isActive?'var(--green)':'#222'};color:${isActive?'#111':'var(--text-sub)'};white-space:nowrap;">🏪 ${g.name}</button>`;
