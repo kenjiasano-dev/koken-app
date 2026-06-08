@@ -251,9 +251,21 @@ input, select, textarea { font-family: inherit; }
       </div>
       <!-- National -->
       <div id="rtab-national" style="display:none;">
-        <div style="padding:12px 12px 0;display:flex;gap:8px;align-items:center;">
+        <div style="padding:12px 12px 0;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
           <span style="font-size:13px;color:var(--text-sub);" id="rank-month-label"></span>
           <span class="chip chip-green">リアルタイム</span>
+        </div>
+        <!-- 登録人数バナー -->
+        <div style="margin:10px 12px 4px;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:10px 14px;display:flex;align-items:center;justify-content:space-between;">
+          <div>
+            <div style="font-size:10px;color:var(--text-sub);font-weight:700;">全国登録者数</div>
+            <div style="font-size:22px;font-weight:900;color:var(--green);" id="stat-total-users">--</div>
+          </div>
+          <div style="text-align:right;">
+            <div style="font-size:10px;color:var(--text-sub);font-weight:700;">今月アクティブ</div>
+            <div style="font-size:22px;font-weight:900;color:var(--green);" id="stat-active-users">--</div>
+          </div>
+          <div style="font-size:28px;">⚔️</div>
         </div>
         <div class="card" style="padding:0; overflow:hidden;">
           <ul class="rank-list" id="national-list"></ul>
@@ -911,7 +923,7 @@ function renderRanking() {
 }
 
 function renderRankingTab(tab) {
-  if (tab === 'national') renderNational();
+  if (tab === 'national') { renderNational(); fetchStats(); }
   if (tab === 'region') renderRegion();
   if (tab === 'pref') renderPref();
   if (tab === 'store') renderStore();
@@ -971,6 +983,18 @@ function buildRankItem(item, myName) {
   </li>`;
 }
 
+async function fetchStats() {
+  try {
+    const res = await fetchGAS({ action: 'getStats' });
+    if (res && res.totalUsers !== undefined) {
+      const tu = document.getElementById('stat-total-users');
+      const au = document.getElementById('stat-active-users');
+      if (tu) tu.textContent = res.totalUsers + '人';
+      if (au) au.textContent = res.activeThisMonth + '人';
+    }
+  } catch(e) {}
+}
+
 function renderNational() {
   const list = document.getElementById('national-list');
   // inject self into demo data at correct position
@@ -987,7 +1011,13 @@ function renderNational() {
 
 function renderRegion() {
   const filter = document.getElementById('region-filter').value;
+  const myTotal = getMyMonthlyTotal();
   let data = [...DEMO_NATIONAL];
+  if (userData.name) {
+    data = data.filter(d => d.name !== userData.name);
+    data.push({ name: userData.name, store: userData.store, pref: userData.pref, amount: myTotal, isMe: true });
+    data.sort((a, b) => b.amount - a.amount);
+  }
   if (filter !== 'all') {
     const prefs = REGION_MAP[filter] || [];
     data = data.filter(d => prefs.includes(d.pref));
@@ -1009,8 +1039,14 @@ function renderPref() {
     document.getElementById('pref-list').innerHTML = '<li class="rank-item"><span style="color:var(--text-sub);font-size:13px;padding:8px 0;">都道府県を選択してください</span></li>';
     return;
   }
-  let data = DEMO_NATIONAL.filter(d => d.pref === filter);
-  data = data.map((d, i) => ({ ...d, rank: i+1 }));
+  const myTotal = getMyMonthlyTotal();
+  let data = [...DEMO_NATIONAL];
+  if (userData.name) {
+    data = data.filter(d => d.name !== userData.name);
+    data.push({ name: userData.name, store: userData.store, pref: userData.pref, amount: myTotal, isMe: true });
+    data.sort((a, b) => b.amount - a.amount);
+  }
+  data = data.filter(d => d.pref === filter).map((d, i) => ({ ...d, rank: i+1 }));
   document.getElementById('pref-list').innerHTML = data.length ? data.map(d => buildRankItem(d, userData.name)).join('') : '<li class="rank-item"><span style="color:var(--text-sub);font-size:13px;">データがありません</span></li>';
 }
 
