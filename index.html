@@ -282,6 +282,8 @@ input, select, textarea { font-family: inherit; }
       </div>
       <!-- Store (社内) -->
       <div id="rtab-store">
+        <!-- 店舗切り替え -->
+        <div id="store-switcher" style="padding:12px 12px 0;display:flex;gap:8px;overflow-x:auto;white-space:nowrap;"></div>
         <div class="store-stat-row" style="padding-top:12px;">
           <div class="store-stat-card">
             <div class="sv" id="store-total">-</div>
@@ -512,21 +514,37 @@ input, select, textarea { font-family: inherit; }
       </div>
       <!-- Group -->
       <div class="card">
-        <div class="card-title">🏪 社内グループ</div>
-        <div style="font-size:13px;color:var(--text-sub);margin-bottom:12px;">店舗コードで同じ店のメンバーと繋がります</div>
-        <div class="form-group">
-          <label class="form-label">グループコード</label>
-          <input type="text" class="form-input" id="set-group" placeholder="例: KOKEN-001" style="letter-spacing:3px;font-weight:700;text-transform:uppercase;">
+        <div class="card-title">🏪 フォロー中の店舗</div>
+        <div style="font-size:13px;color:var(--text-sub);margin-bottom:12px;">複数の店舗コードを登録して切り替えて見られます</div>
+        <!-- フォロー中リスト -->
+        <div id="followed-stores-list" style="margin-bottom:12px;"></div>
+        <!-- 新規追加 -->
+        <div style="display:flex;gap:8px;margin-bottom:8px;">
+          <input type="text" class="form-input" id="set-group-name" placeholder="店舗名（例: 研修センター）" style="flex:1;">
         </div>
         <div style="display:flex;gap:8px;">
-          <button class="submit-btn" style="flex:1;margin-top:0;font-size:14px;" onclick="joinGroup()">参加する</button>
-          <button onclick="generateGroupCode()" style="flex:1;padding:14px;background:var(--green-light);color:var(--green);border-radius:12px;font-size:14px;font-weight:700;">新規発行</button>
+          <input type="text" class="form-input" id="set-group" placeholder="コード（例: KOKEN-001）" style="flex:1;letter-spacing:2px;font-weight:700;text-transform:uppercase;">
+          <button onclick="joinGroup()" style="padding:12px 16px;background:var(--green);color:#fff;border-radius:10px;font-size:13px;font-weight:700;white-space:nowrap;">追加</button>
+        </div>
+        <div style="margin-top:8px;">
+          <button onclick="generateGroupCode()" style="width:100%;padding:12px;background:var(--green-light);color:var(--green);border-radius:10px;font-size:13px;font-weight:700;">🔑 新しいコードを発行</button>
         </div>
         <div id="group-code-display" style="display:none;margin-top:12px;">
-          <div class="card-title">あなたのコード</div>
+          <div class="card-title">発行されたコード</div>
           <div class="group-code-display" id="group-code-text"></div>
           <button onclick="copyGroupCode()" style="width:100%;padding:10px;background:var(--border);border-radius:8px;font-size:13px;font-weight:600;">📋 コピーする</button>
         </div>
+      </div>
+      <!-- Ninja Mode -->
+      <div class="card">
+        <div class="card-title">🥷 忍びモード</div>
+        <ul class="settings-list" style="margin:0;box-shadow:none;">
+          <li class="setting-item">
+            <div class="setting-icon" style="background:#2c2c2c;">🥷</div>
+            <div><div class="setting-label">閲覧専用（忍びモード）</div><div class="setting-sub">ランキングに表示されず工賃入力も非表示</div></div>
+            <label class="toggle"><input type="checkbox" id="ninja-mode-toggle" onchange="toggleNinjaMode(this.checked)"><span class="toggle-slider"></span></label>
+          </li>
+        </ul>
       </div>
       <!-- Notifications -->
       <div class="card">
@@ -651,7 +669,10 @@ if (!userData.store) userData.store = '';
 if (!userData.pref) userData.pref = '';
 if (!userData.goal) userData.goal = 100;
 if (!userData.groupCode) userData.groupCode = '';
+if (!userData.groupCodes) userData.groupCodes = [];
+if (!userData.activeGroupCode) userData.activeGroupCode = '';
 if (!userData.avatar) userData.avatar = '';
+if (userData.ninjaMode === undefined) userData.ninjaMode = false;
 if (!settings.notifRankup) settings.notifRankup = true;
 if (!settings.notifGoal) settings.notifGoal = true;
 if (!settings.notifRocket) settings.notifRocket = true;
@@ -819,6 +840,26 @@ function rankNumEmoji(n) {
   return n;
 }
 
+function nameToColor(name) {
+  const colors = ['#1D9E75','#e74c3c','#3498db','#9b59b6','#f39c12','#1abc9c','#e67e22','#2ecc71'];
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  return colors[Math.abs(hash) % colors.length];
+}
+
+function buildAvatarHtml(item, myName) {
+  const isMe = item.isMe || (myName && item.name === myName);
+  if (isMe && userData.avatar) {
+    return `<img src="${userData.avatar}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`;
+  }
+  if (item.avatarUrl) {
+    return `<img src="${item.avatarUrl}" style="width:100%;height:100%;object-fit:cover;">`;
+  }
+  const initial = (item.name || '?').charAt(0);
+  const bg = nameToColor(item.name || '?');
+  return `<div style="width:100%;height:100%;background:${bg};display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:16px;border-radius:50%;">${initial}</div>`;
+}
+
 function buildRankItem(item, myName) {
   const isMe = item.isMe || (myName && item.name === myName);
   const numCls = rankNumClass(item.rank);
@@ -826,7 +867,7 @@ function buildRankItem(item, myName) {
   const rank = getRank(item.amount / 10000);
   return `<li class="rank-item" style="${isMe ? 'background:#e8f7f2;' : ''}">
     <span class="rank-num ${numCls}">${rankNumEmoji(item.rank)}</span>
-    <div class="rank-avatar">${item.avatarUrl ? `<img src="${item.avatarUrl}">` : item.emoji || '🧑'}</div>
+    <div class="rank-avatar">${buildAvatarHtml(item, myName)}</div>
     <div class="rank-info">
       <div class="rank-name">${item.name}${isMe ? ' <span style="color:var(--green);font-size:11px;">▶ あなた</span>' : ''}</div>
       <div class="rank-sub">${item.store || ''} ${item.pref ? '/ '+item.pref : ''}</div>
@@ -880,6 +921,7 @@ function renderPref() {
 document.getElementById('pref-filter').addEventListener('change', renderPref);
 
 function renderStore() {
+  renderStoreSwitcher();
   const myTotal = getMyMonthlyTotal();
   const goal = userData.goal * 10000;
   let data = DEMO_STORE.map(d => ({ ...d }));
@@ -1156,7 +1198,9 @@ function submitWage() {
   renderInputHistory();
   showToast(`✅ ${formatYen(amount)}万円 登録しました！`);
   checkGoalAndRank();
-  postToGAS({ action: 'addWage', name: userData.name, store: userData.store, pref: userData.pref, date, amount, number, cartype });
+  if (!userData.ninjaMode) {
+    postToGAS({ action: 'addWage', name: userData.name, store: userData.store, pref: userData.pref, date, amount, number, cartype });
+  }
 }
 
 function renderInputHistory() {
@@ -1317,7 +1361,9 @@ function initSettings() {
   document.getElementById('set-pref').value = userData.pref || '';
   document.getElementById('set-store').value = userData.store || '';
   document.getElementById('set-goal').value = userData.goal || 100;
-  document.getElementById('set-group').value = userData.groupCode || '';
+  document.getElementById('set-group').value = '';
+  renderFollowedStores();
+  document.getElementById('ninja-mode-toggle').checked = userData.ninjaMode === true;
   document.getElementById('notif-rankup').checked = settings.notifRankup !== false;
   document.getElementById('notif-goal').checked = settings.notifGoal !== false;
   document.getElementById('notif-rocket').checked = settings.notifRocket !== false;
@@ -1364,10 +1410,82 @@ function generateGroupCode() {
 
 function joinGroup() {
   const code = document.getElementById('set-group').value.trim().toUpperCase();
+  const name = document.getElementById('set-group-name').value.trim() || code;
   if (!code) { showToast('コードを入力してください'); return; }
+  // 重複チェック
+  if (userData.groupCodes.find(g => g.code === code)) {
+    showToast('すでに追加されています'); return;
+  }
+  userData.groupCodes.push({ code, name });
+  if (!userData.activeGroupCode) userData.activeGroupCode = code;
   userData.groupCode = code;
   saveLocal();
-  showToast(`✅ グループ「${code}」に参加しました`);
+  document.getElementById('set-group').value = '';
+  document.getElementById('set-group-name').value = '';
+  renderFollowedStores();
+  renderStoreSwitcher();
+  showToast(`✅ 「${name}」を追加しました`);
+}
+
+function toggleNinjaMode(on) {
+  userData.ninjaMode = on;
+  saveLocal();
+  applyNinjaMode();
+  showToast(on ? '🥷 忍びモード ON — ランキングに表示されません' : '🥷 忍びモード OFF');
+}
+
+function applyNinjaMode() {
+  const inputTab = document.querySelector('[data-tab="input"]');
+  if (inputTab) inputTab.style.display = userData.ninjaMode ? 'none' : '';
+}
+
+function leaveGroup(code) {
+  userData.groupCodes = userData.groupCodes.filter(g => g.code !== code);
+  if (userData.activeGroupCode === code) {
+    userData.activeGroupCode = userData.groupCodes.length ? userData.groupCodes[0].code : '';
+  }
+  saveLocal();
+  renderFollowedStores();
+  renderStoreSwitcher();
+  showToast('🗑️ 削除しました');
+}
+
+function switchActiveGroup(code) {
+  userData.activeGroupCode = code;
+  saveLocal();
+  renderStoreSwitcher();
+  renderStore();
+}
+
+function renderFollowedStores() {
+  const el = document.getElementById('followed-stores-list');
+  if (!el) return;
+  if (!userData.groupCodes.length) {
+    el.innerHTML = '<div style="font-size:13px;color:var(--text-sub);padding:8px 0;">まだ店舗がありません</div>';
+    return;
+  }
+  el.innerHTML = userData.groupCodes.map(g => `
+    <div style="display:flex;align-items:center;gap:8px;padding:10px 0;border-bottom:1px solid var(--border);">
+      <span style="font-size:18px;">🏪</span>
+      <div style="flex:1;">
+        <div style="font-weight:700;font-size:14px;">${g.name}</div>
+        <div style="font-size:11px;color:var(--text-sub);letter-spacing:2px;">${g.code}</div>
+      </div>
+      <button onclick="leaveGroup('${g.code}')" style="color:#e74c3c;font-size:12px;padding:4px 8px;background:#fff0f0;border-radius:6px;">削除</button>
+    </div>`).join('');
+}
+
+function renderStoreSwitcher() {
+  const el = document.getElementById('store-switcher');
+  if (!el) return;
+  if (!userData.groupCodes.length) {
+    el.innerHTML = '<div style="font-size:12px;color:var(--text-sub);">設定から店舗を追加してください</div>';
+    return;
+  }
+  el.innerHTML = userData.groupCodes.map(g => {
+    const isActive = g.code === userData.activeGroupCode;
+    return `<button onclick="switchActiveGroup('${g.code}')" style="display:inline-flex;align-items:center;gap:4px;padding:6px 14px;border-radius:20px;font-size:12px;font-weight:700;border:2px solid ${isActive?'var(--green)':'var(--border)'};background:${isActive?'var(--green)':'#fff'};color:${isActive?'#fff':'var(--text-sub)'};white-space:nowrap;">🏪 ${g.name}</button>`;
+  }).join('');
 }
 
 function copyGroupCode() {
@@ -1567,6 +1685,7 @@ function init() {
   initCalendar();
   initInputPage();
   initSettings();
+  applyNinjaMode();
   renderRanking();
 
   // Check if first launch
