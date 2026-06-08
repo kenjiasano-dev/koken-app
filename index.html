@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="板金PRO">
+<meta name="theme-color" content="#ff6b2b">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon.svg">
+<title>BANKIN PRO</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Noto+Sans+JP:wght@400;700;900&display=swap');
+  :root {
+    --bg:#0d0d0f; --surface:#18181c; --surface2:#222228;
+    --accent:#ff6b2b; --accent2:#ffb347; --text:#f0f0f0;
+    --muted:#888; --green:#2ecc71; --red:#e74c3c; --border:#2e2e36;
+    --safe-top: env(safe-area-inset-top, 0px);
+    --safe-bot: env(safe-area-inset-bottom, 0px);
+  }
+  * { box-sizing:border-box; margin:0; padding:0; -webkit-tap-highlight-color:transparent; }
+  html,body { height:100%; overflow:hidden; }
+  body {
+    background:var(--bg); color:var(--text);
+    font-family:'Noto Sans JP',sans-serif;
+    display:flex; flex-direction:column;
+  }
+  /* ヘッダー */
+  header {
+    background:linear-gradient(135deg,#1a1a20,#0d0d0f);
+    border-bottom:2px solid var(--accent);
+    padding:calc(var(--safe-top) + 10px) 20px 10px;
+    flex-shrink:0;
+  }
+  .logo { font-family:'Bebas Neue',cursive; font-size:24px; color:var(--accent); letter-spacing:2px; }
+  .sub { font-size:10px; color:var(--muted); letter-spacing:1px; }
+  /* タブ */
+  .tabs {
+    display:flex; border-bottom:1px solid var(--border);
+    background:var(--surface); flex-shrink:0;
+  }
+  .tab {
+    flex:1; padding:10px 4px; text-align:center; font-size:11px;
+    font-weight:700; color:var(--muted); cursor:pointer;
+    border-bottom:3px solid transparent; transition:all 0.2s;
+    user-select:none;
+  }
+  .tab.active { color:var(--accent); border-bottom-color:var(--accent); background:var(--surface2); }
+  /* スクロール可能エリア */
+  .pages { flex:1; overflow:hidden; position:relative; }
+  .page {
+    display:none; position:absolute; inset:0;
+    overflow-y:auto; padding:16px;
+    padding-bottom:calc(var(--safe-bot) + 16px);
+    -webkit-overflow-scrolling:touch;
+  }
+  .page.active { display:block; }
+
+  /* ダッシュボード */
+  .goal-card { background:linear-gradient(135deg,var(--surface2),#1e1e28); border:1px solid var(--accent); border-radius:16px; padding:20px; margin-bottom:16px; }
+  .goal-label { font-size:11px; color:var(--accent); letter-spacing:2px; margin-bottom:8px; font-weight:700; }
+  .countdown-display { font-family:'Bebas Neue',cursive; font-size:52px; color:var(--text); line-height:1; margin:8px 0 4px; }
+  .countdown-display.over { color:var(--green); }
+  .countdown-sub { font-size:12px; color:var(--muted); }
+  .progress-wrap { background:var(--border); border-radius:8px; height:10px; margin-top:14px; overflow:hidden; }
+  .progress-bar { height:100%; background:linear-gradient(90deg,var(--accent),var(--accent2)); border-radius:8px; transition:width 0.5s ease; }
+  .progress-bar.over { background:linear-gradient(90deg,var(--green),#27ae60); }
+  .stats-row { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:16px; }
+  .stat-box { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:14px; }
+  .stat-box .label { font-size:10px; color:var(--muted); margin-bottom:4px; }
+  .stat-box .value { font-family:'Bebas Neue',cursive; font-size:28px; color:var(--accent2); line-height:1; }
+  .stat-box .unit { font-size:11px; color:var(--muted); }
+  .today-label { font-size:11px; color:var(--muted); text-align:center; margin-bottom:16px; }
+
+  /* グラフ */
+  .chart-card { background:var(--surface); border:1px solid var(--border); border-radius:16px; padding:16px; margin-bottom:16px; }
+  .chart-title { font-size:12px; font-weight:700; color:var(--accent); margin-bottom:12px; letter-spacing:1px; }
+  .chart-toggle { display:flex; gap:6px; margin-bottom:12px; }
+  .ct-btn { flex:1; padding:7px; border-radius:8px; border:1px solid var(--border); background:var(--surface2); color:var(--muted); font-size:11px; cursor:pointer; font-family:'Noto Sans JP',sans-serif; font-weight:700; transition:all 0.2s; }
+  .ct-btn.active { background:var(--accent); color:#fff; border-color:var(--accent); }
+  canvas { width:100% !important; display:block; }
+  .legend { display:flex; gap:16px; justify-content:center; margin-top:10px; }
+  .legend-item { display:flex; align-items:center; gap:5px; font-size:10px; color:var(--muted); }
+  .legend-dot { width:10px; height:10px; border-radius:50%; }
+
+  /* 入力 */
+  .form-card { background:var(--surface); border:1px solid var(--border); border-radius:16px; padding:20px; margin-bottom:16px; }
+  .form-title { font-size:13px; font-weight:700; color:var(--accent); margin-bottom:16px; letter-spacing:1px; }
+  .input-group { margin-bottom:14px; }
+  .input-group label { display:block; font-size:11px; color:var(--muted); margin-bottom:6px; letter-spacing:1px; }
+  .input-group input { width:100%; background:var(--surface2); border:1px solid var(--border); border-radius:10px; padding:14px; color:var(--text); font-size:16px; font-family:'Noto Sans JP',sans-serif; outline:none; transition:border-color 0.2s; }
+  .input-group input:focus { border-color:var(--accent); }
+  .btn { width:100%; padding:16px; border-radius:12px; border:none; font-size:15px; font-weight:700; font-family:'Noto Sans JP',sans-serif; cursor:pointer; transition:all 0.15s; letter-spacing:1px; }
+  .btn-primary { background:linear-gradient(135deg,var(--accent),var(--accent2)); color:#fff; }
+  .btn-primary:active { transform:scale(0.97); opacity:0.9; }
+  .btn-outline { background:transparent; border:1px solid var(--border); color:var(--muted); margin-top:8px; font-size:13px; }
+
+  /* 履歴 */
+  .month-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:6px; margin-bottom:14px; }
+  .mg-btn { padding:8px 4px; border-radius:8px; border:1px solid var(--border); background:var(--surface2); color:var(--muted); font-size:11px; cursor:pointer; font-family:'Noto Sans JP',sans-serif; font-weight:700; transition:all 0.2s; text-align:center; }
+  .mg-btn.active { background:var(--accent); color:#fff; border-color:var(--accent); }
+  .mg-btn.has-data { border-color:var(--accent2); color:var(--accent2); }
+  .mg-btn.active.has-data { background:var(--accent); color:#fff; }
+  .month-nav { display:flex; align-items:center; justify-content:space-between; background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:10px 14px; margin-bottom:12px; }
+  .month-nav .nav-btn { background:none; border:none; color:var(--accent); font-size:24px; cursor:pointer; padding:0 8px; line-height:1; }
+  .month-nav .month-title { font-family:'Bebas Neue',cursive; font-size:24px; color:var(--text); letter-spacing:2px; }
+  .month-summary { background:var(--surface2); border-radius:10px; padding:10px 14px; margin-bottom:12px; display:flex; justify-content:space-between; align-items:center; }
+  .month-summary .ms-label { font-size:11px; color:var(--muted); }
+  .month-summary .ms-val { font-family:'Bebas Neue',cursive; font-size:22px; color:var(--accent2); }
+  .history-item { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:14px 16px; margin-bottom:10px; display:flex; align-items:center; gap:14px; animation:fadeIn 0.3s ease; }
+  @keyframes fadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+  .car-badge { background:var(--surface2); border:1px solid var(--accent); border-radius:8px; padding:6px 10px; text-align:center; min-width:64px; }
+  .car-badge .make { font-size:11px; color:var(--accent); font-weight:700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:60px; }
+  .car-badge .plate { font-family:'Bebas Neue',cursive; font-size:20px; color:var(--text); line-height:1; }
+  .history-info { flex:1; }
+  .history-info .date { font-size:10px; color:var(--muted); margin-bottom:2px; }
+  .history-price { font-family:'Bebas Neue',cursive; font-size:24px; color:var(--accent2); }
+  .history-price .yen { font-size:14px; color:var(--muted); }
+  .delete-btn { background:none; border:none; color:var(--muted); font-size:20px; cursor:pointer; padding:6px 8px; }
+  .empty-state { text-align:center; padding:40px 20px; color:var(--muted); font-size:13px; }
+  .empty-state .icon { font-size:40px; margin-bottom:12px; }
+
+  /* 目標 */
+  .goal-setup { background:var(--surface); border:1px solid var(--border); border-radius:16px; padding:20px; margin-bottom:16px; }
+  .period-selector { display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; margin-bottom:16px; }
+  .period-btn { padding:12px; border-radius:10px; border:1px solid var(--border); background:var(--surface2); color:var(--muted); font-size:12px; cursor:pointer; font-family:'Noto Sans JP',sans-serif; font-weight:700; transition:all 0.2s; }
+  .period-btn.active { background:var(--accent); color:#fff; border-color:var(--accent); }
+  .reset-btn { background:transparent; border:1px solid var(--red); color:var(--red); border-radius:10px; padding:12px; width:100%; font-size:12px; cursor:pointer; font-family:'Noto Sans JP',sans-serif; margin-top:8px; }
+
+  /* インストール誘導バナー */
+  #install-banner {
+    display:none; position:fixed; bottom:calc(var(--safe-bot) + 10px); left:16px; right:16px;
+    background:#1a1a20; border:1px solid var(--accent); border-radius:14px;
+    padding:14px 16px; z-index:999; box-shadow:0 4px 24px rgba(0,0,0,0.6);
+  }
+  #install-banner .ib-title { font-size:13px; font-weight:700; color:var(--accent); margin-bottom:4px; }
+  #install-banner .ib-sub { font-size:11px; color:var(--muted); margin-bottom:10px; }
+  #install-banner .ib-btns { display:flex; gap:8px; }
+  #install-banner .ib-install { flex:1; padding:10px; background:var(--accent); color:#fff; border:none; border-radius:9px; font-size:13px; font-weight:700; cursor:pointer; font-family:'Noto Sans JP',sans-serif; }
+  #install-banner .ib-close { padding:10px 14px; background:transparent; border:1px solid var(--border); color:var(--muted); border-radius:9px; font-size:12px; cursor:pointer; font-family:'Noto Sans JP',sans-serif; }
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">⚙ BANKIN PRO</div>
+  <div class="sub">鈑金塗装 工賃トラッカー</div>
+</header>
+<div class="tabs">
+  <div class="tab active" onclick="showTab('dash')">📊 ダッシュ</div>
+  <div class="tab" onclick="showTab('add')">➕ 入力</div>
+  <div class="tab" onclick="showTab('history')">📋 履歴</div>
+  <div class="tab" onclick="showTab('goal')">🎯 目標</div>
+</div>
+<div class="pages">
+  <!-- ダッシュボード -->
+  <div id="page-dash" class="page active">
+    <div class="goal-card">
+      <div class="goal-label">📍 残り工賃（目標まで）</div>
+      <div class="countdown-display" id="countdown-main">¥---</div>
+      <div class="countdown-sub" id="countdown-sub">目標を設定してください</div>
+      <div class="progress-wrap"><div class="progress-bar" id="progress-bar" style="width:0%"></div></div>
+    </div>
+    <div class="stats-row">
+      <div class="stat-box"><div class="label">本日の合計</div><div class="value" id="today-total">0</div><div class="unit">円</div></div>
+      <div class="stat-box"><div class="label">今月の合計</div><div class="value" id="month-total">0</div><div class="unit">円</div></div>
+      <div class="stat-box"><div class="label">本日の台数</div><div class="value" id="today-count">0</div><div class="unit">台</div></div>
+      <div class="stat-box"><div class="label">今月の台数</div><div class="value" id="month-count">0</div><div class="unit">台</div></div>
+    </div>
+    <div class="today-label" id="today-label"></div>
+    <div class="chart-card">
+      <div class="chart-title">📈 月別達成グラフ</div>
+      <div class="chart-toggle">
+        <button class="ct-btn active" id="ct-bar" onclick="setChartType('bar')">棒グラフ</button>
+        <button class="ct-btn" id="ct-line" onclick="setChartType('line')">折れ線</button>
+      </div>
+      <canvas id="achieveChart" height="200"></canvas>
+      <div class="legend">
+        <div class="legend-item"><div class="legend-dot" style="background:#2ecc71"></div>達成</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#ff6b2b"></div>未達</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#555;border:1px dashed #888"></div>目標</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 入力 -->
+  <div id="page-add" class="page">
+    <div class="form-card">
+      <div class="form-title">🚗 車両・工賃入力</div>
+      <div class="input-group"><label>車種名</label><input type="text" id="input-make" placeholder="例：プリウス、ムーヴ" autocomplete="off"/></div>
+      <div class="input-group"><label>ナンバー（4桁）</label><input type="number" id="input-plate" placeholder="例：1234" inputmode="numeric"/></div>
+      <div class="input-group"><label>工賃金額（円）</label><input type="number" id="input-price" placeholder="例：85000" inputmode="numeric"/></div>
+      <button class="btn btn-primary" onclick="addRecord()">登録する</button>
+      <button class="btn btn-outline" onclick="clearForm()">クリア</button>
+    </div>
+  </div>
+
+  <!-- 履歴 -->
+  <div id="page-history" class="page">
+    <div class="month-grid" id="month-grid"></div>
+    <div class="month-nav">
+      <button class="nav-btn" onclick="changeHistoryMonth(-1)">‹</button>
+      <div class="month-title" id="history-month-title"></div>
+      <button class="nav-btn" onclick="changeHistoryMonth(1)">›</button>
+    </div>
+    <div class="month-summary">
+      <div><div class="ms-label">月合計</div><div class="ms-val" id="history-month-sum">¥0</div></div>
+      <div><div class="ms-label">台数</div><div class="ms-val" id="history-month-count">0台</div></div>
+    </div>
+    <div id="history-list"></div>
+  </div>
+
+  <!-- 目標 -->
+  <div id="page-goal" class="page">
+    <div class="goal-setup">
+      <div class="form-title">🎯 目標工賃を設定</div>
+      <div class="period-selector">
+        <button class="period-btn active" id="period-day" onclick="setPeriod('day')">日次</button>
+        <button class="period-btn" id="period-week" onclick="setPeriod('week')">週次</button>
+        <button class="period-btn" id="period-month" onclick="setPeriod('month')">月次</button>
+      </div>
+      <div class="input-group"><label id="goal-label-text">目標金額（日次）</label><input type="number" id="input-goal" placeholder="例：200000" inputmode="numeric"/></div>
+      <button class="btn btn-primary" onclick="saveGoal()">目標を保存</button>
+      <button class="reset-btn" onclick="resetAll()">⚠ 全データをリセット</button>
+    </div>
+  </div>
+</div>
+
+<!-- インストールバナー -->
+<div id="install-banner">
+  <div class="ib-title">📲 ホーム画面に追加できます</div>
+  <div class="ib-sub">アプリのようにすぐ起動できます</div>
+  <div class="ib-btns">
+    <button class="ib-install" id="ib-install-btn">ホーム画面に追加</button>
+    <button class="ib-close" onclick="document.getElementById('install-banner').style.display='none'">後で</button>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<script>
+  // PWA: Service Worker登録
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('./sw.js').catch(()=>{});
+  }
+
+  // PWA: インストールバナー
+  let deferredPrompt = null;
+  window.addEventListener('beforeinstallprompt', e => {
+    e.preventDefault();
+    deferredPrompt = e;
+    document.getElementById('install-banner').style.display = 'block';
+  });
+  document.getElementById('ib-install-btn').addEventListener('click', () => {
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      deferredPrompt.userChoice.then(() => {
+        deferredPrompt = null;
+        document.getElementById('install-banner').style.display = 'none';
+      });
+    }
+  });
+  window.addEventListener('appinstalled', () => {
+    document.getElementById('install-banner').style.display = 'none';
+  });
+
+  let records = JSON.parse(localStorage.getItem('bankin_records') || '[]');
+  let goal = JSON.parse(localStorage.getItem('bankin_goal') || '{"amount":0,"period":"day"}');
+  let currentPeriod = goal.period || 'day';
+  let chartType = 'bar';
+  let achieveChart = null;
+
+  const nowD = new Date();
+  let histYear = nowD.getFullYear();
+  let histMonth = nowD.getMonth() + 1;
+
+  function formatYen(n) { return parseInt(n).toLocaleString('ja-JP'); }
+  function today() { return new Date().toISOString().slice(0,10); }
+  function thisMonth() { return new Date().toISOString().slice(0,7); }
+  function getMonthKey(y,m) { return y+'-'+(String(m).padStart(2,'0')); }
+
+  function getFiltered(period) {
+    const t=today(), m=thisMonth();
+    const weekAgo=new Date(Date.now()-7*24*60*60*1000).toISOString().slice(0,10);
+    return records.filter(r=>{
+      if(period==='day') return r.date===t;
+      if(period==='week') return r.date>=weekAgo;
+      if(period==='month') return r.date.startsWith(m);
+      return true;
+    });
+  }
+
+  function buildChartData() {
+    const year=nowD.getFullYear();
+    const labels=[],actuals=[],goals=[];
+    const monthlyGoal = goal.period==='month' ? goal.amount :
+                        goal.period==='day'   ? goal.amount*22 :
+                        goal.period==='week'  ? goal.amount*4 : 0;
+    for(let m=1;m<=12;m++){
+      labels.push(m+'月');
+      const key=getMonthKey(year,m);
+      actuals.push(records.filter(r=>r.date.startsWith(key)).reduce((a,r)=>a+r.price,0));
+      goals.push(monthlyGoal);
+    }
+    return {labels,actuals,goals};
+  }
+
+  function renderChart() {
+    const {labels,actuals,goals}=buildChartData();
+    const ctx=document.getElementById('achieveChart').getContext('2d');
+    const currentM=new Date().getMonth()+1;
+    const barColors=actuals.map((v,i)=>{
+      if(i+1>currentM) return 'rgba(60,60,70,0.5)';
+      return v>=goals[i]&&goals[i]>0 ? 'rgba(46,204,113,0.85)' : 'rgba(255,107,43,0.85)';
+    });
+    if(achieveChart) achieveChart.destroy();
+    achieveChart=new Chart(ctx,{
+      type:chartType==='line'?'line':'bar',
+      data:{
+        labels,
+        datasets:[
+          {
+            label:'実績', data:actuals,
+            backgroundColor:chartType==='bar'?barColors:'rgba(255,107,43,0.15)',
+            borderColor:chartType==='bar'?barColors.map(c=>c.replace('0.85','1')):'#ff6b2b',
+            borderWidth:chartType==='bar'?1:2,
+            borderRadius:chartType==='bar'?6:0,
+            fill:chartType==='line', tension:0.4,
+            pointBackgroundColor:actuals.map((v,i)=>v>=goals[i]&&goals[i]>0?'#2ecc71':'#ff6b2b'),
+            pointRadius:chartType==='line'?4:0,
+          },
+          {
+            label:'目標', data:goals, type:'line',
+            borderColor:'rgba(200,200,200,0.35)', borderDash:[6,4],
+            borderWidth:2, pointRadius:0, fill:false, tension:0,
+          }
+        ]
+      },
+      options:{
+        responsive:true,
+        animation:{duration:500,easing:'easeOutQuart'},
+        plugins:{
+          legend:{display:false},
+          tooltip:{
+            backgroundColor:'#222228', titleColor:'#ff6b2b',
+            bodyColor:'#f0f0f0', borderColor:'#2e2e36', borderWidth:1,
+            callbacks:{
+              label:ctx=>ctx.datasetIndex===0?' 実績: ¥'+formatYen(ctx.parsed.y):' 目標: ¥'+formatYen(ctx.parsed.y),
+              afterBody:items=>{
+                const v=actuals[items[0].dataIndex],g=goals[items[0].dataIndex];
+                if(!g) return[];
+                return['達成率:'+Math.round((v/g)*100)+'%','差額:'+(v-g>=0?'+':'')+formatYen(v-g)+'円'];
+              }
+            }
+          }
+        },
+        scales:{
+          x:{grid:{color:'rgba(255,255,255,0.04)'},ticks:{color:'#888',font:{size:10}}},
+          y:{grid:{color:'rgba(255,255,255,0.06)'},ticks:{color:'#888',font:{size:10},callback:v=>v>=10000?(v/10000)+'万':v},beginAtZero:true}
+        }
+      }
+    });
+  }
+
+  function setChartType(type) {
+    chartType=type;
+    document.getElementById('ct-bar').className='ct-btn'+(type==='bar'?' active':'');
+    document.getElementById('ct-line').className='ct-btn'+(type==='line'?' active':'');
+    renderChart();
+  }
+
+  function updateDashboard() {
+    const tR=getFiltered('day'),mR=getFiltered('month');
+    document.getElementById('today-total').textContent=formatYen(tR.reduce((a,r)=>a+r.price,0));
+    document.getElementById('month-total').textContent=formatYen(mR.reduce((a,r)=>a+r.price,0));
+    document.getElementById('today-count').textContent=tR.length;
+    document.getElementById('month-count').textContent=mR.length;
+    const now=new Date();
+    document.getElementById('today-label').textContent=
+      now.getFullYear()+'年'+(now.getMonth()+1)+'月'+now.getDate()+'日（'+['日','月','火','水','木','金','土'][now.getDay()]+'）';
+    const g=goal.amount||0;
+    const pSum=getFiltered(goal.period).reduce((a,r)=>a+r.price,0);
+    const remain=g-pSum, pct=g>0?Math.min((pSum/g)*100,100):0;
+    const cdEl=document.getElementById('countdown-main');
+    const subEl=document.getElementById('countdown-sub');
+    const bar=document.getElementById('progress-bar');
+    const pl={day:'日次',week:'週次',month:'月次'}[goal.period]||'日次';
+    if(g===0){cdEl.textContent='¥---';cdEl.className='countdown-display';subEl.textContent='目標を設定してください';bar.style.width='0%';bar.className='progress-bar';}
+    else if(remain>0){cdEl.textContent='¥'+formatYen(remain);cdEl.className='countdown-display';subEl.textContent=pl+'目標まで残り | 達成率 '+Math.round(pct)+'%';bar.style.width=pct+'%';bar.className='progress-bar';}
+    else{cdEl.textContent='🎉 達成！';cdEl.className='countdown-display over';subEl.textContent='¥'+formatYen(Math.abs(remain))+' オーバー達成！';bar.style.width='100%';bar.className='progress-bar over';}
+    renderChart();
+  }
+
+  function renderMonthGrid() {
+    const grid=document.getElementById('month-grid');
+    grid.innerHTML=['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'].map((label,i)=>{
+      const m=i+1, key=getMonthKey(histYear,m);
+      const hasData=records.some(r=>r.date.startsWith(key));
+      const isActive=(m===histMonth);
+      let cls='mg-btn'; if(isActive)cls+=' active'; if(hasData&&!isActive)cls+=' has-data';
+      return `<button class="${cls}" onclick="selectHistoryMonth(${m})">${label}</button>`;
+    }).join('');
+  }
+
+  function renderHistory() {
+    const key=getMonthKey(histYear,histMonth);
+    document.getElementById('history-month-title').textContent=histYear+'年'+histMonth+'月';
+    const filtered=records.filter(r=>r.date.startsWith(key));
+    document.getElementById('history-month-sum').textContent='¥'+formatYen(filtered.reduce((a,r)=>a+r.price,0));
+    document.getElementById('history-month-count').textContent=filtered.length+'台';
+    const el=document.getElementById('history-list');
+    if(filtered.length===0){el.innerHTML='<div class="empty-state"><div class="icon">🚗</div>'+histMonth+'月の登録はありません</div>';renderMonthGrid();return;}
+    const sorted=filtered.map(r=>({...r,origIdx:records.indexOf(r)})).sort((a,b)=>(b.date+b.time).localeCompare(a.date+a.time));
+    el.innerHTML=sorted.map(r=>`
+      <div class="history-item">
+        <div class="car-badge"><div class="make">${r.make}</div><div class="plate">${r.plate}</div></div>
+        <div class="history-info"><div class="date">${r.date} ${r.time}</div><div class="history-price"><span class="yen">¥</span>${formatYen(r.price)}</div></div>
+        <button class="delete-btn" onclick="deleteRecord(${r.origIdx})">✕</button>
+      </div>`).join('');
+    renderMonthGrid();
+  }
+
+  function selectHistoryMonth(m){histMonth=m;renderHistory();}
+  function changeHistoryMonth(d){histMonth+=d;if(histMonth<1){histMonth=12;histYear--;}if(histMonth>12){histMonth=1;histYear++;}renderHistory();}
+
+  function addRecord() {
+    const make=document.getElementById('input-make').value.trim();
+    const plate=document.getElementById('input-plate').value.trim();
+    const price=parseInt(document.getElementById('input-price').value);
+    if(!make||!plate||isNaN(price)||price<=0){alert('車種・ナンバー・工賃をすべて入力してください');return;}
+    const now=new Date();
+    records.push({make,plate,price,date:now.toISOString().slice(0,10),time:now.toTimeString().slice(0,5)});
+    localStorage.setItem('bankin_records',JSON.stringify(records));
+    clearForm(); updateDashboard(); showTab('dash');
+  }
+
+  function deleteRecord(idx){
+    if(!confirm('削除しますか？'))return;
+    records.splice(idx,1);
+    localStorage.setItem('bankin_records',JSON.stringify(records));
+    updateDashboard(); renderHistory();
+  }
+
+  function clearForm(){
+    document.getElementById('input-make').value='';
+    document.getElementById('input-plate').value='';
+    document.getElementById('input-price').value='';
+  }
+
+  function setPeriod(p){
+    currentPeriod=p;
+    ['day','week','month'].forEach(x=>{document.getElementById('period-'+x).className='period-btn'+(x===p?' active':'');});
+    document.getElementById('goal-label-text').textContent='目標金額（'+{day:'日次',week:'週次',month:'月次'}[p]+'）';
+    document.getElementById('input-goal').value='';
+  }
+
+  function saveGoal(){
+    const amount=parseInt(document.getElementById('input-goal').value);
+    if(isNaN(amount)||amount<=0){alert('目標金額を入力してください');return;}
+    goal={amount,period:currentPeriod};
+    localStorage.setItem('bankin_goal',JSON.stringify(goal));
+    updateDashboard(); showTab('dash');
+  }
+
+  function resetAll(){
+    if(!confirm('全データを削除しますか？'))return;
+    records=[];goal={amount:0,period:'day'};
+    localStorage.setItem('bankin_records','[]');
+    localStorage.setItem('bankin_goal',JSON.stringify(goal));
+    updateDashboard(); renderHistory();
+  }
+
+  function showTab(name){
+    document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+    document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+    document.getElementById('page-'+name).classList.add('active');
+    ['dash','add','history','goal'].forEach((t,i)=>{if(t===name)document.querySelectorAll('.tab')[i].classList.add('active');});
+    if(name==='history')renderHistory();
+    if(name==='dash')renderChart();
+  }
+
+  updateDashboard();
+  renderMonthGrid();
+</script>
+</body>
+</html>
