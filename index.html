@@ -742,12 +742,12 @@ if (!settings.notifReceive) settings.notifReceive = true;
 // SAMURAI RANKS
 // ============================================================
 const RANKS = [
-  { name: '無名の者', emoji: '👤', min: 0, max: 59, cls: 'sb-0' },
-  { name: '足軽',     emoji: '🗡️', min: 60, max: 79, cls: 'sb-1' },
+  { name: '修行中', emoji: '🌱', min: 0, max: 59, cls: 'sb-0' },
+  { name: '足軽',   emoji: '🗡️', min: 60, max: 79, cls: 'sb-1' },
   { name: '侍',       emoji: '⚔️', min: 80, max: 99, cls: 'sb-2' },
   { name: '武将',     emoji: '🎌', min: 100, max: 119, cls: 'sb-3' },
   { name: '大名',     emoji: '🏯', min: 120, max: 149, cls: 'sb-4' },
-  { name: '征夷大将軍', emoji: '👑', min: 150, max: 9999, cls: 'sb-5' },
+  { name: '将軍', emoji: '👑', min: 150, max: 9999, cls: 'sb-5' },
 ];
 
 function getRank(manyen) {
@@ -758,8 +758,8 @@ function getRank(manyen) {
 // DEMO DATA (used when GAS_URL not configured)
 // ============================================================
 const DEMO_NATIONAL = [
-  { rank:1, name:'田中 俊介', store:'カーコン横浜店', pref:'神奈川', amount:1680000, emoji:'⚔️', rankCls:'sb-5', rankName:'征夷大将軍' },
-  { rank:2, name:'佐藤 健一', store:'カーコン大阪店', pref:'大阪',   amount:1540000, emoji:'👑', rankCls:'sb-5', rankName:'征夷大将軍' },
+  { rank:1, name:'田中 俊介', store:'カーコン横浜店', pref:'神奈川', amount:1680000, emoji:'⚔️', rankCls:'sb-5', rankName:'将軍' },
+  { rank:2, name:'佐藤 健一', store:'カーコン大阪店', pref:'大阪',   amount:1540000, emoji:'👑', rankCls:'sb-5', rankName:'将軍' },
   { rank:3, name:'鈴木 誠',   store:'カーコン名古屋店', pref:'愛知', amount:1420000, emoji:'🏯', rankCls:'sb-4', rankName:'大名' },
   { rank:4, name:'高橋 修',   store:'カーコン福岡店', pref:'福岡',   amount:1350000, emoji:'🏯', rankCls:'sb-4', rankName:'大名' },
   { rank:5, name:'渡辺 光',   store:'カーコン札幌店', pref:'北海道', amount:1280000, emoji:'🎌', rankCls:'sb-3', rankName:'武将' },
