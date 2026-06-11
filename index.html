@@ -7,9 +7,6 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#0a0a0a">
-<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<meta http-equiv="Pragma" content="no-cache">
-<meta http-equiv="Expires" content="0">
 <title>カーコン工賃管理</title>
 <link rel="manifest" href="manifest.json">
 <style>
@@ -1354,6 +1351,22 @@ function generateUUID() {
     return v.toString(16);
   });
 }
+
+// ============================================================
+// APP VERSION（更新のたびに日付を変更）
+// ============================================================
+const APP_VERSION = '20260611';
+(function() {
+  var stored = localStorage.getItem('appVersion');
+  if (stored !== APP_VERSION) {
+    localStorage.setItem('appVersion', APP_VERSION);
+    if (stored) {
+      // 旧バージョン検出 → キャッシュを無視して強制リロード
+      var url = location.pathname + '?v=' + APP_VERSION;
+      location.replace(url);
+    }
+  }
+})();
 
 // ============================================================
 // DATA STORE (localStorage)
