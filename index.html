@@ -7,6 +7,9 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#0a0a0a">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <title>カーコン工賃管理</title>
 <link rel="manifest" href="manifest.json">
 <style>
@@ -3953,12 +3956,4 @@ function setGoalType(type) {
 function saveFrontGoal() {
   var gc = document.getElementById('front-goal-count');
   var ga = document.getElementById('front-goal-amount');
-  if (gc) frontGoal.count = parseInt(gc.value) || 0;
-  if (ga) frontGoal.amount = parseInt(ga.value) || 0;
-  saveLocal();
-  showToast('目標を保存しました！');
-}
-
-</script>
-</body>
-</html>
+  if (gc) frontGoal.count = par
