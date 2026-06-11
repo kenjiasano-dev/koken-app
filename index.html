@@ -1410,7 +1410,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = '20260612b';
+const APP_VERSION = '20260612c';
 (function() {
   var stored = localStorage.getItem('appVersion');
   if (stored !== APP_VERSION) {
@@ -3098,11 +3098,20 @@ function saveProfile() {
 function generateGroupCode() {
   const code = 'KOKEN-' + Math.random().toString(36).toUpperCase().slice(2,7);
   userData.groupCode = code;
+  if (!userData.activeGroupCode) userData.activeGroupCode = code;
+  if (!userData.groupCodes) userData.groupCodes = [];
+  if (!userData.groupCodes.find(g => g.code === code)) {
+    userData.groupCodes.push({ code, name: userData.store || code });
+  }
   saveLocal();
   document.getElementById('set-group').value = code;
   document.getElementById('group-code-text').textContent = code;
   document.getElementById('group-code-display').style.display = 'block';
+  renderFollowedStores();
+  renderStoreSwitcher();
   showToast('🔑 グループコードを発行しました');
+  // GASに自分をこのグループコードで登録
+  postToGAS({ action: 'updateProfile', name: userData.name, pref: userData.pref, store: userData.store, goal: userData.goal, role: userData.role || '', groupCode: code });
 }
 
 function joinGroup() {
