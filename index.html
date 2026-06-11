@@ -1410,7 +1410,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = '20260612a';
+const APP_VERSION = '20260612b';
 (function() {
   var stored = localStorage.getItem('appVersion');
   if (stored !== APP_VERSION) {
@@ -3092,7 +3092,7 @@ function saveProfile() {
   renderGoalRing();
 
   // Update GAS
-  postToGAS({ action: 'updateProfile', name, pref, store, goal, role });
+  postToGAS({ action: 'updateProfile', name, pref, store, goal, role, groupCode: userData.activeGroupCode || userData.groupCode || '' });
 }
 
 function generateGroupCode() {
@@ -3122,6 +3122,8 @@ function joinGroup() {
   renderFollowedStores();
   renderStoreSwitcher();
   showToast(`✅ 「${name}」を追加しました`);
+  // GASにグループコードを登録
+  postToGAS({ action: 'updateProfile', name: userData.name, pref: userData.pref, store: userData.store, goal: userData.goal, role: userData.role || '', groupCode: code });
 }
 
 function toggleGuide() {
