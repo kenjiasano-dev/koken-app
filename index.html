@@ -1410,7 +1410,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = '20260611f';
+const APP_VERSION = '20260612a';
 (function() {
   var stored = localStorage.getItem('appVersion');
   if (stored !== APP_VERSION) {
@@ -1678,14 +1678,14 @@ async function renderStoreRanking2() {
       params.groupCode = code;
     }
     var data = await fetchFromGAS('getRanking', params);
-    if (!data || !data.ranking) { list.innerHTML = '<li style="padding:16px;text-align:center;color:var(--text-sub);font-size:13px;">データなし</li>'; return; }
-    list.innerHTML = data.ranking.slice(0,20).map(function(r, i){
+    if (!data || !data.data) { list.innerHTML = '<li style="padding:16px;text-align:center;color:var(--text-sub);font-size:13px;">データなし</li>'; return; }
+    list.innerHTML = data.data.slice(0,20).map(function(r, i){
       var medal = i===0?'🥇':i===1?'🥈':i===2?'🥉':(i+1)+'';
       var isMe = r.name === userData.name;
       return '<li class="rank-item' + (isMe?' rank-me':'') + '">' +
         '<span class="rank-medal">' + medal + '</span>' +
         '<div class="rank-info"><div class="rank-name">' + r.name + (r.name===userData.name?getRoleBadge(userData.role):'') + '</div><div class="rank-sub">' + (r.store||'') + '</div></div>' +
-        '<span class="rank-wage">' + (r.wage||0).toLocaleString() + '円</span></li>';
+        '<span class="rank-wage">' + (r.amount||0).toLocaleString() + '円</span></li>';
     }).join('');
   } catch(e) {
     list.innerHTML = '<li style="padding:16px;text-align:center;color:var(--text-sub);font-size:13px;">取得できませんでした</li>';
@@ -1960,15 +1960,15 @@ async function renderMyRanking() {
       params.groupCode = code;
     }
     var data = await fetchFromGAS('getRanking', params);
-    if (!data || !data.ranking) { list.innerHTML = '<li style="padding:16px;text-align:center;color:var(--text-sub);font-size:13px;">データなし</li>'; return; }
-    var myIdx = data.ranking.findIndex(function(r){return r.name===userData.name;});
-    list.innerHTML = data.ranking.slice(0,20).map(function(r,i){
+    if (!data || !data.data) { list.innerHTML = '<li style="padding:16px;text-align:center;color:var(--text-sub);font-size:13px;">データなし</li>'; return; }
+    var myIdx = data.data.findIndex(function(r){return r.name===userData.name;});
+    list.innerHTML = data.data.slice(0,20).map(function(r,i){
       var medal = i===0?'🥇':i===1?'🥈':i===2?'🥉':(i+1)+'';
       var isMe = r.name===userData.name;
       return '<li class="rank-item'+(isMe?' rank-me':'')+'">' +
         '<span class="rank-medal">'+medal+'</span>' +
         '<div class="rank-info"><div class="rank-name">'+r.name+'</div><div class="rank-sub">'+(r.store||'')+'</div></div>' +
-        '<span class="rank-wage">'+(r.wage||0).toLocaleString()+'円</span></li>';
+        '<span class="rank-wage">'+(r.amount||0).toLocaleString()+'円</span></li>';
     }).join('') +
     (myIdx>=20?'<li style="padding:12px;text-align:center;font-size:13px;color:var(--green);font-weight:700;">あなたの順位: '+(myIdx+1)+'位</li>':'');
   } catch(e) {
