@@ -348,7 +348,6 @@ input, select, textarea { font-family: inherit; }
       <div class="sub-tabs" id="my-sub-tabs">
         <button class="sub-tab active" data-mytab="status">📊 状況</button>
         <button class="sub-tab" data-mytab="ranking">🏆 ランキング</button>
-        <button class="sub-tab" data-mytab="calendar">📅 カレンダー</button>
         <button class="sub-tab" data-mytab="trend" style="display:none;">📈 推移</button>
         <button class="sub-tab" data-mytab="badge" style="display:none;">⚔️ 称号</button>
         <button id="my-more-btn" onclick="toggleMyMore()" style="padding:6px 10px;border-radius:8px;font-size:11px;background:var(--card);color:var(--text-sub);border:1px solid var(--border);cursor:pointer;">···</button>
@@ -382,10 +381,6 @@ input, select, textarea { font-family: inherit; }
       <!-- 称号 -->
       <div id="mytab-badge" style="display:none;">
         <div id="my-badge-content"></div>
-      </div>
-      <!-- カレンダー -->
-      <div id="mytab-calendar" style="display:none;">
-        <div id="my-calendar-content"></div>
       </div>
     </div>
 
@@ -1400,7 +1395,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = '20260611b';
+const APP_VERSION = '20260611c';
 (function() {
   var stored = localStorage.getItem('appVersion');
   if (stored !== APP_VERSION) {
