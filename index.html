@@ -55,6 +55,8 @@ input, select, textarea { font-family: inherit; }
 #header .rank-badge { background: rgba(255,255,255,.2); border-radius: 20px; padding: 4px 12px; color: #fff; font-size: 12px; display: flex; align-items: center; gap: 4px; }
 #main { flex: 1; overflow-y: auto; overflow-x: hidden; }
 #tabs { height: var(--tab-h); background: #111; border-top: 1px solid var(--green-light); display: flex; flex-shrink: 0; padding-bottom: var(--safe-bottom); }
+.role-btn { padding:8px 4px;border-radius:8px;font-size:12px;font-weight:700;background:var(--card);color:var(--text-sub);border:1px solid var(--border);cursor:pointer;text-align:center;width:100%; }
+.role-btn.active { background:var(--green-light);color:var(--green);border-color:var(--green); }
 .tab-btn { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; font-size: 9px; color: var(--text-sub); transition: color .2s; border-top: 3px solid transparent; }
 .tab-btn.active { color: var(--green); border-top-color: var(--green); }
 .tab-btn svg { width: 22px; height: 22px; }
@@ -133,6 +135,31 @@ input, select, textarea { font-family: inherit; }
 .cal-day.empty { pointer-events: none; }
 .cal-day.sun { color: #e74c3c; }
 .cal-day.sat { color: #3498db; }
+
+/* ===== MY CALENDAR (パチンコ収支カレンダー風) ===== */
+.mycal-wrap { padding: 12px; }
+.mycal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.mycal-header h3 { font-size: 17px; font-weight: 800; color: var(--text); }
+.mycal-nav { width: 34px; height: 34px; border-radius: 50%; background: var(--green-light); color: var(--green); display: flex; align-items: center; justify-content: center; font-size: 16px; cursor: pointer; border: none; }
+.mycal-summary { display: flex; gap: 8px; margin-bottom: 10px; }
+.mycal-summary-item { flex: 1; background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 8px; text-align: center; }
+.mycal-summary-item .msv { font-size: 16px; font-weight: 900; color: var(--green); }
+.mycal-summary-item .msl { font-size: 10px; color: var(--text-sub); margin-top: 2px; }
+.mycal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; }
+.mycal-dow { text-align: center; font-size: 10px; color: var(--text-sub); padding: 3px 0; font-weight: 700; }
+.mycal-dow:first-child { color: #e74c3c; }
+.mycal-dow:last-child { color: #3498db; }
+.mycal-cell { border-radius: 8px; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; padding: 4px 2px 5px; min-height: 52px; cursor: pointer; background: var(--card); border: 1px solid var(--border); position: relative; transition: background .15s; }
+.mycal-cell.empty { background: transparent; border-color: transparent; pointer-events: none; }
+.mycal-cell.today { border: 2px solid var(--green); }
+.mycal-cell.today .mycal-d { background: var(--green); color: #fff; }
+.mycal-cell.has-data { background: var(--green-light); border-color: var(--green); }
+.mycal-cell.sun .mycal-d { color: #e74c3c; }
+.mycal-cell.sat .mycal-d { color: #3498db; }
+.mycal-cell.today.has-data { background: var(--green-light); }
+.mycal-d { font-size: 11px; font-weight: 700; width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-bottom: 2px; color: var(--text); }
+.mycal-amt { font-size: 9px; font-weight: 900; color: var(--green); line-height: 1.2; text-align: center; }
+.mycal-amt-zero { font-size: 8px; color: var(--text-sub); }
 
 /* ===== MY PAGE ===== */
 .my-hero { background: linear-gradient(160deg, #1c1400 0%, #0d0d0d 60%, #0a0a0a 100%); border-bottom: 2px solid var(--green); padding: 28px 16px 20px; display: flex; align-items: center; gap: 18px; position: relative; overflow: hidden; }
@@ -245,6 +272,16 @@ input, select, textarea { font-family: inherit; }
 @media (min-width: 431px) {
   body { background: #e8ecf0; }
 }
+
+/* ===== FRONT PAGE ===== */
+#tabs { overflow-x: auto; }
+.contract-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px; }
+.contract-btn { padding: 14px; border-radius: 10px; font-size: 15px; font-weight: 700; text-align: center; border: 2px solid var(--border); color: var(--text-sub); background: var(--card); cursor: pointer; }
+.contract-btn.active-yes { background: #1a3a1a; border-color: #4ACC7A; color: #4ACC7A; }
+.contract-btn.active-no { background: #3a1a1a; border-color: #e74c3c; color: #e74c3c; }
+.rate-circle { width: 140px; height: 140px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-direction: column; border: 8px solid var(--green); margin: 16px auto; }
+.rate-big { font-size: 34px; font-weight: 900; color: var(--green); }
+.front-history-item { display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
 </style>
 </head>
 <body>
@@ -259,12 +296,111 @@ input, select, textarea { font-family: inherit; }
   <div id="main">
 
     <!-- ===== PAGE: RANKING ===== -->
-    <div class="page active" id="page-ranking">
+    <!-- 店舗状況ページ -->
+    <div class="page" id="page-store-status">
+      <div class="sub-tabs" id="store-status-sub-tabs">
+        <button class="sub-tab active" data-sstab="team-wage">💪 チーム工賃</button>
+        <button class="sub-tab" data-sstab="front-status">📋 受付状況</button>
+        <button class="sub-tab" data-sstab="members">👥 メンバー</button>
+      </div>
+      <!-- チーム工賃 -->
+      <div id="sstab-team-wage">
+        <div style="padding:8px 12px 0;display:flex;gap:8px;align-items:center;">
+          <span style="font-size:13px;color:var(--text-sub);" id="store-rank-month2"></span>
+        </div>
+        <div style="display:flex;gap:8px;padding:8px 12px;">
+          <button onclick="setStoreRankType('national')" id="str-nat-btn" style="flex:1;padding:7px;border-radius:8px;font-size:11px;font-weight:700;background:var(--card);color:var(--text-sub);border:1px solid var(--border);cursor:pointer;">全国</button>
+          <button onclick="setStoreRankType('region')" id="str-reg-btn" style="flex:1;padding:7px;border-radius:8px;font-size:11px;font-weight:700;background:var(--card);color:var(--text-sub);border:1px solid var(--border);cursor:pointer;">地域</button>
+          <button onclick="setStoreRankType('pref')" id="str-pref-btn" style="flex:1;padding:7px;border-radius:8px;font-size:11px;font-weight:700;background:var(--card);color:var(--text-sub);border:1px solid var(--border);cursor:pointer;">県内</button>
+          <button onclick="setStoreRankType('store')" id="str-store-btn" style="flex:1;padding:7px;border-radius:8px;font-size:11px;font-weight:700;background:var(--green);color:#111;border:none;cursor:pointer;">社内</button>
+        </div>
+        <!-- カテゴリ別予算進捗 -->
+        <div id="category-budget-progress" style="padding:0 12px 0;"></div>
+        <div class="card" style="padding:0;overflow:hidden;">
+          <ul class="rank-list" id="store-rank-list2"></ul>
+        </div>
+      </div>
+      <!-- 受付状況 -->
+      <div id="sstab-front-status" style="display:none;">
+        <div class="card">
+          <div class="card-title">🏪 店舗目標 進捗</div>
+          <div id="store-goal-progress2">
+            <div style="text-align:center;padding:20px;color:var(--text-sub);font-size:13px;">管理者メニューで目標を設定してください</div>
+          </div>
+        </div>
+        <div class="card" style="margin-top:0;">
+          <div class="card-title">👥 個人目標 進捗</div>
+          <div id="member-goal-progress2"></div>
+        </div>
+        <div style="padding:8px 12px 0;display:flex;gap:8px;">
+          <button onclick="setFrontRankType2('rate')" id="frt2-rate-btn" style="flex:1;padding:7px;border-radius:8px;font-size:11px;font-weight:700;background:var(--green);color:#111;border:none;cursor:pointer;">成約率</button>
+          <button onclick="setFrontRankType2('count')" id="frt2-count-btn" style="flex:1;padding:7px;border-radius:8px;font-size:11px;font-weight:700;background:var(--card);color:var(--text-sub);border:1px solid var(--border);cursor:pointer;">件数</button>
+          <button onclick="setFrontRankType2('amount')" id="frt2-amount-btn" style="flex:1;padding:7px;border-radius:8px;font-size:11px;font-weight:700;background:var(--card);color:var(--text-sub);border:1px solid var(--border);cursor:pointer;">金額</button>
+        </div>
+        <div class="card" style="padding:0;overflow:hidden;margin-top:8px;">
+          <ul class="rank-list" id="front-rank-list2"></ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- マイページ新 -->
+    <div class="page" id="page-my">
+      <div class="sub-tabs" id="my-sub-tabs">
+        <button class="sub-tab active" data-mytab="status">📊 状況</button>
+        <button class="sub-tab" data-mytab="ranking">🏆 ランキング</button>
+        <button class="sub-tab" data-mytab="calendar">📅 カレンダー</button>
+        <button class="sub-tab" data-mytab="trend" style="display:none;">📈 推移</button>
+        <button class="sub-tab" data-mytab="badge" style="display:none;">⚔️ 称号</button>
+        <button id="my-more-btn" onclick="toggleMyMore()" style="padding:6px 10px;border-radius:8px;font-size:11px;background:var(--card);color:var(--text-sub);border:1px solid var(--border);cursor:pointer;">···</button>
+      </div>
+      <!-- 状況 = 既存マイページ内容 -->
+      <div id="mytab-status">
+        <div id="my-status-content"></div>
+      </div>
+      <!-- ランキング -->
+      <div id="mytab-ranking" style="display:none;">
+        <div style="padding:8px 12px 0;">
+          <div class="card" style="background:var(--green-light);border:1px solid var(--green);margin-bottom:8px;">
+            <div style="font-size:13px;font-weight:700;color:var(--green);">自分の順位</div>
+            <div style="font-size:11px;color:var(--text-sub);margin-top:4px;">各ランキングでの自分の位置が表示されます</div>
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;padding:0 12px 8px;">
+          <button onclick="setMyRankType('national')" id="mrt-nat-btn" style="flex:1;padding:7px;border-radius:8px;font-size:11px;font-weight:700;background:var(--green);color:#111;border:none;cursor:pointer;">全国</button>
+          <button onclick="setMyRankType('region')" id="mrt-reg-btn" style="flex:1;padding:7px;border-radius:8px;font-size:11px;font-weight:700;background:var(--card);color:var(--text-sub);border:1px solid var(--border);cursor:pointer;">地域</button>
+          <button onclick="setMyRankType('pref')" id="mrt-pref-btn" style="flex:1;padding:7px;border-radius:8px;font-size:11px;font-weight:700;background:var(--card);color:var(--text-sub);border:1px solid var(--border);cursor:pointer;">県内</button>
+          <button onclick="setMyRankType('store')" id="mrt-store-btn" style="flex:1;padding:7px;border-radius:8px;font-size:11px;font-weight:700;background:var(--card);color:var(--text-sub);border:1px solid var(--border);cursor:pointer;">社内</button>
+        </div>
+        <div class="card" style="padding:0;overflow:hidden;">
+          <ul class="rank-list" id="my-rank-list"></ul>
+        </div>
+      </div>
+      <!-- 推移 -->
+      <div id="mytab-trend" style="display:none;">
+        <div id="my-trend-content"></div>
+      </div>
+      <!-- 称号 -->
+      <div id="mytab-badge" style="display:none;">
+        <div id="my-badge-content"></div>
+      </div>
+      <!-- カレンダー -->
+      <div id="mytab-calendar" style="display:none;">
+        <div id="my-calendar-content"></div>
+      </div>
+    </div>
+
+    <div class="page" id="page-ranking">
       <div class="sub-tabs" id="ranking-sub-tabs">
         <button class="sub-tab active" data-rtab="store">🏪 社内</button>
-        <button class="sub-tab" data-rtab="national">🏆 全国</button>
-        <button class="sub-tab" data-rtab="region">🗾 地域</button>
-        <button class="sub-tab" data-rtab="pref">🏯 県内</button>
+        <button id="rank-more-btn" onclick="toggleRankMore()" style="margin-left:auto;padding:6px 12px;border-radius:8px;font-size:11px;background:var(--card);color:var(--text-sub);border:1px solid var(--border);cursor:pointer;white-space:nowrap;">🌐 全国 ···</button>
+      </div>
+      <!-- 全国・地域・県内は折りたたみ -->
+      <div id="rank-more-tabs" style="display:none;">
+        <div class="sub-tabs" style="background:#0d0d0d;border-bottom:1px solid var(--border);">
+          <button class="sub-tab" data-rtab="national">🏆 全国</button>
+          <button class="sub-tab" data-rtab="region">🗾 地域</button>
+          <button class="sub-tab" data-rtab="pref">🏯 県内</button>
+        </div>
       </div>
       <!-- National -->
       <div id="rtab-national" style="display:none;">
@@ -385,10 +521,16 @@ input, select, textarea { font-family: inherit; }
           <div id="store-achievement-list"></div>
         </div>
       </div>
+      <!-- メンバー一覧 -->
+      <div id="sstab-members" style="display:none;padding:12px;">
+        <div id="member-list-content">
+          <div style="text-align:center;padding:32px;color:var(--text-sub);font-size:13px;">読み込み中...</div>
+        </div>
+      </div>
     </div>
 
     <!-- ===== PAGE: INPUT ===== -->
-    <div class="page" id="page-input">
+    <div class="page active" id="page-input">
       <div class="input-form">
         <div class="card" style="margin:0;margin-bottom:12px;">
           <div style="display:flex;align-items:center;gap:12px;">
@@ -398,6 +540,14 @@ input, select, textarea { font-family: inherit; }
               <div style="font-size:12px;color:var(--text-sub);" id="input-today-date"></div>
             </div>
           </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">🏷️ カテゴリ</label>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;" id="category-btns">
+            <button type="button" class="role-btn" data-cat="鈑金塗装" onclick="selectCategory('鈑金塗装')" style="padding:12px 8px;font-size:14px;">🔨 鈑金塗装</button>
+            <button type="button" class="role-btn" data-cat="整備" onclick="selectCategory('整備')" style="padding:12px 8px;font-size:14px;">🔧 整備</button>
+          </div>
+          <input type="hidden" id="input-category">
         </div>
         <div class="form-group">
           <label class="form-label">ナンバー4桁（任意）</label>
@@ -419,12 +569,7 @@ input, select, textarea { font-family: inherit; }
             <span class="yen">¥</span>
             <input type="number" class="form-input" id="input-amount" placeholder="000000" inputmode="numeric" min="0" step="1000">
           </div>
-          <div class="quick-btns">
-            <button class="quick-btn" onclick="addAmount(50000)">+5万</button>
-            <button class="quick-btn" onclick="addAmount(100000)">+10万</button>
-            <button class="quick-btn" onclick="addAmount(150000)">+15万</button>
-            <button class="quick-btn" onclick="addAmount(200000)">+20万</button>
-          </div>
+
         </div>
         <div class="form-group" id="date-group">
           <label class="form-label">日付</label>
@@ -596,6 +741,34 @@ input, select, textarea { font-family: inherit; }
           <input type="text" class="form-input" id="set-store" placeholder="カーコン○○店">
         </div>
         <div class="form-group">
+          <label class="form-label">職種</label>
+          <div style="display:flex;flex-direction:column;gap:6px;margin-top:4px;" id="role-btns">
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;">
+              <button type="button" class="role-btn" data-role="鈑金" onclick="selectRole('鈑金')">🔨 鈑金</button>
+              <button type="button" class="role-btn" data-role="塗装" onclick="selectRole('塗装')">🎨 塗装</button>
+              <button type="button" class="role-btn" data-role="整備" onclick="selectRole('整備')">🔧 整備</button>
+              <button type="button" class="role-btn" data-role="フロント" onclick="selectRole('フロント')">📋 フロント</button>
+              <button type="button" class="role-btn" data-role="管理" onclick="selectRole('管理')">📊 管理</button>
+              <button type="button" class="role-btn" data-role="その他" onclick="selectRole('その他')">👤 その他</button>
+            </div>
+            <div id="role-exp-inline" style="display:none;background:var(--border);border-radius:10px;padding:10px 12px;">
+              <div style="font-size:12px;color:var(--text-sub);margin-bottom:6px;"><span id="role-exp-label">この職種</span>、今何年目？</div>
+              <div style="display:flex;align-items:center;gap:8px;">
+                <input type="number" id="role-exp-year" class="form-input" placeholder="0" min="0" max="50" style="width:80px;padding:6px 10px;font-size:18px;font-weight:700;text-align:center;" oninput="updateRoleExpPreview()">
+                <span style="font-size:15px;font-weight:700;">年目</span>
+                <span id="role-exp-preview" style="font-size:12px;color:var(--text-sub);"></span>
+              </div>
+            </div>
+          </div>
+          <input type="hidden" id="set-role">
+        </div>
+        <div class="form-group">
+          <label class="form-label">🎂 生年月日</label>
+          <input type="date" class="form-input" id="set-birthdate" placeholder="例: 1990-04-01">
+          <div id="age-display" style="font-size:12px;color:var(--text-sub);margin-top:4px;"></div>
+        </div>
+
+        <div class="form-group">
           <label class="form-label">月間目標（万円）</label>
           <input type="number" class="form-input" id="set-goal" placeholder="100" min="1" max="500">
         </div>
@@ -624,6 +797,11 @@ input, select, textarea { font-family: inherit; }
           <button onclick="copyGroupCode()" style="width:100%;padding:10px;background:var(--border);border-radius:8px;font-size:13px;font-weight:600;">📋 コピーする</button>
         </div>
       </div>
+      <!-- 詳細設定トグル -->
+      <div style="padding:0 4px;">
+        <button onclick="toggleAdvancedSettings()" id="advanced-settings-btn" style="width:100%;padding:11px;background:var(--card);color:var(--text-sub);border:1px solid var(--border);border-radius:10px;font-size:13px;cursor:pointer;">⚙️ 詳細設定</button>
+      </div>
+      <div id="advanced-settings-block" style="display:none;">
       <!-- Theme Selector -->
       <div class="card">
         <div class="card-title">🎨 テーマカラー</div>
@@ -769,6 +947,9 @@ input, select, textarea { font-family: inherit; }
             <label class="toggle"><input type="checkbox" id="ninja-mode-toggle" onchange="toggleNinjaMode(this.checked)"><span class="toggle-slider"></span></label>
           </li>
         </ul>
+        <div id="ninja-warn" style="display:none;margin-top:10px;padding:10px 12px;background:#3a1a00;border:1px solid #e67e22;border-radius:8px;font-size:12px;color:#e67e22;line-height:1.6;">
+          ⚠️ <b>忍びモードON中</b>：データはこの端末にしか保存されません。<br>機種変更時にデータが<b>復元できなくなります</b>。
+        </div>
       </div>
       <!-- Notifications -->
       <div class="card">
@@ -827,6 +1008,81 @@ input, select, textarea { font-family: inherit; }
           </div>
         </div>
       </div>
+      <!-- 管理者メニュー -->
+      <div class="card">
+        <div class="card-title" onclick="toggleAdminMenu()" style="cursor:pointer;display:flex;justify-content:space-between;align-items:center;">
+          <span>👑 管理者メニュー</span>
+          <span id="admin-arrow" style="color:var(--text-sub);font-size:16px;">▼</span>
+        </div>
+        <div id="admin-menu" style="display:none;">
+
+          <!-- 店舗目標 -->
+          <div style="border-top:1px solid var(--border);padding-top:14px;margin-top:4px;">
+            <div style="font-size:13px;font-weight:700;color:var(--green);margin-bottom:12px;">🏪 店舗目標</div>
+            <div class="form-group">
+              <label class="form-label">受注台数の目標</label>
+              <div style="display:flex;gap:8px;align-items:center;">
+                <input type="number" class="form-input" id="admin-store-count" placeholder="100" min="1" style="flex:1;">
+                <span style="color:var(--text-sub);white-space:nowrap;">台</span>
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">受注金額の目標</label>
+              <div style="display:flex;gap:8px;align-items:center;">
+                <input type="number" class="form-input" id="admin-store-amount" placeholder="1000" min="1" style="flex:1;">
+                <span style="color:var(--text-sub);white-space:nowrap;">万円</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- カテゴリ別目標 -->
+          <div style="border-top:1px solid var(--border);padding-top:14px;margin-top:4px;">
+            <div style="font-size:13px;font-weight:700;color:var(--green);margin-bottom:12px;">📊 カテゴリ別 月次工賃目標</div>
+            <div class="form-group">
+              <label class="form-label">🔨 鈑金塗装 目標（万円）</label>
+              <div style="display:flex;gap:8px;align-items:center;">
+                <input type="number" class="form-input" id="admin-cat-bankin" placeholder="500" min="0" style="flex:1;">
+                <span style="color:var(--text-sub);white-space:nowrap;">万円</span>
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">🔧 整備 目標（万円）</label>
+              <div style="display:flex;gap:8px;align-items:center;">
+                <input type="number" class="form-input" id="admin-cat-seibi" placeholder="200" min="0" style="flex:1;">
+                <span style="color:var(--text-sub);white-space:nowrap;">万円</span>
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">📋 フロント（受付）目標（万円）</label>
+              <div style="display:flex;gap:8px;align-items:center;">
+                <input type="number" class="form-input" id="admin-cat-front" placeholder="300" min="0" style="flex:1;">
+                <span style="color:var(--text-sub);white-space:nowrap;">万円</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- 個人目標 -->
+          <div style="border-top:1px solid var(--border);padding-top:14px;margin-top:4px;">
+            <div style="font-size:13px;font-weight:700;color:var(--green);margin-bottom:4px;">👥 個人目標</div>
+            <div style="font-size:12px;color:var(--text-sub);margin-bottom:12px;">メンバーの名前と目標を入力してください</div>
+            <div id="admin-member-goals"></div>
+            <button onclick="addMemberGoalRow()" style="width:100%;padding:10px;background:var(--green-light);color:var(--green);border-radius:10px;font-size:13px;font-weight:700;margin-top:8px;">＋ メンバーを追加</button>
+          </div>
+
+          <button class="submit-btn" onclick="saveAdminGoals()" style="margin-top:16px;">💾 目標を保存する</button>
+        </div>
+      </div>
+
+      </div><!-- /advanced-settings-block -->
+
+      <!-- データ復元（常時表示） -->
+      <div class="card">
+        <div class="card-title">☁️ データ復元</div>
+        <div style="font-size:12px;color:var(--text-sub);margin-bottom:12px;line-height:1.7;">機種変更・キャッシュ消去後にサーバーからデータを復元できます。<br>※ 忍びモードONのデータは復元できません。</div>
+        <button onclick="restoreFromGAS()" style="width:100%;padding:12px;background:var(--green);color:#fff;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;border:none;">📥 データを復元する</button>
+        <div id="restore-status" style="margin-top:8px;font-size:12px;color:var(--text-sub);text-align:center;"></div>
+      </div>
+
       <!-- App info -->
       <div class="card">
         <div class="card-title">アプリ情報</div>
@@ -838,31 +1094,205 @@ input, select, textarea { font-family: inherit; }
           </div>
         </div>
       </div>
+
+    </div>
+
+    <!-- ===== PAGE: FRONT ===== -->
+    <div class="page" id="page-front">
+      <div class="sub-tabs" id="front-sub-tabs">
+        <button class="sub-tab active" data-ftab="input">✏️ 入力</button>
+        <button class="sub-tab" data-ftab="summary">📊 集計</button>
+        <button class="sub-tab" data-ftab="calendar">📅 カレンダー</button>
+        <button class="sub-tab" data-ftab="monthly">月別</button>
+      </div>
+
+      <!-- 入力 -->
+      <div id="ftab-input">
+        <div class="input-form">
+          <div class="card" style="margin:0;margin-bottom:12px;">
+            <div style="display:flex;align-items:center;gap:12px;">
+              <span style="font-size:32px;">📋</span>
+              <div>
+                <div style="font-weight:700;font-size:15px;">見積りを入力</div>
+                <div style="font-size:12px;color:var(--text-sub);" id="front-today-date"></div>
+              </div>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">ナンバー（任意）</label>
+            <input type="text" class="form-input" id="front-number" maxlength="4" placeholder="0000" inputmode="numeric" style="letter-spacing:6px;font-size:22px;font-weight:700;text-align:center;">
+          </div>
+          <div class="form-group">
+            <label class="form-label">🚗 車種（任意）</label>
+            <input type="text" class="form-input" id="front-cartype" placeholder="例: プリウス" list="cartype-list" autocomplete="off">
+          </div>
+          <div class="form-group">
+            <label class="form-label">📋 見積り金額</label>
+            <div class="amount-input-wrap">
+              <span class="yen">¥</span>
+              <input type="number" class="form-input" id="front-amount" placeholder="000000" inputmode="numeric" min="0" step="1000">
+            </div>
+
+          </div>
+          <div class="form-group">
+            <label class="form-label">結果</label>
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:8px;">
+              <button class="contract-btn" id="btn-immediate" onclick="setContract('immediate')">⚡ 即成約</button>
+              <button class="contract-btn" id="btn-later" onclick="setContract('later')">📅 後日成約</button>
+              <button class="contract-btn" id="btn-none" onclick="setContract('none')">❌ 未成約</button>
+            </div>
+          </div>
+          <!-- 受注金額（即・後日成約の時だけ表示） -->
+          <div class="form-group" id="order-amount-group" style="display:none;">
+            <label class="form-label">💰 受注金額</label>
+            <div class="amount-input-wrap">
+              <span class="yen">¥</span>
+              <input type="number" class="form-input" id="front-order-amount" placeholder="000000" inputmode="numeric" min="0" step="1000">
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">日付</label>
+            <input type="date" class="form-input" id="front-date">
+          </div>
+          <button class="submit-btn" onclick="submitEstimate()">✅ 登録する</button>
+          <!-- 後日受注に変更 -->
+          <div style="margin-top:16px;">
+            <div class="section-header" style="padding:0 0 8px;">🔍 後日受注に変更する</div>
+            <div style="display:flex;gap:8px;margin-bottom:8px;">
+              <input type="text" class="form-input" id="search-number" maxlength="4" placeholder="ナンバー4桁" inputmode="numeric" style="flex:1;letter-spacing:6px;font-size:18px;font-weight:700;text-align:center;">
+              <button onclick="searchByNumber()" style="padding:12px 16px;background:var(--green);color:#fff;border-radius:10px;font-size:13px;font-weight:700;white-space:nowrap;">検索</button>
+            </div>
+            <div id="search-results"></div>
+          </div>
+
+          <div style="margin-top:16px;">
+            <div class="section-header" style="padding:0 0 8px;">📅 今月の履歴</div>
+            <div id="front-history"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ランキング -->
+      <div id="ftab-ranking" style="display:none;">
+        <div style="padding:12px 12px 0;display:flex;gap:8px;align-items:center;">
+          <span style="font-size:13px;color:var(--text-sub);" id="front-rank-month"></span>
+          <span class="chip chip-green">社内</span>
+        </div>
+        <div style="display:flex;gap:8px;padding:8px 12px;">
+          <button onclick="setFrontRankType('rate')" id="frt-rate-btn" style="flex:1;padding:8px;border-radius:8px;font-size:12px;font-weight:700;background:var(--green);color:#111;border:none;cursor:pointer;">成約率</button>
+          <button onclick="setFrontRankType('count')" id="frt-count-btn" style="flex:1;padding:8px;border-radius:8px;font-size:12px;font-weight:700;background:var(--card);color:var(--text-sub);border:1px solid var(--border);cursor:pointer;">件数</button>
+          <button onclick="setFrontRankType('amount')" id="frt-amount-btn" style="flex:1;padding:8px;border-radius:8px;font-size:12px;font-weight:700;background:var(--card);color:var(--text-sub);border:1px solid var(--border);cursor:pointer;">金額</button>
+        </div>
+        <div class="card" style="padding:0;overflow:hidden;">
+          <ul class="rank-list" id="front-rank-list"></ul>
+        </div>
+      </div>
+
+      <!-- 目標 -->
+      <div id="ftab-goal" style="display:none;">
+        <!-- 案内 -->
+        <div class="card" style="background:var(--green-light);border:1px solid var(--green);">
+          <div style="font-size:13px;color:var(--green);font-weight:700;">💡 目標の設定方法</div>
+          <div style="font-size:12px;color:var(--text-sub);margin-top:6px;line-height:1.8;">
+            設定タブ → 👑 管理者メニュー<br>から店舗目標・個人目標を設定できます
+          </div>
+        </div>
+
+        <!-- 店舗目標進捗（メイン） -->
+        <div class="card">
+          <div class="card-title">🏪 店舗目標 進捗</div>
+          <div id="store-goal-progress">
+            <div style="text-align:center;padding:20px;color:var(--text-sub);font-size:13px;">管理者メニューで目標を設定してください</div>
+          </div>
+        </div>
+
+        <!-- 個人目標進捗 -->
+        <div class="card" style="margin-top:0;">
+          <div class="card-title">👥 個人目標 進捗</div>
+          <div id="member-goal-progress"></div>
+        </div>
+      </div>
+
+      <!-- 集計 -->
+      <div id="ftab-summary" style="display:none;">
+        <div class="section-header" id="front-summary-title">📊 フロント集計</div>
+        <div class="summary-grid">
+          <div class="summary-card" style="background:var(--card);">
+            <div class="s-label" style="color:var(--text-sub);">見積り件数</div>
+            <div><span class="s-value" id="fs-count">0</span><span class="s-unit" style="color:var(--text-sub);">件</span></div>
+          </div>
+          <div class="summary-card" style="background:var(--card);">
+            <div class="s-label" style="color:var(--text-sub);">受注率</div>
+            <div><span class="s-value" id="fs-rate">0</span><span class="s-unit" style="color:var(--text-sub);">%</span></div>
+          </div>
+          <div class="summary-card" style="background:var(--card);">
+            <div class="s-label" style="color:var(--text-sub);">⚡ 即件数</div>
+            <div><span class="s-value" id="fs-immediate">0</span><span class="s-unit" style="color:var(--text-sub);">件</span></div>
+          </div>
+          <div class="summary-card" style="background:var(--card);">
+            <div class="s-label" style="color:var(--text-sub);">📅 後日件数</div>
+            <div><span class="s-value" id="fs-later">0</span><span class="s-unit" style="color:var(--text-sub);">件</span></div>
+          </div>
+          <div class="summary-card" style="background:var(--card);">
+            <div class="s-label" style="color:var(--text-sub);">見積り金額合計</div>
+            <div><span class="s-value" id="fs-total">0</span><span class="s-unit" style="color:var(--text-sub);">万円</span></div>
+          </div>
+          <div class="summary-card" style="background:var(--card);">
+            <div class="s-label" style="color:var(--text-sub);">受注金額合計</div>
+            <div><span class="s-value" id="fs-contract-total">0</span><span class="s-unit" style="color:var(--text-sub);">万円</span></div>
+          </div>
+        </div>
+        <div class="card" style="text-align:center;">
+          <div class="card-title">今月の成約率</div>
+          <div class="rate-circle">
+            <div class="rate-big" id="fs-rate-circle">0%</div>
+            <div style="font-size:11px;color:var(--text-sub);">成約率</div>
+          </div>
+        </div>
+        <div class="card" style="margin-top:0;">
+          <div class="card-title">入力一覧</div>
+          <div id="fs-detail-list"></div>
+        </div>
+      </div>
+
+      <!-- カレンダー -->
+      <div id="ftab-calendar" style="display:none;">
+        <div id="front-calendar-content"></div>
+      </div>
+
+      <!-- 月別集計 -->
+      <div id="ftab-monthly" style="display:none;">
+        <div style="padding:12px 12px 0;display:flex;justify-content:space-between;align-items:center;">
+          <span style="font-size:14px;font-weight:700;">📅 月別集計</span>
+          <span style="font-size:11px;color:var(--text-sub);">自分のデータ</span>
+        </div>
+        <div id="monthly-list" style="padding:8px 12px;"></div>
+      </div>
     </div>
 
   </div><!-- /main -->
 
   <!-- BOTTOM TABS -->
   <nav id="tabs">
-    <button class="tab-btn active" data-tab="ranking" onclick="switchTab('ranking')">
-      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
-      ランキング
-    </button>
-    <button class="tab-btn" data-tab="input" onclick="switchTab('input')">
-      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 14l-5-5 1.41-1.41L12 14.17l7.59-7.59L21 8l-9 9z"/></svg>
-      工賃入力
-    </button>
-    <button class="tab-btn" data-tab="mypage" onclick="switchTab('mypage')">
-      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
-      マイページ
-    </button>
-    <button class="tab-btn" data-tab="rankguide" onclick="switchTab('rankguide')">
-      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
-      称号
-    </button>
     <button class="tab-btn" data-tab="settings" onclick="switchTab('settings')">
       <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg>
       設定
+    </button>
+    <button class="tab-btn" data-tab="front" onclick="switchTab('front')">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 3c1.93 0 3.5 1.57 3.5 3.5S13.93 13 12 13s-3.5-1.57-3.5-3.5S10.07 6 12 6zm7 13H5v-.23c0-.62.28-1.2.76-1.58C7.47 15.82 9.64 15 12 15s4.53.82 6.24 2.19c.48.38.76.97.76 1.58V19z"/></svg>
+      受付入力
+    </button>
+    <button class="tab-btn active" data-tab="input" onclick="switchTab('input')">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 14l-5-5 1.41-1.41L12 14.17l7.59-7.59L21 8l-9 9z"/></svg>
+      工賃入力
+    </button>
+    <button class="tab-btn" data-tab="store-status" onclick="switchTab('store-status')">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 3L2 12h3v8h6v-5h2v5h6v-8h3L12 3z"/></svg>
+      店舗状況
+    </button>
+    <button class="tab-btn" data-tab="my" onclick="switchTab('my')">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+      マイ
     </button>
   </nav>
 </div><!-- /app -->
@@ -888,15 +1318,17 @@ input, select, textarea { font-family: inherit; }
     </div>
     <div id="day-modal-body"></div>
     <div style="margin-top:16px;">
-      <div class="form-group">
-        <label class="form-label">工賃を追加・編集</label>
-        <div class="amount-input-wrap">
-          <span class="yen">¥</span>
-          <input type="number" class="form-input" id="day-edit-amount" placeholder="000000" inputmode="numeric">
+      <button onclick="toggleFrontWageEdit()" style="width:100%;padding:10px;background:var(--card);color:var(--text-sub);border:1px solid var(--border);border-radius:10px;font-size:13px;cursor:pointer;" id="front-wage-toggle">🔧 工賃を追加・編集</button>
+      <div id="front-wage-edit" style="display:none;margin-top:8px;">
+        <div class="form-group">
+          <div class="amount-input-wrap">
+            <span class="yen">¥</span>
+            <input type="number" class="form-input" id="day-edit-amount" placeholder="000000" inputmode="numeric">
+          </div>
         </div>
+        <input type="text" class="form-input" id="day-edit-number" placeholder="ナンバー4桁（任意）" maxlength="4" style="margin-bottom:12px;letter-spacing:6px;text-align:center;">
+        <button class="submit-btn" onclick="saveDayEntry()">💾 保存</button>
       </div>
-      <input type="text" class="form-input" id="day-edit-number" placeholder="ナンバー4桁（任意）" maxlength="4" style="margin-bottom:12px;letter-spacing:6px;text-align:center;">
-      <button class="submit-btn" onclick="saveDayEntry()">💾 保存</button>
     </div>
   </div>
 </div>
@@ -908,8 +1340,17 @@ input, select, textarea { font-family: inherit; }
 // ============================================================
 // CONFIG - Google Apps Script Web App URL を設定してください
 // ============================================================
-const GAS_URL = 'https://script.google.com/macros/s/AKfycbxvCjgd7FSU79-ZwJJy4L1MaJkxhnY3U3CliN181rAzfq8dZ2fY69veCg9jZ8LC5Kevbw/exec';
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbxyh_WByXmc8qeKmz0H9q0Kf2y4xKl-4C2cK6F2Ul3OkFGQZhFPvQArnlIwlo701WifwQ/exec';
+const GAS_TOKEN = 'carcon-kotin-2025'; // code.gsのSECRET_TOKENと一致させること
 // GAS_URLが設定されていない場合はデモデータを使用します
+
+// UUID生成（初回のみ）
+function generateUUID() {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+    var r = Math.random() * 16 | 0, v = c === 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
+  });
+}
 
 // ============================================================
 // DATA STORE (localStorage)
@@ -917,6 +1358,12 @@ const GAS_URL = 'https://script.google.com/macros/s/AKfycbxvCjgd7FSU79-ZwJJy4L1M
 let userData = JSON.parse(localStorage.getItem('userData') || '{}');
 let wageData = JSON.parse(localStorage.getItem('wageData') || '[]');
 let settings = JSON.parse(localStorage.getItem('settings') || '{}');
+let frontData = JSON.parse(localStorage.getItem('frontData') || '[]');
+let frontGoal = JSON.parse(localStorage.getItem('frontGoal') || '{"type":"both","count":50,"amount":500}');
+let adminGoals = JSON.parse(localStorage.getItem('adminGoals') || '{"storeCount":0,"storeAmount":0,"members":[]}');
+let contractedState = null;
+let frontRankType = 'rate';
+let currentFrontTab = 'input';
 
 // defaults
 if (!userData.name) userData.name = '';
@@ -927,12 +1374,15 @@ if (!userData.groupCode) userData.groupCode = '';
 if (!userData.groupCodes) userData.groupCodes = [];
 if (!userData.activeGroupCode) userData.activeGroupCode = '';
 if (!userData.avatar) userData.avatar = '';
+if (!userData.role) userData.role = '';
 if (userData.ninjaMode === undefined) userData.ninjaMode = false;
 if (!userData.theme) userData.theme = 'samurai';
 if (!settings.notifRankup) settings.notifRankup = true;
 if (!settings.notifGoal) settings.notifGoal = true;
 if (!settings.notifRocket) settings.notifRocket = true;
 if (!settings.notifReceive) settings.notifReceive = true;
+// UUID初期化（let userData宣言後に実行）
+if (!userData.uuid) { userData.uuid = generateUUID(); saveLocal(); }
 
 // ============================================================
 // SAMURAI RANKS
@@ -980,6 +1430,9 @@ function saveLocal() {
   localStorage.setItem('userData', JSON.stringify(userData));
   localStorage.setItem('wageData', JSON.stringify(wageData));
   localStorage.setItem('settings', JSON.stringify(settings));
+  localStorage.setItem('frontData', JSON.stringify(frontData));
+  localStorage.setItem('frontGoal', JSON.stringify(frontGoal));
+  localStorage.setItem('adminGoals', JSON.stringify(adminGoals));
 }
 
 function showToast(msg, duration = 2500) {
@@ -1024,11 +1477,8 @@ let currentRankTab = 'store';
 let calendarYear, calendarMonth;
 
 function switchTab(tab) {
-  const mainTabs = ['ranking','input','mypage','rankguide','settings'];
-  const subPages = ['summary','trend'];
-  const all = [...mainTabs, ...subPages];
-
-  all.forEach(t => {
+  const allPages = ['ranking','input','mypage','rankguide','settings','front','store-status','my','summary','trend'];
+  allPages.forEach(t => {
     const p = document.getElementById('page-' + t);
     if (p) p.classList.remove('active');
   });
@@ -1036,35 +1486,574 @@ function switchTab(tab) {
   if (page) page.classList.add('active');
 
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-  const btn = document.querySelector(`.tab-btn[data-tab="${tab}"]`);
+  const btn = document.querySelector('.tab-btn[data-tab="' + tab + '"]');
   if (btn) btn.classList.add('active');
 
   currentTab = tab;
 
-  // update header title
-  const titles = { ranking:'🏪 社内ランキング', input:'✏️ 工賃入力', mypage:'👤 マイページ', rankguide:'⚔️ 称号ガイド', settings:'⚙️ 設定', summary:'📊 月間サマリー', trend:'📈 年間推移' };
+  const titles = { settings:'⚙️ 設定', front:'📋 受付入力', input:'✏️ 工賃入力', 'store-status':'🏪 店舗状況', my:'👤 マイ', ranking:'🏪 社内ランキング', mypage:'👤 マイページ', summary:'📊 月間サマリー', trend:'📈 年間推移' };
   document.getElementById('header-title').textContent = titles[tab] || 'カーコン工賃管理';
 
+  if (tab === 'input') renderInputHistory();
+  if (tab === 'front') initFrontPage();
+  if (tab === 'store-status') initStoreStatusPage();
+  if (tab === 'my') initMyPage();
   if (tab === 'ranking') renderRanking();
   if (tab === 'mypage') { renderCalendar(); renderGoalRing(); }
   if (tab === 'summary') renderSummary();
   if (tab === 'trend') renderTrend();
-  if (tab === 'input') renderInputHistory();
   if (tab === 'rankguide') renderRankGuide();
 }
 
-// Ranking sub-tabs
-document.getElementById('ranking-sub-tabs').addEventListener('click', e => {
-  const btn = e.target.closest('[data-rtab]');
+
+// ============================================================
+// 店舗状況ページ
+// ============================================================
+let storeStatusTab = 'team-wage';
+let storeRankType2 = 'store';
+let frontRankType2 = 'rate';
+
+function initStoreStatusPage() {
+  const subTabs = document.getElementById('store-status-sub-tabs');
+  if (subTabs && !subTabs._init) {
+    subTabs._init = true;
+    subTabs.addEventListener('click', function(e) {
+      var btn = e.target.closest('[data-sstab]');
+      if (!btn) return;
+      document.querySelectorAll('[data-sstab]').forEach(function(b){ b.classList.remove('active'); });
+      btn.classList.add('active');
+      storeStatusTab = btn.dataset.sstab;
+      ['team-wage','front-status','members'].forEach(function(t){
+        var el = document.getElementById('sstab-' + t);
+        if (el) el.style.display = t === storeStatusTab ? '' : 'none';
+      });
+      if (storeStatusTab === 'team-wage') renderStoreRanking2();
+      if (storeStatusTab === 'front-status') initStoreFrontStatus();
+      if (storeStatusTab === 'members') renderMemberList();
+    });
+  }
+  var now = new Date();
+  var ml = document.getElementById('store-rank-month2');
+  if (ml) ml.textContent = now.getMonth()+1 + '月度';
+  renderStoreRanking2();
+}
+
+function setStoreRankType(type) {
+  storeRankType2 = type;
+  ['national','region','pref','store'].forEach(function(t){
+    var btn = document.getElementById('str-' + t.slice(0,3) + (t==='national'?'nat':t==='region'?'reg':t==='pref'?'pref':'store') + '-btn');
+  });
+  var map = {national:'nat', region:'reg', pref:'pref', store:'store'};
+  ['national','region','pref','store'].forEach(function(t){
+    var id = 'str-' + map[t] + '-btn';
+    var btn = document.getElementById(id);
+    if (!btn) return;
+    if (t === type) { btn.style.background='var(--green)'; btn.style.color='#111'; btn.style.border='none'; }
+    else { btn.style.background='var(--card)'; btn.style.color='var(--text-sub)'; btn.style.border='1px solid var(--border)'; }
+  });
+  renderStoreRanking2();
+}
+
+async function renderCategoryBudget() {
+  var el = document.getElementById('category-budget-progress');
+  if (!el) return;
+  var now = new Date();
+  var ym = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0');
+  var monthWage = wageData.filter(function(d){ return d.date && d.date.startsWith(ym); });
+  var bankinTotal = monthWage.filter(function(d){ return (d.category||'鈑金塗装') === '鈑金塗装'; }).reduce(function(s,d){return s+(d.amount||0);},0);
+  var seibiTotal = monthWage.filter(function(d){ return d.category === '整備'; }).reduce(function(s,d){return s+(d.amount||0);},0);
+  var frontStats = calcFrontStats(getFrontMonthData());
+  var frontTotal = frontStats.orderTotal || 0;
+  var cats = [
+    { label:'🔨 鈑金塗装', total: bankinTotal, goal: (adminGoals.catBankin||0)*10000, color:'#4A9ECC' },
+    { label:'🔧 整備',      total: seibiTotal,  goal: (adminGoals.catSeibi||0)*10000,  color:'#27ae60' },
+    { label:'📋 フロント',  total: frontTotal,  goal: (adminGoals.catFront||0)*10000,  color:'#8e44ad' }
+  ];
+  if (!cats.some(function(c){return c.goal>0;})) {
+    el.innerHTML = '<div style="text-align:center;padding:8px 0;font-size:12px;color:var(--text-sub);">設定 → 管理者メニューでカテゴリ別目標を設定できます</div>';
+    return;
+  }
+  el.innerHTML = '<div class="card" style="margin-bottom:0;">' +
+    '<div class="card-title">📊 カテゴリ別 今月の進捗</div>' +
+    cats.map(function(c) {
+      var rate = c.goal > 0 ? Math.min(Math.round(c.total/c.goal*100), 100) : 0;
+      var goalStr = c.goal > 0 ? '目標 ' + Math.round(c.goal/10000) + '万円' : '目標未設定';
+      return '<div style="margin-bottom:12px;">' +
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">' +
+          '<span style="font-size:13px;font-weight:700;">'+c.label+'</span>' +
+          '<span style="font-size:12px;color:var(--text-sub);">'+Math.round(c.total/10000)+'万 / '+goalStr+'</span>' +
+        '</div>' +
+        (c.goal > 0 ?
+          '<div style="height:10px;background:var(--border);border-radius:5px;overflow:hidden;">' +
+            '<div style="height:100%;width:'+rate+'%;background:'+c.color+';border-radius:5px;transition:width .6s;"></div>' +
+          '</div>' +
+          '<div style="text-align:right;font-size:11px;color:'+c.color+';margin-top:2px;">'+rate+'%</div>'
+        : '<div style="height:10px;background:var(--border);border-radius:5px;"></div>') +
+      '</div>';
+    }).join('') +
+  '</div>';
+}
+
+async function renderStoreRanking2() {
+  renderCategoryBudget();
+  var list = document.getElementById('store-rank-list2');
+  if (!list) return;
+  list.innerHTML = '<li style="padding:16px;text-align:center;color:var(--text-sub);font-size:13px;">読み込み中...</li>';
+  try {
+    var params = { type: storeRankType2 };
+    if (storeRankType2 === 'store') {
+      var code = userData.activeGroupCode || userData.groupCode;
+      if (!code) { list.innerHTML = '<li style="padding:16px;text-align:center;color:var(--text-sub);font-size:13px;">グループコードを設定してください</li>'; return; }
+      params.groupCode = code;
+    }
+    var data = await fetchFromGAS('getRanking', params);
+    if (!data || !data.ranking) { list.innerHTML = '<li style="padding:16px;text-align:center;color:var(--text-sub);font-size:13px;">データなし</li>'; return; }
+    list.innerHTML = data.ranking.slice(0,20).map(function(r, i){
+      var medal = i===0?'🥇':i===1?'🥈':i===2?'🥉':(i+1)+'';
+      var isMe = r.name === userData.name;
+      return '<li class="rank-item' + (isMe?' rank-me':'') + '">' +
+        '<span class="rank-medal">' + medal + '</span>' +
+        '<div class="rank-info"><div class="rank-name">' + r.name + (r.name===userData.name?getRoleBadge(userData.role):'') + '</div><div class="rank-sub">' + (r.store||'') + '</div></div>' +
+        '<span class="rank-wage">' + (r.wage||0).toLocaleString() + '円</span></li>';
+    }).join('');
+  } catch(e) {
+    list.innerHTML = '<li style="padding:16px;text-align:center;color:var(--text-sub);font-size:13px;">取得できませんでした</li>';
+  }
+}
+
+async function renderMemberList() {
+  var el = document.getElementById('member-list-content');
+  if (!el) return;
+  var code = userData.activeGroupCode || userData.groupCode;
+  if (!code) {
+    el.innerHTML = '<div style="text-align:center;padding:32px;color:var(--text-sub);font-size:13px;">グループコードを設定してください</div>';
+    return;
+  }
+  el.innerHTML = '<div style="text-align:center;padding:32px;color:var(--text-sub);font-size:13px;">読み込み中...</div>';
+  try {
+    var data = await fetchFromGAS('getMembers', { groupCode: code });
+    var members = (data && data.members) ? data.members : [];
+    if (!members.length) {
+      el.innerHTML = '<div style="text-align:center;padding:32px;color:var(--text-sub);font-size:13px;">メンバーがいません</div>';
+      return;
+    }
+    var RANK_EMOJIS = {'無名の者':'👤','足軽':'🗡️','侍':'⚔️','剣士':'🗡','武士':'🛡','武将':'🌟','大将':'👑','剣聖':'✨','将軍':'🎌','天下無双':'🏆'};
+    el.innerHTML = members.map(function(m) {
+      var isMe = m.name === userData.name;
+      var rankEmoji = RANK_EMOJIS[m.rank] || '👤';
+      var roleColor = (window.ROLE_COLORS && m.role) ? ROLE_COLORS[m.role] : '#888';
+      return '<div style="display:flex;align-items:center;gap:12px;padding:12px;background:var(--card);border-radius:12px;margin-bottom:8px;' + (isMe?'border:2px solid var(--green);':'border:1px solid var(--border);') + '">' +
+        '<div style="width:44px;height:44px;border-radius:50%;background:' + (isMe?'var(--green)':'var(--border)') + '22;display:flex;align-items:center;justify-content:center;font-size:20px;">' + rankEmoji + '</div>' +
+        '<div style="flex:1;">' +
+          '<div style="font-size:14px;font-weight:700;">' + m.name + (isMe?' <span style="font-size:11px;color:var(--green);">（あなた）</span>':'') + (m.role ? getRoleBadge(m.role) : '') + '</div>' +
+          '<div style="font-size:12px;color:var(--text-sub);margin-top:2px;">' + (m.store||'') + (m.rank ? ' ・ ' + m.rank : '') + '</div>' +
+        '</div>' +
+      '</div>';
+    }).join('');
+  } catch(e) {
+    el.innerHTML = '<div style="text-align:center;padding:32px;color:var(--text-sub);font-size:13px;">取得できませんでした</div>';
+  }
+}
+
+async function initStoreFrontStatus() {
+  // Store goal progress
+  var el1 = document.getElementById('store-goal-progress2');
+  var el2 = document.getElementById('member-goal-progress2');
+  if (!adminGoals.storeCount && !adminGoals.storeAmount) {
+    if (el1) el1.innerHTML = '<div style="text-align:center;padding:16px;color:var(--text-sub);font-size:13px;">設定タブ → 管理者メニューで目標を設定してください</div>';
+    if (el2) el2.innerHTML = '';
+    renderFrontRanking2();
+    return;
+  }
+  var activeCode = userData.activeGroupCode || userData.groupCode;
+  var now = new Date();
+  var month = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0');
+  var teamData = [];
+  if (activeCode && GAS_URL !== 'YOUR_GAS_WEB_APP_URL_HERE') {
+    try { var res = await fetchFromGAS('getEstimateRanking', {groupCode:activeCode, month:month}); if(res&&res.data) teamData=res.data; } catch(e){}
+  }
+  var myStats = calcFrontStats(getFrontMonthData());
+  var myEntry = teamData.find(function(d){return d.name===userData.name;});
+  if (!myEntry && userData.name) teamData.push({name:userData.name, contracted:myStats.contracted, orderAmount:myStats.orderTotal});
+  else if (myEntry) { myEntry.contracted=myStats.contracted; myEntry.orderAmount=myStats.orderTotal; }
+  var teamCount = teamData.reduce(function(s,d){return s+(d.contracted||0);},0);
+  var teamAmount = teamData.reduce(function(s,d){return s+(d.orderAmount||0);},0)/10000;
+  var html = '';
+  if (adminGoals.storeCount) {
+    var p = Math.min(Math.round(teamCount/adminGoals.storeCount*100),100);
+    var c = p>=100?'#FFD700':'var(--green)';
+    html += '<div style="margin-bottom:16px;"><div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span style="font-weight:700;">🚗 受注台数</span><span style="color:var(--text-sub);">'+teamCount+' / '+adminGoals.storeCount+'台</span></div><div style="height:14px;background:var(--border);border-radius:7px;overflow:hidden;"><div style="height:100%;width:'+p+'%;background:'+c+';border-radius:7px;transition:width .6s;"></div></div><div style="text-align:right;font-size:12px;font-weight:700;color:'+c+';">'+p+'%'+(p>=100?' 🎉':'')+'</div></div>';
+  }
+  if (adminGoals.storeAmount) {
+    var p2 = Math.min(Math.round(teamAmount/adminGoals.storeAmount*100),100);
+    var c2 = p2>=100?'#FFD700':'var(--green)';
+    html += '<div><div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span style="font-weight:700;">💰 受注金額</span><span style="color:var(--text-sub);">'+teamAmount.toFixed(1)+' / '+adminGoals.storeAmount+'万円</span></div><div style="height:14px;background:var(--border);border-radius:7px;overflow:hidden;"><div style="height:100%;width:'+p2+'%;background:'+c2+';border-radius:7px;transition:width .6s;"></div></div><div style="text-align:right;font-size:12px;font-weight:700;color:'+c2+';">'+p2+'%'+(p2>=100?' 🎉':'')+'</div></div>';
+  }
+  if (el1) el1.innerHTML = html;
+  if (el2) {
+    var members = adminGoals.members || [];
+    if (!members.length) { el2.innerHTML = '<div style="text-align:center;padding:12px;color:var(--text-sub);font-size:13px;">メンバー目標未設定</div>'; }
+    else {
+      el2.innerHTML = members.map(function(m){
+        var act = teamData.find(function(d){return d.name===m.name;})||{contracted:0,orderAmount:0};
+        var cp = m.count?Math.min(Math.round(act.contracted/m.count*100),100):0;
+        var ap = m.amount?Math.min(Math.round((act.orderAmount/10000)/m.amount*100),100):0;
+        var isMe = m.name===userData.name;
+        return '<div style="margin-bottom:10px;padding:10px;background:'+(isMe?'var(--green-light)':'var(--card)')+';border-radius:8px;border:1px solid '+(isMe?'var(--green)':'var(--border)')+';">' +
+          '<div style="font-size:13px;font-weight:700;color:'+(isMe?'var(--green)':'var(--text)')+';margin-bottom:6px;">'+m.name+(isMe?' (あなた)':'')+'</div>' +
+          (m.count?'<div style="margin-bottom:4px;"><div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:2px;"><span style="color:var(--text-sub);">🚗 台数</span><span style="font-weight:700;">'+act.contracted+' / '+m.count+'台</span></div><div style="height:7px;background:var(--border);border-radius:4px;overflow:hidden;"><div style="height:100%;width:'+cp+'%;background:'+(cp>=100?'#FFD700':'var(--green)')+';border-radius:4px;transition:width .6s;"></div></div></div>':'') +
+          (m.amount?'<div><div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:2px;"><span style="color:var(--text-sub);">💰 金額</span><span style="font-weight:700;">'+(act.orderAmount/10000).toFixed(1)+' / '+m.amount+'万円</span></div><div style="height:7px;background:var(--border);border-radius:4px;overflow:hidden;"><div style="height:100%;width:'+ap+'%;background:'+(ap>=100?'#FFD700':'var(--green)')+';border-radius:4px;transition:width .6s;"></div></div></div>':'') +
+        '</div>';
+      }).join('');
+    }
+  }
+  renderFrontRanking2();
+}
+
+function setFrontRankType2(type) {
+  frontRankType2 = type;
+  ['rate','count','amount'].forEach(function(t){
+    var btn = document.getElementById('frt2-'+t+'-btn');
+    if (!btn) return;
+    if (t===type) { btn.style.background='var(--green)'; btn.style.color='#111'; btn.style.border='none'; }
+    else { btn.style.background='var(--card)'; btn.style.color='var(--text-sub)'; btn.style.border='1px solid var(--border)'; }
+  });
+  renderFrontRanking2();
+}
+
+async function renderFrontRanking2() {
+  var list = document.getElementById('front-rank-list2');
+  if (!list) return;
+  var activeCode = userData.activeGroupCode || userData.groupCode;
+  var now = new Date();
+  var month = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0');
+  var teamData = [];
+  if (activeCode && GAS_URL !== 'YOUR_GAS_WEB_APP_URL_HERE') {
+    try { var res = await fetchFromGAS('getEstimateRanking',{groupCode:activeCode,month:month}); if(res&&res.data) teamData=res.data; } catch(e){}
+  }
+  var myStats = calcFrontStats(getFrontMonthData());
+  var myEntry = teamData.find(function(d){return d.name===userData.name;});
+  if (!myEntry && userData.name) teamData.push({name:userData.name, contracted:myStats.contracted, rate:myStats.rate, orderAmount:myStats.orderTotal, count:myStats.count});
+  teamData.sort(function(a,b){
+    if (frontRankType2==='rate') return (b.rate||0)-(a.rate||0);
+    if (frontRankType2==='count') return (b.contracted||0)-(a.contracted||0);
+    return (b.orderAmount||0)-(a.orderAmount||0);
+  });
+  if (!teamData.length) { list.innerHTML = '<li style="padding:16px;text-align:center;color:var(--text-sub);">データなし</li>'; return; }
+  list.innerHTML = teamData.slice(0,20).map(function(r,i){
+    var medal = i===0?'🥇':i===1?'🥈':i===2?'🥉':(i+1)+'';
+    var isMe = r.name===userData.name;
+    var val = frontRankType2==='rate'?(r.rate||0)+'%':frontRankType2==='count'?(r.contracted||0)+'件':Math.round((r.orderAmount||0)/10000*10)/10+'万';
+    return '<li class="rank-item'+(isMe?' rank-me':'')+'">' +
+      '<span class="rank-medal">'+medal+'</span>' +
+      '<div class="rank-info"><div class="rank-name">'+r.name+'</div></div>' +
+      '<span class="rank-wage" style="color:var(--green);">'+val+'</span></li>';
+  }).join('');
+}
+
+// ============================================================
+// マイページ新
+// ============================================================
+let myPageTab = 'status';
+let myRankType = 'national';
+
+function initMyPage() {
+  var subTabs = document.getElementById('my-sub-tabs');
+  if (subTabs && !subTabs._init) {
+    subTabs._init = true;
+    subTabs.addEventListener('click', function(e) {
+      var btn = e.target.closest('[data-mytab]');
+      if (!btn) return;
+      document.querySelectorAll('[data-mytab]').forEach(function(b){b.classList.remove('active');});
+      btn.classList.add('active');
+      myPageTab = btn.dataset.mytab;
+      ['status','ranking','trend','badge','calendar'].forEach(function(t){
+        var el = document.getElementById('mytab-'+t);
+        if (el) el.style.display = t===myPageTab?'':'none';
+      });
+      if (myPageTab==='status') renderMyStatus();
+      if (myPageTab==='ranking') renderMyRanking();
+      if (myPageTab==='trend') renderMyTrend();
+      if (myPageTab==='badge') renderMyBadge();
+      if (myPageTab==='calendar') renderMyCalendar();
+    });
+  }
+  renderMyStatus();
+}
+
+var myStatusView = 'wage'; // 'wage' or 'front'
+
+function setMyStatusView(v) {
+  myStatusView = v;
+  ['wage','front'].forEach(function(t) {
+    var btn = document.getElementById('my-view-btn-'+t);
+    if (btn) {
+      btn.style.background = t===v ? 'var(--green)' : 'var(--card)';
+      btn.style.color = t===v ? '#fff' : 'var(--text-sub)';
+      btn.style.border = t===v ? 'none' : '1px solid var(--border)';
+    }
+    var sec = document.getElementById('my-view-'+t);
+    if (sec) sec.style.display = t===v ? '' : 'none';
+  });
+}
+
+function renderMyStatus() {
+  var el = document.getElementById('my-status-content');
+  if (!el) return;
+  var now = new Date();
+  var month = now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0');
+  var monthData = wageData.filter(function(d){ return d.date && d.date.startsWith(month); });
+  var total = monthData.reduce(function(s,d){return s+(d.amount||d.wage||0);},0);
+  var goal = (userData.goal||0) * 10000;
+  var rate = goal>0 ? Math.min(Math.round(total/goal*100),100) : 0;
+  var frontStats = calcFrontStats(getFrontMonthData());
+  var age = calcAge(userData.birthdate);
+  var expYears = userData.expYears || {};
+  var expHtml = Object.entries(expYears).filter(function(e){return e[1];}).map(function(e){
+    var yrs = calcExpYears(e[1]);
+    return '<span style="display:inline-flex;align-items:center;gap:3px;background:var(--border);border-radius:8px;padding:2px 8px;font-size:11px;margin:2px;">' +
+      '<b>'+e[0]+'</b> '+yrs+'年</span>';
+  }).join('');
+
+  el.innerHTML =
+    // プロフィール
+    '<div style="padding:8px 8px 0;">' +
+    '<div class="card">' +
+      '<div style="display:flex;align-items:center;gap:12px;">' +
+        '<div style="width:48px;height:48px;border-radius:50%;background:var(--primary)22;display:flex;align-items:center;justify-content:center;font-size:22px;">👤</div>' +
+        '<div style="flex:1;">' +
+          '<div style="font-size:16px;font-weight:700;">'+(userData.name||'名前未設定')+getRoleBadge(userData.role)+'</div>' +
+          '<div style="font-size:12px;color:var(--text-sub);margin-top:2px;">'+(userData.store||'')+(age!==null?' ・ '+age+'歳':'')+'</div>' +
+          (expHtml?'<div style="margin-top:6px;">'+expHtml+'</div>':'') +
+        '</div>' +
+      '</div>' +
+    '</div>' +
+    // 切り替えボタン
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:0 0 8px;">' +
+      '<button id="my-view-btn-wage" onclick="setMyStatusView(&quot;wage&quot;)" style="padding:10px;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;background:var(--green);color:#fff;border:none;">💰 工賃</button>' +
+      '<button id="my-view-btn-front" onclick="setMyStatusView(&quot;front&quot;)" style="padding:10px;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;background:var(--card);color:var(--text-sub);border:1px solid var(--border);">📋 受付</button>' +
+    '</div>' +
+    // 工賃セクション
+    '<div id="my-view-wage">' +
+      '<div class="card">' +
+        '<div class="card-title">💰 今月の工賃</div>' +
+        '<div style="text-align:center;padding:8px 0;">' +
+          '<div style="font-size:28px;font-weight:700;color:var(--green);">¥'+total.toLocaleString()+'</div>' +
+          (goal>0?'<div style="font-size:12px;color:var(--text-sub);margin-top:4px;">目標 ¥'+goal.toLocaleString()+' ('+rate+'%)</div>':'') +
+        '</div>' +
+        (goal>0?'<div style="height:10px;background:var(--border);border-radius:5px;overflow:hidden;margin-top:8px;"><div style="height:100%;width:'+rate+'%;background:var(--green);border-radius:5px;transition:width .6s;"></div></div>':'') +
+      '</div>' +
+    '</div>' +
+    // 受付セクション
+    '<div id="my-view-front" style="display:none;">' +
+      '<div class="card">' +
+        '<div class="card-title">📋 今月の受付</div>' +
+        '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;text-align:center;margin-bottom:8px;">' +
+          '<div><div style="font-size:10px;color:var(--text-sub);">見積り</div><div style="font-size:22px;font-weight:700;">'+frontStats.count+'<span style="font-size:11px;">件</span></div></div>' +
+          '<div><div style="font-size:10px;color:var(--text-sub);">受注率</div><div style="font-size:22px;font-weight:700;color:var(--green);">'+frontStats.rate+'<span style="font-size:11px;">%</span></div></div>' +
+          '<div><div style="font-size:10px;color:var(--text-sub);">受注金額</div><div style="font-size:18px;font-weight:700;color:var(--green);">'+(frontStats.orderTotal/10000).toFixed(1)+'<span style="font-size:10px;">万</span></div></div>' +
+        '</div>' +
+        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;text-align:center;">' +
+          '<div style="background:var(--green-light);border-radius:8px;padding:8px;"><div style="font-size:10px;color:var(--text-sub);">即成約</div><div style="font-size:18px;font-weight:700;color:var(--green);">'+frontStats.immediate+'<span style="font-size:11px;">件</span></div></div>' +
+          '<div style="background:#8e44ad11;border-radius:8px;padding:8px;"><div style="font-size:10px;color:var(--text-sub);">後日成約</div><div style="font-size:18px;font-weight:700;color:#8e44ad;">'+frontStats.later+'<span style="font-size:11px;">件</span></div></div>' +
+        '</div>' +
+      '</div>' +
+    '</div>' +
+    '</div>';
+
+  // 現在の選択を反映
+  setMyStatusView(myStatusView);
+}
+
+function setMyRankType(type) {
+  myRankType = type;
+  var map = {national:'nat', region:'reg', pref:'pref', store:'store'};
+  ['national','region','pref','store'].forEach(function(t){
+    var btn = document.getElementById('mrt-'+map[t]+'-btn');
+    if (!btn) return;
+    if (t===type) { btn.style.background='var(--green)'; btn.style.color='#111'; btn.style.border='none'; }
+    else { btn.style.background='var(--card)'; btn.style.color='var(--text-sub)'; btn.style.border='1px solid var(--border)'; }
+  });
+  renderMyRanking();
+}
+
+async function renderMyRanking() {
+  var list = document.getElementById('my-rank-list');
+  if (!list) return;
+  list.innerHTML = '<li style="padding:16px;text-align:center;color:var(--text-sub);font-size:13px;">読み込み中...</li>';
+  try {
+    var params = { type: myRankType };
+    if (myRankType === 'store') {
+      var code = userData.activeGroupCode || userData.groupCode;
+      if (!code) { list.innerHTML = '<li style="padding:16px;text-align:center;color:var(--text-sub);font-size:13px;">グループコードを設定してください</li>'; return; }
+      params.groupCode = code;
+    }
+    var data = await fetchFromGAS('getRanking', params);
+    if (!data || !data.ranking) { list.innerHTML = '<li style="padding:16px;text-align:center;color:var(--text-sub);font-size:13px;">データなし</li>'; return; }
+    var myIdx = data.ranking.findIndex(function(r){return r.name===userData.name;});
+    list.innerHTML = data.ranking.slice(0,20).map(function(r,i){
+      var medal = i===0?'🥇':i===1?'🥈':i===2?'🥉':(i+1)+'';
+      var isMe = r.name===userData.name;
+      return '<li class="rank-item'+(isMe?' rank-me':'')+'">' +
+        '<span class="rank-medal">'+medal+'</span>' +
+        '<div class="rank-info"><div class="rank-name">'+r.name+'</div><div class="rank-sub">'+(r.store||'')+'</div></div>' +
+        '<span class="rank-wage">'+(r.wage||0).toLocaleString()+'円</span></li>';
+    }).join('') +
+    (myIdx>=20?'<li style="padding:12px;text-align:center;font-size:13px;color:var(--green);font-weight:700;">あなたの順位: '+(myIdx+1)+'位</li>':'');
+  } catch(e) {
+    list.innerHTML = '<li style="padding:16px;text-align:center;color:var(--text-sub);font-size:13px;">取得できませんでした</li>';
+  }
+}
+
+function renderMyTrend() {
+  var el = document.getElementById('my-trend-content');
+  if (!el) return;
+  // 月別工賃を簡易棒グラフで表示
+  var months = {};
+  wageData.forEach(function(d) {
+    if (!d.date) return;
+    var m = d.date.slice(0,7);
+    months[m] = (months[m]||0) + (d.wage||0);
+  });
+  var keys = Object.keys(months).sort().slice(-6);
+  if (!keys.length) { el.innerHTML = '<div style="text-align:center;padding:30px;color:var(--text-sub);font-size:13px;">データなし</div>'; return; }
+  var max = Math.max.apply(null, keys.map(function(k){return months[k];})) || 1;
+  el.innerHTML = '<div style="padding:12px;">' + keys.map(function(m) {
+    var val = months[m];
+    var pct = Math.round(val/max*100);
+    var label = m.replace(/^(\d+)-(\d+)$/, function(_,y,mo){ return y.slice(2)+'年'+parseInt(mo)+'月'; });
+    return '<div style="margin-bottom:12px;">' +
+      '<div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px;">' +
+        '<span style="color:var(--text-sub);">'+label+'</span>' +
+        '<span style="font-weight:700;color:var(--green);">¥'+val.toLocaleString()+'</span>' +
+      '</div>' +
+      '<div style="height:12px;background:var(--border);border-radius:6px;overflow:hidden;">' +
+        '<div style="height:100%;width:'+pct+'%;background:var(--green);border-radius:6px;transition:width .6s;"></div>' +
+      '</div></div>';
+  }).join('') + '</div>';
+}
+
+function renderMyBadge() {
+  var el = document.getElementById('my-badge-content');
+  if (!el) return;
+  // rankguideのコンテンツを直接描画
+  renderRankGuide();
+  var src = document.getElementById('page-rankguide');
+  if (src) { el.innerHTML = src.innerHTML; }
+  else { el.innerHTML = '<div style="text-align:center;padding:30px;color:var(--text-sub);font-size:13px;">称号データ読み込み中...</div>'; }
+}
+
+// ============================================================
+// マイカレンダー（パチンコ収支カレンダー風）
+// ============================================================
+var myCalYear, myCalMonth;
+
+function initMyCalendar() {
+  var now = new Date();
+  myCalYear = now.getFullYear();
+  myCalMonth = now.getMonth() + 1;
+}
+
+function changeMyCalMonth(delta) {
+  myCalMonth += delta;
+  if (myCalMonth > 12) { myCalMonth = 1; myCalYear++; }
+  if (myCalMonth < 1) { myCalMonth = 12; myCalYear--; }
+  renderMyCalendar();
+}
+
+function renderMyCalendar() {
+  if (!myCalYear) initMyCalendar();
+  var el = document.getElementById('my-calendar-content');
+  if (!el) return;
+
+  var now = new Date();
+  var ym = myCalYear + '-' + String(myCalMonth).padStart(2,'0');
+  var first = new Date(myCalYear, myCalMonth - 1, 1).getDay();
+  var totalDays = new Date(myCalYear, myCalMonth, 0).getDate();
+  var dows = ['日','月','火','水','木','金','土'];
+
+  // 月の日別集計
+  var dayTotals = {};
+  wageData.forEach(function(w) {
+    if (!w.date || !w.date.startsWith(ym)) return;
+    var d = parseInt(w.date.slice(8,10), 10);
+    dayTotals[d] = (dayTotals[d] || 0) + (w.amount || 0);
+  });
+
+  // サマリー計算
+  var monthTotal = Object.values(dayTotals).reduce(function(s,v){return s+v;},0);
+  var activeDays = Object.keys(dayTotals).length;
+  var dayAvg = activeDays > 0 ? Math.round(monthTotal / activeDays) : 0;
+  var goal = (userData && userData.goal) ? userData.goal * 10000 : 0;
+  var rate = goal > 0 ? Math.min(Math.round(monthTotal / goal * 100), 999) : 0;
+
+  // カレンダーグリッドHTML
+  var gridHtml = dows.map(function(d){ return '<div class="mycal-dow">'+d+'</div>'; }).join('');
+  for (var i = 0; i < first; i++) gridHtml += '<div class="mycal-cell empty"></div>';
+  for (var d = 1; d <= totalDays; d++) {
+    var dateStr = ym + '-' + String(d).padStart(2,'0');
+    var total = dayTotals[d] || 0;
+    var dow = new Date(myCalYear, myCalMonth - 1, d).getDay();
+    var isToday = now.getFullYear() === myCalYear && now.getMonth()+1 === myCalMonth && now.getDate() === d;
+    var cls = 'mycal-cell';
+    if (isToday) cls += ' today';
+    if (total > 0) cls += ' has-data';
+    if (dow === 0) cls += ' sun';
+    if (dow === 6) cls += ' sat';
+
+    var amtHtml = '';
+    if (total > 0) {
+      var man = total / 10000;
+      var label = man >= 10 ? Math.round(man) + '万' : man.toFixed(1).replace(/\.0$/,'') + '万';
+      amtHtml = '<span class="mycal-amt">'+label+'</span>';
+    }
+    gridHtml += '<div class="'+cls+'" onclick="openDayModal(\''+dateStr+'\','+d+')">' +
+      '<span class="mycal-d">'+d+'</span>' +
+      amtHtml +
+      '</div>';
+  }
+
+  el.innerHTML =
+    '<div class="mycal-wrap">' +
+      '<div class="mycal-header">' +
+        '<button class="mycal-nav" onclick="changeMyCalMonth(-1)">◀</button>' +
+        '<h3>'+myCalYear+'年'+myCalMonth+'月</h3>' +
+        '<button class="mycal-nav" onclick="changeMyCalMonth(1)">▶</button>' +
+      '</div>' +
+      '<div class="mycal-summary">' +
+        '<div class="mycal-summary-item"><div class="msv">'+formatYen(monthTotal)+'<span style="font-size:10px;">万</span></div><div class="msl">月合計</div></div>' +
+        '<div class="mycal-summary-item"><div class="msv">'+activeDays+'<span style="font-size:10px;">日</span></div><div class="msl">稼働日</div></div>' +
+        '<div class="mycal-summary-item"><div class="msv">'+formatYen(dayAvg)+'<span style="font-size:10px;">万</span></div><div class="msl">日平均</div></div>' +
+        (goal > 0 ? '<div class="mycal-summary-item"><div class="msv">'+rate+'<span style="font-size:10px;">%</span></div><div class="msl">達成率</div></div>' : '') +
+      '</div>' +
+      '<div class="mycal-grid">'+gridHtml+'</div>' +
+    '</div>';
+}
+
+// Ranking sub-tabs（メインと全国展開エリア両方を監視）
+document.addEventListener('click', function(e) {
+  var btn = e.target.closest('[data-rtab]');
   if (!btn) return;
-  document.querySelectorAll('[data-rtab]').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('[data-rtab]').forEach(function(b){ b.classList.remove('active'); });
   btn.classList.add('active');
   currentRankTab = btn.dataset.rtab;
-  ['national','region','pref','store'].forEach(t => {
-    document.getElementById('rtab-' + t).style.display = t === currentRankTab ? '' : 'none';
+  ['national','region','pref','store'].forEach(function(t) {
+    var el = document.getElementById('rtab-' + t);
+    if (el) el.style.display = t === currentRankTab ? '' : 'none';
   });
   renderRankingTab(currentRankTab);
 });
+
+function toggleRankMore() {
+  var panel = document.getElementById('rank-more-tabs');
+  var btn = document.getElementById('rank-more-btn');
+  if (!panel) return;
+  var open = panel.style.display !== 'none';
+  panel.style.display = open ? 'none' : '';
+  btn.style.background = open ? 'var(--card)' : 'var(--green-light)';
+  btn.style.color = open ? 'var(--text-sub)' : 'var(--green)';
+  btn.style.borderColor = open ? 'var(--border)' : 'var(--green)';
+}
 
 // ============================================================
 // RANKING RENDER
@@ -1205,20 +2194,50 @@ function renderPref() {
 
 document.getElementById('pref-filter').addEventListener('change', renderPref);
 
-function renderStore() {
+async function renderStore() {
   renderStoreSwitcher();
   const myTotal = getMyMonthlyTotal();
   const goal = userData.goal * 10000;
-  let data = DEMO_STORE.map(d => ({ ...d }));
-  data[0].amount = myTotal;
-  data[0].name = userData.name || 'あなた';
-  data.sort((a, b) => b.amount - a.amount);
-  data = data.map((d, i) => ({ ...d, rank: i+1 }));
+  const activeCode = userData.activeGroupCode || userData.groupCode;
+  const now = new Date();
+  const month = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+
+  let data;
+  if (activeCode && GAS_URL && GAS_URL !== 'YOUR_GAS_WEB_APP_URL_HERE') {
+    const res = await fetchFromGAS('getStoreRanking', { groupCode: activeCode, month });
+    if (res && res.data && res.data.length > 0) {
+      // GASから取得した実データを使用
+      data = res.data.map((d, i) => ({
+        rank: i + 1,
+        name: d.name,
+        store: d.store,
+        pref: d.pref,
+        amount: d.amount,
+        isMe: d.name === userData.name,
+      }));
+      // 自分が含まれていない場合は追加（まだ今月入力なし）
+      if (userData.name && !data.find(d => d.name === userData.name)) {
+        data.push({ rank: data.length + 1, name: userData.name, store: userData.store, pref: userData.pref, amount: myTotal, isMe: true });
+        data.sort((a, b) => b.amount - a.amount);
+        data = data.map((d, i) => ({ ...d, rank: i + 1 }));
+      }
+    } else {
+      // GASにデータなし → 自分だけ表示
+      data = [{ rank: 1, name: userData.name || 'あなた', store: userData.store, pref: userData.pref, amount: myTotal, isMe: true }];
+    }
+  } else {
+    // グループコード未設定またはGAS未設定 → デモデータ
+    data = DEMO_STORE.map(d => ({ ...d }));
+    data[0].amount = myTotal;
+    data[0].name = userData.name || 'あなた';
+    data.sort((a, b) => b.amount - a.amount);
+    data = data.map((d, i) => ({ ...d, rank: i+1 }));
+  }
 
   const cleared = data.filter(d => d.amount >= goal).length;
   const total = data.length;
   document.getElementById('store-total').textContent = formatYen(data.reduce((s,d)=>s+d.amount,0)) + '万';
-  document.getElementById('store-avg').textContent = formatYen(data.reduce((s,d)=>s+d.amount,0)/total) + '万';
+  document.getElementById('store-avg').textContent = total > 0 ? formatYen(data.reduce((s,d)=>s+d.amount,0)/total) + '万' : '-';
   document.getElementById('store-cleared').textContent = `${cleared}/${total}`;
 
   document.getElementById('store-list').innerHTML = data.map(d => buildRankItem(d, userData.name)).join('');
@@ -1409,7 +2428,8 @@ let currentDayDate = '';
 
 function openDayModal(dateStr, day) {
   currentDayDate = dateStr;
-  document.getElementById('day-modal-title').textContent = `${calendarYear}年${calendarMonth}月${day}日`;
+  var _dp = dateStr.split('-');
+  document.getElementById('day-modal-title').textContent = `${_dp[0]}年${parseInt(_dp[1])}月${day}日`;
   const entries = wageData.filter(w => w.date === dateStr);
   const body = document.getElementById('day-modal-body');
   if (entries.length) {
@@ -1444,6 +2464,8 @@ function saveDayEntry() {
   saveLocal();
   renderCalendar();
   renderGoalRing();
+  if (myCalYear) renderMyCalendar();
+  renderMyStatus();
   document.getElementById('day-modal-overlay').classList.remove('show');
   showToast('✅ 保存しました');
   checkGoalAndRank();
@@ -1457,6 +2479,8 @@ function deleteEntry(idx) {
   closeDayModal();
   renderCalendar();
   renderGoalRing();
+  if (myCalYear) renderMyCalendar();
+  renderMyStatus();
   showToast('🗑️ 削除しました');
 }
 
@@ -1484,16 +2508,19 @@ function submitWage() {
   if (!userData.name) { showToast('⚠️ 先に設定でお名前を登録してください'); switchTab('settings'); return; }
 
   const cartype = document.getElementById('input-cartype').value.trim();
-  wageData.push({ date, amount, number: number === '0000' ? '' : number, cartype });
+  const category = document.getElementById('input-category') ? document.getElementById('input-category').value || '鈑金塗装' : '鈑金塗装';
+  wageData.push({ date, amount, number: number === '0000' ? '' : number, cartype, category });
   saveLocal();
   document.getElementById('input-amount').value = '';
   document.getElementById('input-number').value = '';
   document.getElementById('input-cartype').value = '';
+  document.getElementById('input-category').value = '';
+  document.querySelectorAll('#category-btns .role-btn').forEach(function(b){b.classList.remove('active');});
   renderInputHistory();
   showToast(`✅ ${formatYen(amount)}万円 登録しました！`);
   checkGoalAndRank();
   if (!userData.ninjaMode) {
-    postToGAS({ action: 'addWage', name: userData.name, store: userData.store, pref: userData.pref, date, amount, number, cartype });
+    postToGAS({ action: 'addWage', name: userData.name, store: userData.store, pref: userData.pref, date, amount, number, cartype, category, groupCode: userData.activeGroupCode || userData.groupCode || '', uuid: userData.uuid || '' });
   }
 }
 
@@ -1656,6 +2683,12 @@ function initSettings() {
   document.getElementById('set-store').value = userData.store || '';
   document.getElementById('set-goal').value = userData.goal || 100;
   document.getElementById('set-group').value = '';
+  if (userData.role) { var ri = document.getElementById('set-role'); if(ri) ri.value=userData.role; selectRole(userData.role, true); }
+  // 生年月日
+  var bdEl = document.getElementById('set-birthdate');
+  if (bdEl) { bdEl.value = userData.birthdate || ''; updateAgeDisplay(); }
+  // 経験年数
+  renderExpRows();
   renderFollowedStores();
   document.getElementById('ninja-mode-toggle').checked = userData.ninjaMode === true;
   document.getElementById('notif-rankup').checked = settings.notifRankup !== false;
@@ -1673,6 +2706,126 @@ function initSettings() {
   });
 }
 
+const ROLE_COLORS = {
+  '鈑金': '#4A9ECC',
+  '塗装': '#e67e22',
+  '整備': '#27ae60',
+  'フロント': '#8e44ad',
+  '管理': '#c0392b',
+  'その他': '#7f8c8d'
+};
+
+function selectRole(role, silent) {
+  var ri = document.getElementById('set-role');
+  if (ri) ri.value = role;
+  document.querySelectorAll('#role-btns .role-btn').forEach(function(btn) {
+    if (btn.dataset.role === role) btn.classList.add('active');
+    else btn.classList.remove('active');
+  });
+  var inlineEl = document.getElementById('role-exp-inline');
+  var labelEl = document.getElementById('role-exp-label');
+  var yearEl = document.getElementById('role-exp-year');
+  if (inlineEl && role) {
+    inlineEl.style.display = '';
+    if (labelEl) labelEl.textContent = role;
+    var expYrs = userData.expYears || {};
+    // 保存値は開始年なので今何年目かに変換して表示
+    var startY = expYrs[role];
+    if (yearEl) yearEl.value = startY ? calcExpYears(startY) : '';
+    updateRoleExpPreview();
+  }
+}
+function updateRoleExpPreview() {
+  var yearEl = document.getElementById('role-exp-year');
+  var prev = document.getElementById('role-exp-preview');
+  var n = parseInt(yearEl ? yearEl.value : 0);
+  if (prev) prev.textContent = (n > 0) ? '→ ' + (new Date().getFullYear() - n) + '年から自動更新' : '';
+}
+
+function selectCategory(cat) {
+  var ci = document.getElementById('input-category');
+  if (ci) ci.value = cat;
+  document.querySelectorAll('#category-btns .role-btn').forEach(function(btn) {
+    if (btn.dataset.cat === cat) btn.classList.add('active');
+    else btn.classList.remove('active');
+  });
+}
+
+function toggleAdvancedSettings() {
+  var el = document.getElementById('advanced-settings-block');
+  var btn = document.getElementById('advanced-settings-btn');
+  if (!el) return;
+  var open = el.style.display !== 'none';
+  el.style.display = open ? 'none' : '';
+  if (btn) btn.textContent = open ? '⚙️ 詳細設定' : '⚙️ 詳細設定を閉じる';
+}
+function toggleMyMore() {
+  var btn = document.getElementById('my-more-btn');
+  var trend = document.querySelector('[data-mytab="trend"]');
+  var badge = document.querySelector('[data-mytab="badge"]');
+  var showing = trend && trend.style.display !== 'none';
+  if (trend) trend.style.display = showing ? 'none' : '';
+  if (badge) badge.style.display = showing ? 'none' : '';
+  if (btn) btn.textContent = showing ? '···' : '閉じる';
+}
+function toggleFrontWageEdit() {
+  var el = document.getElementById('front-wage-edit');
+  var btn = document.getElementById('front-wage-toggle');
+  if (!el) return;
+  var open = el.style.display !== 'none';
+  el.style.display = open ? 'none' : '';
+  if (btn) btn.textContent = open ? '🔧 工賃を追加・編集' : '✕ 閉じる';
+}
+// 年齢・経験年数ヘルパー
+function calcAge(birthdate) {
+  if (!birthdate) return null;
+  var today = new Date();
+  var bd = new Date(birthdate);
+  var age = today.getFullYear() - bd.getFullYear();
+  var m = today.getMonth() - bd.getMonth();
+  if (m < 0 || (m === 0 && today.getDate() < bd.getDate())) age--;
+  return age;
+}
+function calcExpYears(startYear) {
+  if (!startYear) return 0;
+  return new Date().getFullYear() - startYear;
+}
+function updateAgeDisplay() {
+  var bd = document.getElementById('set-birthdate');
+  var disp = document.getElementById('age-display');
+  if (!bd || !disp) return;
+  var age = calcAge(bd.value);
+  disp.textContent = age !== null && age >= 0 ? '現在 ' + age + ' 歳' : '';
+}
+var ROLES_ALL = ['鈑金','塗装','整備','フロント','管理','その他'];
+function renderExpRows() {
+  var container = document.getElementById('exp-rows');
+  if (!container) return;
+  var expYears = userData.expYears || {};
+  var curYear = new Date().getFullYear();
+  container.innerHTML = ROLES_ALL.map(function(role) {
+    var startYear = expYears[role] || '';
+    var expCalc = startYear ? '（約' + calcExpYears(startYear) + '年）' : '';
+    return '<div class="exp-row" data-role="'+role+'" style="display:flex;align-items:center;gap:8px;">' +
+      '<span style="width:56px;font-size:13px;font-weight:600;">'+role+'</span>' +
+      '<input type="number" class="exp-year form-input" placeholder="例: 2018" min="1970" max="'+curYear+'" value="'+startYear+'" style="width:100px;padding:6px 8px;font-size:13px;" oninput="updateExpCalc(this)">' +
+      '<span class="exp-calc" style="font-size:12px;color:var(--text-sub);">'+expCalc+'</span>' +
+    '</div>';
+  }).join('');
+}
+function updateExpCalc(input) {
+  var row = input.closest('.exp-row');
+  if (!row) return;
+  var y = parseInt(input.value);
+  var calcEl = row.querySelector('.exp-calc');
+  if (calcEl) calcEl.textContent = (y > 1950 && y <= new Date().getFullYear()) ? '（約' + calcExpYears(y) + '年）' : '';
+}
+function getRoleBadge(role) {
+  if (!role) return '';
+  var color = ROLE_COLORS[role] || '#888';
+  return '<span style="display:inline-block;padding:1px 6px;border-radius:10px;font-size:10px;font-weight:700;background:' + color + '22;color:' + color + ';border:1px solid ' + color + '44;margin-left:4px;">' + role + '</span>';
+}
+
 function saveProfile() {
   const name = document.getElementById('set-name').value.trim();
   const pref = document.getElementById('set-pref').value;
@@ -1680,16 +2833,35 @@ function saveProfile() {
   const goal = parseInt(document.getElementById('set-goal').value) || 100;
   const oldRank = getRank(getMyMonthlyTotal() / 10000);
 
+  const role = document.getElementById('set-role') ? document.getElementById('set-role').value : '';
   userData.name = name;
   userData.pref = pref;
   userData.store = store;
   userData.goal = goal;
+  userData.role = role;
+  // GASにroleを反映
+  if (userData.name && role) {
+    fetchFromGAS('updateProfile', { name: userData.name, store: userData.store, pref: userData.pref, goal: userData.goal, role: role, groupCode: userData.activeGroupCode || userData.groupCode }, 'POST').catch(function(){});
+  }
+  // 生年月日
+  const bd = document.getElementById('set-birthdate');
+  if (bd) userData.birthdate = bd.value || '';
+  // 経験年数（職種ごとの開始年）
+  var expObj = userData.expYears || {};
+  var selRole = document.getElementById('set-role') ? document.getElementById('set-role').value : '';
+  var expYearEl = document.getElementById('role-exp-year');
+  if (selRole && expYearEl) {
+    var yrs = parseInt(expYearEl.value);
+    if (!isNaN(yrs) && yrs >= 0) expObj[selRole] = new Date().getFullYear() - yrs; // 開始年として保存
+    else if (expYearEl.value === '') delete expObj[selRole];
+  }
+  userData.expYears = expObj;
   saveLocal();
   showToast('💾 プロフィールを保存しました');
   renderGoalRing();
 
   // Update GAS
-  postToGAS({ action: 'updateProfile', name, pref, store, goal });
+  postToGAS({ action: 'updateProfile', name, pref, store, goal, role });
 }
 
 function generateGroupCode() {
@@ -1761,12 +2933,59 @@ function toggleNinjaMode(on) {
   userData.ninjaMode = on;
   saveLocal();
   applyNinjaMode();
-  showToast(on ? '🥷 忍びモード ON — ランキングに表示されません' : '🥷 忍びモード OFF');
+  if (on) {
+    showToast('🥷 忍びモード ON — ランキング非表示・データはこの端末のみ保存');
+    var warn = document.getElementById('ninja-warn');
+    if (warn) warn.style.display = '';
+  } else {
+    showToast('🥷 忍びモード OFF — データがサーバーに同期されます');
+    var warn = document.getElementById('ninja-warn');
+    if (warn) warn.style.display = 'none';
+  }
+}
+
+// ============================================================
+// データ復元（GAS → localStorage）
+// ============================================================
+async function restoreFromGAS() {
+  var statusEl = document.getElementById('restore-status');
+  if (!userData.name) { showToast('⚠️ 先に名前を設定してください'); return; }
+  if (statusEl) statusEl.textContent = '🔄 サーバーから取得中...';
+  try {
+    var res = await fetchFromGAS('restoreUserData', { name: userData.name, uuid: userData.uuid || '' });
+    if (!res || res.error) {
+      if (statusEl) statusEl.textContent = '❌ 取得失敗: ' + (res && res.error ? res.error : 'ネットワークエラー');
+      return;
+    }
+    var wCount = 0, fCount = 0;
+    if (res.wageData && res.wageData.length) {
+      // 既存ローカルにないものだけ追加（日付+金額で重複チェック）
+      res.wageData.forEach(function(r) {
+        var exists = wageData.some(function(w){ return w.date === r.date && w.amount === r.amount; });
+        if (!exists) { wageData.push(r); wCount++; }
+      });
+    }
+    if (res.frontData && res.frontData.length) {
+      res.frontData.forEach(function(r) {
+        var exists = frontData.some(function(f){ return f.date === r.date && f.amount === r.amount; });
+        if (!exists) { frontData.push(r); fCount++; }
+      });
+    }
+    saveLocal();
+    if (statusEl) statusEl.textContent = '✅ 復元完了: 工賃' + wCount + '件 / 受付' + fCount + '件 追加';
+    showToast('✅ データを復元しました！');
+    renderInputHistory();
+  } catch(e) {
+    if (statusEl) statusEl.textContent = '❌ エラーが発生しました';
+    console.error('restore error', e);
+  }
 }
 
 function applyNinjaMode() {
   const inputTab = document.querySelector('[data-tab="input"]');
   if (inputTab) inputTab.style.display = userData.ninjaMode ? 'none' : '';
+  const warn = document.getElementById('ninja-warn');
+  if (warn) warn.style.display = userData.ninjaMode ? '' : 'none';
 }
 
 function leaveGroup(code) {
@@ -2018,7 +3237,7 @@ async function postToGAS(data) {
     await fetch(GAS_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...data, userToken: userData.token || '' }),
+      body: JSON.stringify({ ...data, token: GAS_TOKEN, uuid: userData.uuid || '' }),
     });
   } catch(e) { console.warn('GAS post failed', e); }
 }
@@ -2026,7 +3245,7 @@ async function postToGAS(data) {
 async function fetchFromGAS(action, params = {}) {
   if (!GAS_URL || GAS_URL === 'YOUR_GAS_WEB_APP_URL_HERE') return null;
   try {
-    const qs = new URLSearchParams({ action, ...params }).toString();
+    const qs = new URLSearchParams({ action, token: GAS_TOKEN, uuid: userData.uuid || '', ...params }).toString();
     const res = await fetch(GAS_URL + '?' + qs);
     return await res.json();
   } catch(e) { console.warn('GAS fetch failed', e); return null; }
@@ -2054,12 +3273,692 @@ function init() {
   prevRankIdx = RANKS.indexOf(getRank(getMyMonthlyTotal() / 10000));
 }
 
-init();
+// ============================================================
+// FRONT PAGE
+// ============================================================
+function initFrontPage() {
+  const now = new Date();
+  const dateStr = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
+  const el = document.getElementById('front-today-date');
+  if (el) el.textContent = `${now.getFullYear()}年${now.getMonth()+1}月${now.getDate()}日`;
+  const dateInput = document.getElementById('front-date');
+  if (dateInput) dateInput.value = dateStr;
 
-// Demo button for testing animations (remove in production)
-// Uncomment to test: setTimeout(() => triggerFireworks(), 2000);
-// Uncomment to test: setTimeout(() => triggerRocket(), 2000);
-// Uncomment to test: setTimeout(() => triggerRankUp(RANKS[4]), 2000);
+  const now2 = new Date();
+  const monthLabel = `${now2.getMonth()+1}月度`;
+  const ml = document.getElementById('front-rank-month');
+  if (ml) ml.textContent = monthLabel;
+  const sl = document.getElementById('front-summary-title');
+  if (sl) sl.textContent = `📊 フロント集計 ${now2.getMonth()+1}月`;
+
+  // sub-tab events
+  const subTabs = document.getElementById('front-sub-tabs');
+  if (subTabs && !subTabs._init) {
+    subTabs._init = true;
+    subTabs.addEventListener('click', e => {
+      const btn = e.target.closest('[data-ftab]');
+      if (!btn) return;
+      document.querySelectorAll('[data-ftab]').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      currentFrontTab = btn.dataset.ftab;
+      ['input','ranking','summary','goal','monthly','calendar'].forEach(t => {
+        const el = document.getElementById('ftab-' + t);
+        if (el) el.style.display = t === currentFrontTab ? '' : 'none';
+      });
+      if (currentFrontTab === 'ranking') renderFrontRanking();
+      if (currentFrontTab === 'summary') renderFrontSummary();
+      if (currentFrontTab === 'input') renderFrontHistory();
+      if (currentFrontTab === 'goal') initGoalTab();
+      if (currentFrontTab === 'monthly') renderMonthlyList();
+      if (currentFrontTab === 'calendar') renderFrontCalendar();
+    });
+  }
+
+  renderFrontHistory();
+}
+
+function addFrontAmount(val) {
+  const el = document.getElementById('front-amount');
+  el.value = (parseFloat(el.value) || 0) + val;
+}
+
+function setContract(val) {
+  contractedState = val;
+  document.getElementById('btn-immediate').className = 'contract-btn' + (val === 'immediate' ? ' active-yes' : '');
+  document.getElementById('btn-later').className = 'contract-btn' + (val === 'later' ? ' active-yes' : '');
+  document.getElementById('btn-none').className = 'contract-btn' + (val === 'none' ? ' active-no' : '');
+  // 受注金額欄の表示切り替え
+  const og = document.getElementById('order-amount-group');
+  if (og) og.style.display = (val === 'immediate' || val === 'later') ? '' : 'none';
+}
+
+function submitEstimate() {
+  const amount = parseFloat(document.getElementById('front-amount').value) || 0;
+  if (amount <= 0) { showToast('金額を入力してください'); return; }
+  if (contractedState === null) { showToast('成約・未成約を選んでください'); return; }
+
+  if (contractedState === null) { showToast('結果を選んでください'); return; }
+  const date = document.getElementById('front-date').value || new Date().toISOString().slice(0,10);
+  const number = document.getElementById('front-number').value.trim();
+  const cartype = document.getElementById('front-cartype').value.trim();
+  const orderAmount = (contractedState === 'immediate' || contractedState === 'later')
+    ? (parseFloat(document.getElementById('front-order-amount').value) || amount)
+    : 0;
+
+  const entry = {
+    date, amount, orderAmount, contractType: contractedState,
+    contracted: contractedState !== 'none',
+    immediate: contractedState === 'immediate',
+    later: contractedState === 'later',
+    number, cartype,
+    name: userData.name || '', store: userData.store || '', pref: userData.pref || '',
+    groupCode: userData.activeGroupCode || userData.groupCode || ''
+  };
+  frontData.push(entry);
+  saveLocal();
+
+  postToGAS({ action: 'addEstimate', ...entry });
+
+  // リセット
+  document.getElementById('front-amount').value = '';
+  document.getElementById('front-order-amount').value = '';
+  document.getElementById('front-number').value = '';
+  document.getElementById('front-cartype').value = '';
+  contractedState = null;
+  document.getElementById('btn-immediate').className = 'contract-btn';
+  document.getElementById('btn-later').className = 'contract-btn';
+  document.getElementById('btn-none').className = 'contract-btn';
+  const og = document.getElementById('order-amount-group');
+  if (og) og.style.display = 'none';
+
+  const msg = entry.immediate ? '⚡ 即成約で登録！' : entry.later ? '📅 後日成約で登録！' : '❌ 未成約で登録';
+  showToast(msg);
+  renderFrontHistory();
+}
+
+// ============================================================
+// 後日受注 検索・変更
+// ============================================================
+function searchByNumber() {
+  const num = document.getElementById('search-number').value.trim();
+  if (!num) { showToast('ナンバーを入力してください'); return; }
+
+  // 未成約または即成約のデータから検索（変更できるもの）
+  const results = frontData
+    .map((d, i) => ({ ...d, idx: i }))
+    .filter(d => d.number === num && !d.later);
+
+  const el = document.getElementById('search-results');
+  if (!results.length) {
+    el.innerHTML = '<div style="text-align:center;padding:16px;color:var(--text-sub);font-size:13px;">該当のデータが見つかりませんでした</div>';
+    return;
+  }
+
+  el.innerHTML = results.map(d => {
+    const badge = d.immediate ? '⚡ 即成約' : '❌ 未成約';
+    const badgeStyle = d.immediate ? 'background:#1a2a3a;color:#4A9ECC;' : 'background:#3a1a1a;color:#e74c3c;';
+    return `<div style="background:var(--card);border-radius:12px;padding:14px;margin-bottom:8px;border:1px solid var(--border);">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+        <div>
+          <div style="font-weight:700;">${d.date} 【${d.number}】 ${d.cartype||''}</div>
+          <div style="font-size:12px;color:var(--text-sub);margin-top:2px;">見積:¥${(d.amount||0).toLocaleString()}</div>
+        </div>
+        <span style="padding:3px 8px;border-radius:10px;font-size:11px;font-weight:700;${badgeStyle}">${badge}</span>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <div class="amount-input-wrap" style="flex:1;">
+          <span class="yen">¥</span>
+          <input type="number" class="form-input" id="later-order-${d.idx}" placeholder="受注金額" inputmode="numeric" style="padding-left:32px;" value="${d.orderAmount||d.amount||''}">
+        </div>
+        <button onclick="convertToLater(${d.idx})" style="padding:10px 14px;background:var(--green);color:#fff;border-radius:10px;font-size:13px;font-weight:700;white-space:nowrap;">📅 後日受注</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function convertToLater(idx) {
+  const orderAmount = parseFloat(document.getElementById('later-order-' + idx).value) || frontData[idx].amount || 0;
+  frontData[idx].contractType = 'later';
+  frontData[idx].contracted = true;
+  frontData[idx].immediate = false;
+  frontData[idx].later = true;
+  frontData[idx].orderAmount = orderAmount;
+  saveLocal();
+
+  // GASに成約状態を同期
+  postToGAS({
+    action: 'updateEstimate',
+    name: userData.name,
+    date: frontData[idx].date,
+    number: frontData[idx].number || '',
+    contracted: true,
+    immediate: false,
+    later: true,
+    orderAmount,
+  });
+
+  showToast('📅 後日受注に変更しました！');
+  document.getElementById('search-results').innerHTML = '<div style="text-align:center;padding:16px;color:var(--green);font-size:13px;font-weight:700;">✅ 変更しました！</div>';
+  document.getElementById('search-number').value = '';
+  renderFrontHistory();
+}
+
+function getFrontMonthData() {
+  const now = new Date();
+  const ym = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+  return frontData.filter(d => d.date && d.date.startsWith(ym));
+}
+
+function calcFrontStats(data) {
+  const count = data.length;
+  const immediate = data.filter(d => d.immediate).length;
+  const later = data.filter(d => d.later).length;
+  const contracted = immediate + later;
+  const estimateTotal = data.reduce((s, d) => s + (d.amount || 0), 0);
+  const orderTotal = data.filter(d => d.contracted).reduce((s, d) => s + (d.orderAmount || d.amount || 0), 0);
+  const rate = count > 0 ? Math.round(contracted / count * 100) : 0;
+  return { count, immediate, later, contracted, estimateTotal, orderTotal, rate };
+}
+
+// ============================================================
+// 受付カレンダー（パチンコ収支カレンダー風）
+// ============================================================
+var frontCalYear, frontCalMonth;
+
+function initFrontCalendar() {
+  var now = new Date();
+  frontCalYear = now.getFullYear();
+  frontCalMonth = now.getMonth() + 1;
+}
+
+function changeFrontCalMonth(delta) {
+  frontCalMonth += delta;
+  if (frontCalMonth > 12) { frontCalMonth = 1; frontCalYear++; }
+  if (frontCalMonth < 1) { frontCalMonth = 12; frontCalYear--; }
+  renderFrontCalendar();
+}
+
+function renderFrontCalendar() {
+  if (!frontCalYear) initFrontCalendar();
+  var el = document.getElementById('front-calendar-content');
+  if (!el) return;
+
+  var now = new Date();
+  var ym = frontCalYear + '-' + String(frontCalMonth).padStart(2,'0');
+  var first = new Date(frontCalYear, frontCalMonth - 1, 1).getDay();
+  var totalDays = new Date(frontCalYear, frontCalMonth, 0).getDate();
+  var dows = ['日','月','火','水','木','金','土'];
+
+  // 日別集計
+  var dayMap = {};
+  frontData.forEach(function(d) {
+    if (!d.date || !d.date.startsWith(ym)) return;
+    var day = parseInt(d.date.slice(8,10), 10);
+    if (!dayMap[day]) dayMap[day] = { count: 0, contracted: 0, orderTotal: 0 };
+    dayMap[day].count++;
+    if (d.immediate || d.later) {
+      dayMap[day].contracted++;
+      dayMap[day].orderTotal += (d.orderAmount || d.amount || 0);
+    }
+  });
+
+  // サマリー計算
+  var monthData = frontData.filter(function(d){ return d.date && d.date.startsWith(ym); });
+  var s = calcFrontStats(monthData);
+
+  // カレンダーグリッドHTML
+  var gridHtml = dows.map(function(d){ return '<div class="mycal-dow">'+d+'</div>'; }).join('');
+  for (var i = 0; i < first; i++) gridHtml += '<div class="mycal-cell empty"></div>';
+  for (var d = 1; d <= totalDays; d++) {
+    var info = dayMap[d];
+    var dow = new Date(frontCalYear, frontCalMonth - 1, d).getDay();
+    var isToday = now.getFullYear() === frontCalYear && now.getMonth()+1 === frontCalMonth && now.getDate() === d;
+    var hasData = !!info;
+    var cls = 'mycal-cell';
+    if (isToday) cls += ' today';
+    if (hasData) cls += ' has-data';
+    if (dow === 0) cls += ' sun';
+    if (dow === 6) cls += ' sat';
+
+    var infoHtml = '';
+    if (info) {
+      var rate = info.count > 0 ? Math.round(info.contracted / info.count * 100) : 0;
+      infoHtml =
+        '<span class="mycal-amt" style="color:var(--green);">'+info.count+'件</span>' +
+        '<span style="font-size:8px;color:'+(rate>=50?'var(--green)':'#e74c3c')+';">'+rate+'%</span>';
+    }
+    gridHtml += '<div class="'+cls+'">' +
+      '<span class="mycal-d">'+d+'</span>' +
+      infoHtml +
+      '</div>';
+  }
+
+  el.innerHTML =
+    '<div class="mycal-wrap">' +
+      '<div class="mycal-header">' +
+        '<button class="mycal-nav" onclick="changeFrontCalMonth(-1)">◀</button>' +
+        '<h3>'+frontCalYear+'年'+frontCalMonth+'月</h3>' +
+        '<button class="mycal-nav" onclick="changeFrontCalMonth(1)">▶</button>' +
+      '</div>' +
+      '<div class="mycal-summary">' +
+        '<div class="mycal-summary-item"><div class="msv">'+s.count+'<span style="font-size:10px;">件</span></div><div class="msl">見積り</div></div>' +
+        '<div class="mycal-summary-item"><div class="msv">'+s.contracted+'<span style="font-size:10px;">件</span></div><div class="msl">成約</div></div>' +
+        '<div class="mycal-summary-item"><div class="msv">'+s.rate+'<span style="font-size:10px;">%</span></div><div class="msl">成約率</div></div>' +
+        '<div class="mycal-summary-item"><div class="msv">'+formatYen(s.orderTotal)+'<span style="font-size:10px;">万</span></div><div class="msl">受注額</div></div>' +
+      '</div>' +
+      '<div class="mycal-grid">'+gridHtml+'</div>' +
+    '</div>';
+}
+
+function renderFrontSummary() {
+  const data = getFrontMonthData();
+  const s = calcFrontStats(data);
+  const now = new Date();
+  const titleEl = document.getElementById('front-summary-title');
+  if (titleEl) titleEl.textContent = `📊 ${now.getFullYear()}年${now.getMonth()+1}月 集計`;
+  const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+  set('fs-count', s.count);
+  set('fs-rate', s.rate);
+  set('fs-immediate', s.immediate);
+  set('fs-later', s.later);
+  set('fs-total', (s.estimateTotal / 10000).toFixed(1));
+  set('fs-contract-total', (s.orderTotal / 10000).toFixed(1));
+  set('fs-rate-circle', s.rate + '%');
+
+  // 詳細一覧
+  const detailEl = document.getElementById('fs-detail-list');
+  if (detailEl) {
+    if (!data.length) {
+      detailEl.innerHTML = '<div style="text-align:center;padding:16px;color:var(--text-sub);font-size:13px;">データなし</div>';
+    } else {
+      detailEl.innerHTML = data.slice().reverse().map(d => {
+        const badge = d.immediate ? '⚡即' : d.later ? '📅後日' : '❌未';
+        const color = d.immediate ? '#4A9ECC' : d.later ? '#4ACC7A' : '#e74c3c';
+        return `<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border);font-size:13px;">
+          <div>
+            <span style="font-weight:700;">${d.date}</span>
+            <span style="color:var(--text-sub);margin-left:6px;">${d.cartype||''} ${d.number?'['+d.number+']':''}</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span style="color:var(--text-sub);">¥${(d.amount||0).toLocaleString()}</span>
+            <span style="font-weight:700;color:${color};">${badge}</span>
+          </div>
+        </div>`;
+      }).join('');
+    }
+  }
+}
+
+function renderFrontHistory() {
+  const el = document.getElementById('front-history');
+  if (!el) return;
+  const data = getFrontMonthData().slice().reverse();
+  if (!data.length) {
+    el.innerHTML = '<div class="empty-state"><div class="empty-icon">📋</div><p>まだ入力がありません</p></div>';
+    return;
+  }
+  el.innerHTML = data.map((d) => {
+    const badge = d.immediate ? '⚡ 即成約' : d.later ? '📅 後日成約' : '❌ 未成約';
+    const badgeStyle = d.immediate ? 'background:#1a2a3a;color:#4A9ECC;' : d.later ? 'background:#1a3a1a;color:#4ACC7A;' : 'background:#3a1a1a;color:#e74c3c;';
+    return `<div class="front-history-item">
+      <div>
+        <div style="font-weight:700;">${d.date} ${d.number ? '【'+d.number+'】' : ''} ${d.cartype || ''}</div>
+        <div style="font-size:12px;color:var(--text-sub);">見積:¥${(d.amount||0).toLocaleString()}${d.orderAmount ? ' → 受注:¥'+d.orderAmount.toLocaleString() : ''}</div>
+      </div>
+      <span style="padding:3px 8px;border-radius:10px;font-size:11px;font-weight:700;${badgeStyle}">${badge}</span>
+    </div>`;
+  }).join('');
+}
+
+async function renderFrontRanking() {
+  const list = document.getElementById('front-rank-list');
+  if (!list) return;
+  const activeCode = userData.activeGroupCode || userData.groupCode;
+  const now = new Date();
+  const month = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+
+  let data = [];
+  if (activeCode && GAS_URL && GAS_URL !== 'YOUR_GAS_WEB_APP_URL_HERE') {
+    const res = await fetchFromGAS('getEstimateRanking', { groupCode: activeCode, month });
+    if (res && res.data) data = res.data;
+  }
+
+  // 自分のローカルデータをマージ
+  const myData = getFrontMonthData();
+  const myStats = calcFrontStats(myData);
+  const myCount = myStats.count;
+  const myContracted = myStats.contracted;
+  const myAmount = myStats.orderTotal;
+  const myRate = myStats.rate;
+
+  const myEntry = data.find(d => d.name === userData.name);
+  if (!myEntry && userData.name) {
+    data.push({ name: userData.name, store: userData.store, count: myCount, contracted: myContracted, amount: myAmount, rate: myRate, isMe: true });
+  } else if (myEntry) {
+    myEntry.isMe = true;
+  }
+
+  // ソート
+  data.sort((a, b) => {
+    if (frontRankType === 'rate') return b.rate - a.rate;
+    if (frontRankType === 'count') return b.contracted - a.contracted;
+    return b.amount - a.amount;
+  });
+
+  if (!data.length) {
+    list.innerHTML = '<li class="rank-item"><span style="color:var(--text-sub);font-size:13px;padding:16px;">データがありません</span></li>';
+    return;
+  }
+
+  list.innerHTML = data.map((d, i) => {
+    const numCls = rankNumClass(i+1);
+    const label = frontRankType === 'rate' ? `${d.rate}%` : frontRankType === 'count' ? `${d.contracted}件` : `${formatYen(d.amount)}万`;
+    return `<li class="rank-item${d.isMe ? ' is-me' : ''}">
+      <span class="rank-num ${numCls}">${rankNumEmoji(i+1)}</span>
+      <div class="rank-avatar"><div style="width:100%;height:100%;background:${nameToColor(d.name||'?')};display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:16px;border-radius:50%;">${(d.name||'?').charAt(0)}</div></div>
+      <div class="rank-info">
+        <div class="rank-name">${d.name}${d.isMe ? ' <span style="color:var(--green);font-size:11px;">▶ あなた</span>' : ''}</div>
+        <div class="rank-sub">${d.store || ''} | 見積${d.count}件 受注${d.contracted}件</div>
+      </div>
+      <div class="rank-score">
+        <div class="amount">${label}</div>
+        <div class="unit">${frontRankType === 'rate' ? '成約率' : frontRankType === 'count' ? '成約' : '見積合計'}</div>
+      </div>
+    </li>`;
+  }).join('');
+}
+
+function setFrontRankType(type) {
+  frontRankType = type;
+  ['rate','count','amount'].forEach(t => {
+    const btn = document.getElementById('frt-' + t + '-btn');
+    if (!btn) return;
+    btn.style.background = t === type ? 'var(--green)' : 'var(--card)';
+    btn.style.color = t === type ? '#111' : 'var(--text-sub)';
+    btn.style.border = t === type ? 'none' : '1px solid var(--border)';
+  });
+  renderFrontRanking();
+}
+
+// ============================================================
+// 管理者メニュー
+// ============================================================
+function toggleAdminMenu() {
+  const menu = document.getElementById('admin-menu');
+  const arrow = document.getElementById('admin-arrow');
+  const open = menu.style.display === 'none';
+  menu.style.display = open ? 'block' : 'none';
+  arrow.textContent = open ? '▲' : '▼';
+  if (open) loadAdminMenu();
+}
+
+function loadAdminMenu() {
+  document.getElementById('admin-store-count').value = adminGoals.storeCount || '';
+  document.getElementById('admin-store-amount').value = adminGoals.storeAmount || '';
+  var bc = document.getElementById('admin-cat-bankin');
+  var sc = document.getElementById('admin-cat-seibi');
+  var fc = document.getElementById('admin-cat-front');
+  if (bc) bc.value = adminGoals.catBankin || '';
+  if (sc) sc.value = adminGoals.catSeibi || '';
+  if (fc) fc.value = adminGoals.catFront || '';
+  renderMemberGoalRows();
+}
+
+function renderMemberGoalRows() {
+  const el = document.getElementById('admin-member-goals');
+  if (!el) return;
+  const members = adminGoals.members || [];
+  if (!members.length) {
+    el.innerHTML = '<div style="font-size:12px;color:var(--text-sub);padding:8px 0;">まだメンバーがいません</div>';
+    return;
+  }
+  el.innerHTML = members.map((m, i) => `
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;">
+      <input type="text" class="form-input" value="${m.name}" onchange="adminGoals.members[${i}].name=this.value"
+        placeholder="名前" style="flex:2;font-size:13px;padding:10px;">
+      <input type="number" class="form-input" value="${m.count||''}" onchange="adminGoals.members[${i}].count=Number(this.value)"
+        placeholder="台数" style="flex:1;font-size:13px;padding:10px;" min="0">
+      <input type="number" class="form-input" value="${m.amount||''}" onchange="adminGoals.members[${i}].amount=Number(this.value)"
+        placeholder="金額(万)" style="flex:1;font-size:13px;padding:10px;" min="0">
+      <button onclick="removeMemberGoal(${i})" style="color:#e74c3c;font-size:18px;padding:4px 8px;flex-shrink:0;">✕</button>
+    </div>`).join('') +
+    '<div style="display:flex;gap:4px;font-size:10px;color:var(--text-sub);padding-bottom:4px;"><span style="flex:2;padding-left:4px;">名前</span><span style="flex:1;padding-left:4px;">台数目標</span><span style="flex:1;padding-left:4px;">金額目標(万)</span><span style="width:32px;"></span></div>';
+}
+
+function addMemberGoalRow() {
+  if (!adminGoals.members) adminGoals.members = [];
+  adminGoals.members.push({ name: '', count: 0, amount: 0 });
+  renderMemberGoalRows();
+}
+
+function removeMemberGoal(idx) {
+  adminGoals.members.splice(idx, 1);
+  saveLocal();
+  renderMemberGoalRows();
+}
+
+function saveAdminGoals() {
+  adminGoals.storeCount = parseInt(document.getElementById('admin-store-count').value) || 0;
+  adminGoals.storeAmount = parseInt(document.getElementById('admin-store-amount').value) || 0;
+  var bc = document.getElementById('admin-cat-bankin');
+  var sc = document.getElementById('admin-cat-seibi');
+  var fc = document.getElementById('admin-cat-front');
+  if (bc) adminGoals.catBankin = parseInt(bc.value) || 0;
+  if (sc) adminGoals.catSeibi = parseInt(sc.value) || 0;
+  if (fc) adminGoals.catFront = parseInt(fc.value) || 0;
+  saveLocal();
+  showToast('💾 目標を保存しました！');
+}
+
+// ============================================================
+// FRONT GOAL
+// ============================================================
+function renderMonthlyList() {
+  const el = document.getElementById('monthly-list');
+  if (!el) return;
+
+  // frontDataを月ごとにグループ化
+  const byMonth = {};
+  frontData.forEach(d => {
+    const dateStr = d.date || d.timestamp || '';
+    const m = dateStr.slice(0, 7); // "2026-06"
+    if (!m) return;
+    if (!byMonth[m]) byMonth[m] = [];
+    byMonth[m].push(d);
+  });
+
+  const months = Object.keys(byMonth).sort().reverse();
+
+  if (!months.length) {
+    el.innerHTML = '<div style="text-align:center;padding:30px;color:var(--text-sub);font-size:13px;">まだデータがありません</div>';
+    return;
+  }
+
+  el.innerHTML = months.map(m => {
+    const data = byMonth[m];
+    const s = calcFrontStats(data);
+    const label = m.replace('-', '年') + '月';
+    return `<div style="margin-bottom:12px;border:1px solid var(--border);border-radius:12px;overflow:hidden;background:var(--card);">
+      <div style="padding:12px 14px;background:var(--green-light);display:flex;justify-content:space-between;align-items:center;cursor:pointer;"
+           onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none'">
+        <span style="font-weight:700;font-size:14px;color:var(--green);">📅 ${label}</span>
+        <span style="font-size:12px;color:var(--text-sub);">${s.count}件 ▾</span>
+      </div>
+      <div style="padding:12px 14px;">
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px;">
+          <div style="text-align:center;">
+            <div style="font-size:10px;color:var(--text-sub);">見積り件数</div>
+            <div style="font-size:20px;font-weight:700;">${s.count}<span style="font-size:11px;">件</span></div>
+          </div>
+          <div style="text-align:center;">
+            <div style="font-size:10px;color:var(--text-sub);">受注率</div>
+            <div style="font-size:20px;font-weight:700;color:var(--green);">${s.rate}<span style="font-size:11px;">%</span></div>
+          </div>
+          <div style="text-align:center;">
+            <div style="font-size:10px;color:var(--text-sub);">受注件数</div>
+            <div style="font-size:20px;font-weight:700;">${s.contracted}<span style="font-size:11px;">件</span></div>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;border-top:1px solid var(--border);padding-top:10px;">
+          <div style="text-align:center;">
+            <div style="font-size:10px;color:var(--text-sub);">⚡即</div>
+            <div style="font-size:16px;font-weight:700;">${s.immediate}</div>
+          </div>
+          <div style="text-align:center;">
+            <div style="font-size:10px;color:var(--text-sub);">📅後日</div>
+            <div style="font-size:16px;font-weight:700;">${s.later}</div>
+          </div>
+          <div style="text-align:center;">
+            <div style="font-size:10px;color:var(--text-sub);">見積り金額</div>
+            <div style="font-size:14px;font-weight:700;">${(s.estimateTotal/10000).toFixed(1)}<span style="font-size:10px;">万</span></div>
+          </div>
+        </div>
+        <div style="margin-top:10px;border-top:1px solid var(--border);padding-top:10px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <span style="font-size:12px;color:var(--text-sub);">受注金額合計</span>
+            <span style="font-size:16px;font-weight:700;color:var(--green);">¥${s.orderTotal.toLocaleString()}</span>
+          </div>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function renderStoreGoalProgress() {
+  const el = document.getElementById('store-goal-progress');
+  if (!el) return;
+  if (!adminGoals.storeCount && !adminGoals.storeAmount) {
+    el.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text-sub);font-size:13px;">設定タブ → 管理者メニューで目標を設定してください</div>';
+    return;
+  }
+  const activeCode = userData.activeGroupCode || userData.groupCode;
+  const now = new Date();
+  const month = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0');
+  let teamData = [];
+  if (activeCode && GAS_URL && GAS_URL !== 'YOUR_GAS_WEB_APP_URL_HERE') {
+    try {
+      const res = await fetchFromGAS('getEstimateRanking', { groupCode: activeCode, month: month });
+      if (res && res.data) teamData = res.data;
+    } catch(e) {}
+  }
+  const myStats = calcFrontStats(getFrontMonthData());
+  const myEntry = teamData.find(function(d){ return d.name === userData.name; });
+  if (!myEntry && userData.name) teamData.push({ name: userData.name, contracted: myStats.contracted, orderAmount: myStats.orderTotal });
+  else if (myEntry) { myEntry.contracted = myStats.contracted; myEntry.orderAmount = myStats.orderTotal; }
+  const teamCount = teamData.reduce(function(s,d){ return s+(d.contracted||0); }, 0);
+  const teamAmount = teamData.reduce(function(s,d){ return s+(d.orderAmount||0); }, 0) / 10000;
+  var html = '';
+  if (adminGoals.storeCount) {
+    var pct = Math.min(Math.round(teamCount / adminGoals.storeCount * 100), 100);
+    var col = pct >= 100 ? '#FFD700' : 'var(--green)';
+    html += '<div style="margin-bottom:20px;">' +
+      '<div style="display:flex;justify-content:space-between;margin-bottom:8px;">' +
+        '<span style="font-size:15px;font-weight:700;">🚗 受注台数</span>' +
+        '<span style="font-size:14px;color:var(--text-sub);font-weight:700;">' + teamCount + ' / ' + adminGoals.storeCount + '台</span>' +
+      '</div>' +
+      '<div style="height:18px;background:var(--border);border-radius:9px;overflow:hidden;margin-bottom:6px;">' +
+        '<div style="height:100%;width:' + pct + '%;background:' + col + ';border-radius:9px;transition:width .6s;"></div>' +
+      '</div>' +
+      '<div style="text-align:right;font-size:13px;font-weight:700;color:' + col + ';">' + pct + '% ' + (pct>=100?'🎉 達成！':'') + '</div>' +
+    '</div>';
+  }
+  if (adminGoals.storeAmount) {
+    var pct2 = Math.min(Math.round(teamAmount / adminGoals.storeAmount * 100), 100);
+    var col2 = pct2 >= 100 ? '#FFD700' : 'var(--green)';
+    html += '<div>' +
+      '<div style="display:flex;justify-content:space-between;margin-bottom:8px;">' +
+        '<span style="font-size:15px;font-weight:700;">💰 受注金額</span>' +
+        '<span style="font-size:14px;color:var(--text-sub);font-weight:700;">' + teamAmount.toFixed(1) + ' / ' + adminGoals.storeAmount + '万円</span>' +
+      '</div>' +
+      '<div style="height:18px;background:var(--border);border-radius:9px;overflow:hidden;margin-bottom:6px;">' +
+        '<div style="height:100%;width:' + pct2 + '%;background:' + col2 + ';border-radius:9px;transition:width .6s;"></div>' +
+      '</div>' +
+      '<div style="text-align:right;font-size:13px;font-weight:700;color:' + col2 + ';">' + pct2 + '% ' + (pct2>=100?'🎉 達成！':'') + '</div>' +
+    '</div>';
+  }
+  el.innerHTML = html;
+}
+
+async function renderMemberGoalProgress() {
+  const el = document.getElementById('member-goal-progress');
+  if (!el) return;
+  const members = adminGoals.members || [];
+  if (!members.length) {
+    el.innerHTML = '<div style="text-align:center;padding:16px;color:var(--text-sub);font-size:13px;">管理者メニューでメンバーを追加してください</div>';
+    return;
+  }
+  const activeCode = userData.activeGroupCode || userData.groupCode;
+  const now = new Date();
+  const month = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0');
+  let teamData = [];
+  if (activeCode && GAS_URL && GAS_URL !== 'YOUR_GAS_WEB_APP_URL_HERE') {
+    try {
+      const res = await fetchFromGAS('getEstimateRanking', { groupCode: activeCode, month: month });
+      if (res && res.data) teamData = res.data;
+    } catch(e) {}
+  }
+  const myStats = calcFrontStats(getFrontMonthData());
+  const myEntry = teamData.find(function(d){ return d.name === userData.name; });
+  if (!myEntry && userData.name) teamData.push({ name: userData.name, contracted: myStats.contracted, orderAmount: myStats.orderTotal });
+  el.innerHTML = members.map(function(m) {
+    const actual = teamData.find(function(d){ return d.name === m.name; }) || { contracted: 0, orderAmount: 0 };
+    const cp = m.count ? Math.min(Math.round(actual.contracted / m.count * 100), 100) : 0;
+    const ap = m.amount ? Math.min(Math.round((actual.orderAmount/10000) / m.amount * 100), 100) : 0;
+    const isMe = m.name === userData.name;
+    var row = '<div style="margin-bottom:14px;padding:12px;background:' + (isMe?'var(--green-light)':'var(--card)') + ';border-radius:10px;border:1px solid ' + (isMe?'var(--green)':'var(--border)') + ';">' +
+      '<div style="font-size:14px;font-weight:700;color:' + (isMe?'var(--green)':'var(--text)') + ';margin-bottom:8px;">' + m.name + (isMe?' (あなた)':'') + '</div>';
+    if (m.count) {
+      row += '<div style="margin-bottom:6px;">' +
+        '<div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px;">' +
+          '<span style="color:var(--text-sub);">🚗 台数</span><span style="font-weight:700;">' + actual.contracted + ' / ' + m.count + '台</span>' +
+        '</div>' +
+        '<div style="height:9px;background:var(--border);border-radius:5px;overflow:hidden;">' +
+          '<div style="height:100%;width:' + cp + '%;background:' + (cp>=100?'#FFD700':'var(--green)') + ';border-radius:5px;transition:width .6s;"></div>' +
+        '</div></div>';
+    }
+    if (m.amount) {
+      row += '<div>' +
+        '<div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px;">' +
+          '<span style="color:var(--text-sub);">💰 金額</span><span style="font-weight:700;">' + (actual.orderAmount/10000).toFixed(1) + ' / ' + m.amount + '万円</span>' +
+        '</div>' +
+        '<div style="height:9px;background:var(--border);border-radius:5px;overflow:hidden;">' +
+          '<div style="height:100%;width:' + ap + '%;background:' + (ap>=100?'#FFD700':'var(--green)') + ';border-radius:5px;transition:width .6s;"></div>' +
+        '</div></div>';
+    }
+    return row + '</div>';
+  }).join('');
+}
+
+function initGoalTab() {
+  renderStoreGoalProgress();
+  renderMemberGoalProgress();
+}
+
+function setGoalType(type) {
+  frontGoal.type = type;
+  ['count','amount','both'].forEach(function(t) {
+    var btn = document.getElementById('gtype-' + t);
+    if (!btn) return;
+    var active = t === type;
+    btn.style.borderColor = active ? 'var(--green)' : 'var(--border)';
+    btn.style.background = active ? 'var(--green-light)' : 'var(--card)';
+    btn.style.color = active ? 'var(--green)' : 'var(--text-sub)';
+  });
+  var ci = document.getElementById('goal-count-input');
+  var ai = document.getElementById('goal-amount-input');
+  if (ci) ci.style.display = (type === 'count' || type === 'both') ? '' : 'none';
+  if (ai) ai.style.display = (type === 'amount' || type === 'both') ? '' : 'none';
+}
+
+function saveFrontGoal() {
+  var gc = document.getElementById('front-goal-count');
+  var ga = document.getElementById('front-goal-amount');
+  if (gc) frontGoal.count = parseInt(gc.value) || 0;
+  if (ga) frontGoal.amount = parseInt(ga.value) || 0;
+  saveLocal();
+  showToast('目標を保存しました！');
+}
+
 </script>
 </body>
 </html>
