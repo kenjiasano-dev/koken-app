@@ -1395,7 +1395,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = '20260611c';
+const APP_VERSION = '20260611d';
 (function() {
   var stored = localStorage.getItem('appVersion');
   if (stored !== APP_VERSION) {
@@ -2623,7 +2623,7 @@ function renderInputCalendar() {
       infoHtml = '<span class="mycal-amt" style="color:var(--green);font-size:9px;">' + info.count + '台</span>' +
                  '<span style="font-size:8px;color:var(--text-sub);">' + formatYen(info.total) + '万</span>';
     }
-    gridHtml += '<div class="'+cls+'" onclick="openDayModal(''+ds+'','+d+')">' +
+    gridHtml += '<div class="'+cls+'" onclick="openDayModal(\''+ds+'\','+d+')">' +
       '<span class="mycal-d">'+d+'</span>' + infoHtml + '</div>';
   }
   el.innerHTML =
@@ -3744,7 +3744,7 @@ function renderFrontCalendar() {
         '<span style="font-size:8px;color:'+(rate>=50?'var(--green)':'#e74c3c')+';">'+rate+'%</span>';
     }
     var fds = ym + '-' + String(d).padStart(2,'0');
-    gridHtml += '<div class="'+cls+'" onclick="openFrontDayModal('"+fds+"',"+d+")">' +
+    gridHtml += '<div class="'+cls+'" onclick="openFrontDayModal(\'"+fds+"\',"+d+")">' +
       '<span class="mycal-d">'+d+'</span>' +
       infoHtml +
       '</div>';
