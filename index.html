@@ -526,55 +526,70 @@ input, select, textarea { font-family: inherit; }
 
     <!-- ===== PAGE: INPUT ===== -->
     <div class="page active" id="page-input">
-      <div class="input-form">
-        <div class="card" style="margin:0;margin-bottom:12px;">
-          <div style="display:flex;align-items:center;gap:12px;">
-            <span style="font-size:32px;">🔧</span>
-            <div>
-              <div style="font-weight:700;font-size:15px;">工賃を入力</div>
-              <div style="font-size:12px;color:var(--text-sub);" id="input-today-date"></div>
+      <!-- サブタブ -->
+      <div class="sub-tabs" id="input-sub-tabs">
+        <button class="sub-tab active" onclick="switchInputTab('input')">✏️ 入力</button>
+        <button class="sub-tab" onclick="switchInputTab('history')">📋 履歴</button>
+        <button class="sub-tab" onclick="switchInputTab('calendar')">📅 カレンダー</button>
+      </div>
+      <!-- 入力タブ -->
+      <div id="itab-input">
+        <div class="input-form">
+          <div class="card" style="margin:0;margin-bottom:12px;">
+            <div style="display:flex;align-items:center;gap:12px;">
+              <span style="font-size:32px;">🔧</span>
+              <div>
+                <div style="font-weight:700;font-size:15px;">工賃を入力</div>
+                <div style="font-size:12px;color:var(--text-sub);" id="input-today-date"></div>
+              </div>
             </div>
           </div>
-        </div>
-        <div class="form-group">
-          <label class="form-label">🏷️ カテゴリ</label>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;" id="category-btns">
-            <button type="button" class="role-btn" data-cat="鈑金塗装" onclick="selectCategory('鈑金塗装')" style="padding:12px 8px;font-size:14px;">🔨 鈑金塗装</button>
-            <button type="button" class="role-btn" data-cat="整備" onclick="selectCategory('整備')" style="padding:12px 8px;font-size:14px;">🔧 整備</button>
+          <div class="form-group">
+            <label class="form-label">🏷️ カテゴリ</label>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;" id="category-btns">
+              <button type="button" class="role-btn" data-cat="鈑金塗装" onclick="selectCategory('鈑金塗装')" style="padding:12px 8px;font-size:14px;">🔨 鈑金塗装</button>
+              <button type="button" class="role-btn" data-cat="整備" onclick="selectCategory('整備')" style="padding:12px 8px;font-size:14px;">🔧 整備</button>
+            </div>
+            <input type="hidden" id="input-category">
           </div>
-          <input type="hidden" id="input-category">
-        </div>
-        <div class="form-group">
-          <label class="form-label">ナンバー4桁（任意）</label>
-          <input type="text" class="form-input" id="input-number" maxlength="4" placeholder="0000" inputmode="numeric" pattern="[0-9]*" style="letter-spacing:6px;font-size:22px;font-weight:700;text-align:center;">
-        </div>
-        <div class="form-group">
-          <label class="form-label">🚗 車種（任意）</label>
-          <input type="text" class="form-input" id="input-cartype" placeholder="例: プリウス" list="cartype-list" autocomplete="off">
-          <datalist id="cartype-list">
-            <option value="プリウス"><option value="カローラ"><option value="ノア"><option value="ヴォクシー">
-            <option value="アルファード"><option value="セレナ"><option value="フリード"><option value="N-BOX">
-            <option value="ヤリス"><option value="フィット"><option value="ルーミー"><option value="ライズ">
-            <option value="ハリアー"><option value="RAV4"><option value="CX-5"><option value="ステップワゴン">
-          </datalist>
-        </div>
-        <div class="form-group">
-          <label class="form-label">工賃金額</label>
-          <div class="amount-input-wrap">
-            <span class="yen">¥</span>
-            <input type="number" class="form-input" id="input-amount" placeholder="000000" inputmode="numeric" min="0" step="1000">
+          <div class="form-group">
+            <label class="form-label">ナンバー4桁（任意）</label>
+            <input type="text" class="form-input" id="input-number" maxlength="4" placeholder="0000" inputmode="numeric" pattern="[0-9]*" style="letter-spacing:6px;font-size:22px;font-weight:700;text-align:center;">
           </div>
-
+          <div class="form-group">
+            <label class="form-label">🚗 車種（任意）</label>
+            <input type="text" class="form-input" id="input-cartype" placeholder="例: プリウス" list="cartype-list" autocomplete="off">
+            <datalist id="cartype-list">
+              <option value="プリウス"><option value="カローラ"><option value="ノア"><option value="ヴォクシー">
+              <option value="アルファード"><option value="セレナ"><option value="フリード"><option value="N-BOX">
+              <option value="ヤリス"><option value="フィット"><option value="ルーミー"><option value="ライズ">
+              <option value="ハリアー"><option value="RAV4"><option value="CX-5"><option value="ステップワゴン">
+            </datalist>
+          </div>
+          <div class="form-group">
+            <label class="form-label">工賃金額</label>
+            <div class="amount-input-wrap">
+              <span class="yen">¥</span>
+              <input type="number" class="form-input" id="input-amount" placeholder="000000" inputmode="numeric" min="0" step="1000">
+            </div>
+          </div>
+          <div class="form-group" id="date-group">
+            <label class="form-label">日付</label>
+            <input type="date" class="form-input" id="input-date">
+          </div>
+          <button class="submit-btn" onclick="submitWage()">✅ 登録する</button>
         </div>
-        <div class="form-group" id="date-group">
-          <label class="form-label">日付</label>
-          <input type="date" class="form-input" id="input-date">
-        </div>
-        <button class="submit-btn" onclick="submitWage()">✅ 登録する</button>
-        <div style="margin-top:16px;">
+      </div>
+      <!-- 履歴タブ -->
+      <div id="itab-history" style="display:none;">
+        <div style="padding:12px;">
           <div class="section-header" style="padding:0 0 8px;">📅 今月の入力履歴</div>
           <div id="input-history"></div>
         </div>
+      </div>
+      <!-- カレンダータブ -->
+      <div id="itab-calendar" style="display:none;">
+        <div id="input-calendar-content"></div>
       </div>
     </div>
 
@@ -1395,7 +1410,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = '20260611d';
+const APP_VERSION = '20260611e';
 (function() {
   var stored = localStorage.getItem('appVersion');
   if (stored !== APP_VERSION) {
