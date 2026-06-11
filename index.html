@@ -614,6 +614,10 @@ input, select, textarea { font-family: inherit; }
           <div class="my-qs-val" id="qs-days">0日</div>
           <div class="my-qs-lbl">稼働日数</div>
         </div>
+        <div class="my-qs-item">
+          <div class="my-qs-val" id="qs-count">0台</div>
+          <div class="my-qs-lbl">修理台数</div>
+        </div>
       </div>
 
       <!-- Goal ring -->
@@ -1317,17 +1321,58 @@ input, select, textarea { font-family: inherit; }
       <button class="modal-close" onclick="closeDayModal()">✕</button>
     </div>
     <div id="day-modal-body"></div>
-    <div style="margin-top:16px;">
-      <button onclick="toggleFrontWageEdit()" style="width:100%;padding:10px;background:var(--card);color:var(--text-sub);border:1px solid var(--border);border-radius:10px;font-size:13px;cursor:pointer;" id="front-wage-toggle">🔧 工賃を追加・編集</button>
-      <div id="front-wage-edit" style="display:none;margin-top:8px;">
-        <div class="form-group">
+    <div style="margin-top:12px;">
+      <button onclick="toggleDayAddForm()" style="width:100%;padding:10px;background:var(--green-light);color:var(--green);border:1px solid var(--green);border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;" id="day-add-toggle">＋ 工賃を追加</button>
+      <div id="day-add-form" style="display:none;margin-top:10px;padding:12px;background:var(--card);border-radius:10px;border:1px solid var(--border);">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;" id="day-edit-cat-btns">
+          <button type="button" class="role-btn" data-cat="鈑金塗装" onclick="selectDayCategory('鈑金塗装')" style="padding:10px 6px;font-size:13px;">🔨 鈑金塗装</button>
+          <button type="button" class="role-btn" data-cat="整備" onclick="selectDayCategory('整備')" style="padding:10px 6px;font-size:13px;">🔧 整備</button>
+        </div>
+        <input type="hidden" id="day-edit-category">
+        <input type="text" class="form-input" id="day-edit-cartype" placeholder="🚗 車種（任意）" list="cartype-list" style="margin-bottom:8px;" autocomplete="off">
+        <input type="text" class="form-input" id="day-edit-number" placeholder="ナンバー4桁（任意）" maxlength="4" style="margin-bottom:8px;letter-spacing:6px;font-size:18px;font-weight:700;text-align:center;">
+        <div class="amount-input-wrap" style="margin-bottom:10px;">
+          <span class="yen">¥</span>
+          <input type="number" class="form-input" id="day-edit-amount" placeholder="工賃金額" inputmode="numeric">
+        </div>
+        <input type="hidden" id="day-edit-idx" value="-1">
+        <button class="submit-btn" onclick="saveDayEntry()" style="margin-top:0;">💾 保存</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: front day detail -->
+<div class="modal-overlay" id="front-day-modal-overlay" onclick="closeFrontDayModal(event)">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title" id="front-day-modal-title"></span>
+      <button class="modal-close" onclick="closeFrontDayModal()">✕</button>
+    </div>
+    <div id="front-day-modal-body"></div>
+    <div style="margin-top:12px;">
+      <button onclick="toggleFrontDayAddForm()" style="width:100%;padding:10px;background:var(--green-light);color:var(--green);border:1px solid var(--green);border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;" id="front-day-add-toggle">＋ 見積りを追加</button>
+      <div id="front-day-add-form" style="display:none;margin-top:10px;padding:12px;background:var(--card);border-radius:10px;border:1px solid var(--border);">
+        <input type="text" class="form-input" id="fday-cartype" placeholder="🚗 車種（任意）" list="cartype-list" style="margin-bottom:8px;" autocomplete="off">
+        <input type="text" class="form-input" id="fday-number" placeholder="ナンバー4桁（任意）" maxlength="4" style="margin-bottom:8px;letter-spacing:6px;font-size:18px;font-weight:700;text-align:center;">
+        <div class="amount-input-wrap" style="margin-bottom:8px;">
+          <span class="yen">¥</span>
+          <input type="number" class="form-input" id="fday-amount" placeholder="見積り金額" inputmode="numeric">
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:10px;">
+          <button class="contract-btn" id="fday-btn-immediate" onclick="setFdayContract('immediate')" style="padding:10px 4px;font-size:12px;">⚡ 即成約</button>
+          <button class="contract-btn" id="fday-btn-later" onclick="setFdayContract('later')" style="padding:10px 4px;font-size:12px;">📅 後日</button>
+          <button class="contract-btn" id="fday-btn-none" onclick="setFdayContract('none')" style="padding:10px 4px;font-size:12px;">❌ 未成約</button>
+        </div>
+        <div id="fday-order-group" style="display:none;margin-bottom:8px;">
           <div class="amount-input-wrap">
             <span class="yen">¥</span>
-            <input type="number" class="form-input" id="day-edit-amount" placeholder="000000" inputmode="numeric">
+            <input type="number" class="form-input" id="fday-order-amount" placeholder="受注金額" inputmode="numeric">
           </div>
         </div>
-        <input type="text" class="form-input" id="day-edit-number" placeholder="ナンバー4桁（任意）" maxlength="4" style="margin-bottom:12px;letter-spacing:6px;text-align:center;">
-        <button class="submit-btn" onclick="saveDayEntry()">💾 保存</button>
+        <input type="hidden" id="fday-contract-state" value="none">
+        <input type="hidden" id="fday-edit-idx" value="-1">
+        <button class="submit-btn" onclick="saveFrontDayEntry()" style="margin-top:0;">💾 保存</button>
       </div>
     </div>
   </div>
@@ -1355,7 +1400,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = '20260611';
+const APP_VERSION = '20260611b';
 (function() {
   var stored = localStorage.getItem('appVersion');
   if (stored !== APP_VERSION) {
@@ -2371,6 +2416,8 @@ function renderGoalRing() {
     document.getElementById('qs-monthly').textContent = formatYen(total) + '万';
     document.getElementById('qs-rate').textContent = Math.min(100, Math.round(pct * 100)) + '%';
     document.getElementById('qs-days').textContent = days + '日';
+    var countEl = document.getElementById('qs-count');
+    if (countEl) countEl.textContent = wageData.filter(function(w){ return w.date && w.date.startsWith(ym); }).length + '台';
   }
 
   // rank badge
@@ -2446,23 +2493,80 @@ function openDayModal(dateStr, day) {
   currentDayDate = dateStr;
   var _dp = dateStr.split('-');
   document.getElementById('day-modal-title').textContent = `${_dp[0]}年${parseInt(_dp[1])}月${day}日`;
-  const entries = wageData.filter(w => w.date === dateStr);
+  renderDayModalBody();
+  // フォームをリセット
+  document.getElementById('day-add-form').style.display = 'none';
+  document.getElementById('day-edit-idx').value = '-1';
+  document.getElementById('day-edit-amount').value = '';
+  document.getElementById('day-edit-number').value = '';
+  document.getElementById('day-edit-cartype').value = '';
+  document.getElementById('day-edit-category').value = '';
+  document.getElementById('day-modal-overlay').classList.add('show');
+}
+
+function renderDayModalBody() {
+  const entries = wageData.filter(w => w.date === currentDayDate);
   const body = document.getElementById('day-modal-body');
   if (entries.length) {
-    body.innerHTML = entries.map((e, i) => `
-      <div style="display:flex;align-items:center;padding:10px 0;border-bottom:1px solid var(--border);gap:8px;">
-        <span style="flex:1;font-weight:700;">¥${e.amount.toLocaleString()}</span>
-        ${e.number ? `<span class="chip chip-green">${e.number}</span>` : ''}
-        <button onclick="deleteEntry(${i})" style="color:#e74c3c;font-size:13px;padding:4px 8px;background:#fff0f0;border-radius:6px;">削除</button>
-      </div>`).join('');
-    document.getElementById('day-edit-amount').value = entries[0].amount;
-    document.getElementById('day-edit-number').value = entries[0].number || '';
+    body.innerHTML = entries.map((e, i) => {
+      const globalIdx = wageData.findIndex((w, wi) => w.date === currentDayDate && wageData.filter(x => x.date === currentDayDate).indexOf(w) === i);
+      return `<div style="display:flex;align-items:center;padding:10px 0;border-bottom:1px solid var(--border);gap:8px;">
+        <div style="flex:1;">
+          ${e.cartype ? `<div style="font-size:12px;color:var(--text-sub);">🚗 ${e.cartype}</div>` : ''}
+          <div style="font-weight:700;">¥${e.amount.toLocaleString()}</div>
+          <div style="display:flex;gap:4px;margin-top:2px;">
+            ${e.number ? `<span class="chip chip-green">${e.number}</span>` : ''}
+            ${e.category ? `<span class="chip" style="background:var(--card);border:1px solid var(--border);color:var(--text-sub);border-radius:10px;padding:1px 6px;font-size:10px;">${e.category}</span>` : ''}
+          </div>
+        </div>
+        <button onclick="editDayEntry(${i})" style="color:var(--green);font-size:12px;padding:5px 10px;background:var(--green-light);border-radius:6px;white-space:nowrap;">編集</button>
+        <button onclick="deleteDayEntry(${i})" style="color:#e74c3c;font-size:12px;padding:5px 10px;background:#fff0f0;border-radius:6px;white-space:nowrap;">削除</button>
+      </div>`;
+    }).join('');
   } else {
     body.innerHTML = '<div style="color:var(--text-sub);font-size:13px;padding:8px 0;">入力なし</div>';
+  }
+}
+
+function editDayEntry(idx) {
+  const entries = wageData.filter(w => w.date === currentDayDate);
+  const e = entries[idx];
+  if (!e) return;
+  document.getElementById('day-edit-idx').value = idx;
+  document.getElementById('day-edit-amount').value = e.amount;
+  document.getElementById('day-edit-number').value = e.number || '';
+  document.getElementById('day-edit-cartype').value = e.cartype || '';
+  document.getElementById('day-edit-category').value = e.category || '';
+  // カテゴリボタン
+  document.querySelectorAll('#day-edit-cat-btns .role-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.cat === (e.category || ''));
+  });
+  document.getElementById('day-add-form').style.display = '';
+  document.getElementById('day-add-toggle').textContent = '✏️ 編集中';
+}
+
+function selectDayCategory(cat) {
+  document.getElementById('day-edit-category').value = cat;
+  document.querySelectorAll('#day-edit-cat-btns .role-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.cat === cat);
+  });
+}
+
+function toggleDayAddForm() {
+  const form = document.getElementById('day-add-form');
+  const isHidden = form.style.display === 'none';
+  form.style.display = isHidden ? '' : 'none';
+  if (isHidden) {
+    document.getElementById('day-edit-idx').value = '-1';
     document.getElementById('day-edit-amount').value = '';
     document.getElementById('day-edit-number').value = '';
+    document.getElementById('day-edit-cartype').value = '';
+    document.getElementById('day-edit-category').value = '';
+    document.querySelectorAll('#day-edit-cat-btns .role-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('day-add-toggle').textContent = '✕ キャンセル';
+  } else {
+    document.getElementById('day-add-toggle').textContent = '＋ 工賃を追加';
   }
-  document.getElementById('day-modal-overlay').classList.add('show');
 }
 
 function closeDayModal(e) {
@@ -2470,33 +2574,134 @@ function closeDayModal(e) {
   document.getElementById('day-modal-overlay').classList.remove('show');
 }
 
+// ============================================================
+// 工賃入力 カレンダータブ
+// ============================================================
+var inputCalYear, inputCalMonth;
+function initInputCalendar() {
+  var now = new Date();
+  inputCalYear = now.getFullYear();
+  inputCalMonth = now.getMonth() + 1;
+}
+function changeInputCalMonth(delta) {
+  inputCalMonth += delta;
+  if (inputCalMonth > 12) { inputCalMonth = 1; inputCalYear++; }
+  if (inputCalMonth < 1) { inputCalMonth = 12; inputCalYear--; }
+  renderInputCalendar();
+}
+function renderInputCalendar() {
+  if (!inputCalYear) initInputCalendar();
+  var el = document.getElementById('input-calendar-content');
+  if (!el) return;
+  var now = new Date();
+  var ym = inputCalYear + '-' + String(inputCalMonth).padStart(2,'0');
+  var first = new Date(inputCalYear, inputCalMonth - 1, 1).getDay();
+  var totalDays = new Date(inputCalYear, inputCalMonth, 0).getDate();
+  var dows = ['日','月','火','水','木','金','土'];
+  // 日別集計
+  var dayMap = {};
+  wageData.forEach(function(w) {
+    if (!w.date || !w.date.startsWith(ym)) return;
+    var day = parseInt(w.date.slice(8,10), 10);
+    if (!dayMap[day]) dayMap[day] = { count: 0, total: 0 };
+    dayMap[day].count++;
+    dayMap[day].total += (w.amount || 0);
+  });
+  // 月合計
+  var monthTotal = 0, monthCount = 0;
+  Object.values(dayMap).forEach(function(v){ monthTotal += v.total; monthCount += v.count; });
+  // グリッド生成
+  var gridHtml = dows.map(function(d){ return '<div class="mycal-dow">'+d+'</div>'; }).join('');
+  for (var i = 0; i < first; i++) gridHtml += '<div class="mycal-cell empty"></div>';
+  for (var d = 1; d <= totalDays; d++) {
+    var info = dayMap[d];
+    var dow = new Date(inputCalYear, inputCalMonth - 1, d).getDay();
+    var isToday = now.getFullYear() === inputCalYear && now.getMonth()+1 === inputCalMonth && now.getDate() === d;
+    var cls = 'mycal-cell';
+    if (isToday) cls += ' today';
+    if (info) cls += ' has-data';
+    if (dow === 0) cls += ' sun';
+    if (dow === 6) cls += ' sat';
+    var ds = ym + '-' + String(d).padStart(2,'0');
+    var infoHtml = '';
+    if (info) {
+      infoHtml = '<span class="mycal-amt" style="color:var(--green);font-size:9px;">' + info.count + '台</span>' +
+                 '<span style="font-size:8px;color:var(--text-sub);">' + formatYen(info.total) + '万</span>';
+    }
+    gridHtml += '<div class="'+cls+'" onclick="openDayModal(''+ds+'','+d+')">' +
+      '<span class="mycal-d">'+d+'</span>' + infoHtml + '</div>';
+  }
+  el.innerHTML =
+    '<div class="mycal-wrap">' +
+      '<div class="mycal-header">' +
+        '<button class="mycal-nav" onclick="changeInputCalMonth(-1)">◀</button>' +
+        '<h3>'+inputCalYear+'年'+inputCalMonth+'月</h3>' +
+        '<button class="mycal-nav" onclick="changeInputCalMonth(1)">▶</button>' +
+      '</div>' +
+      '<div class="mycal-summary">' +
+        '<div class="mycal-summary-item"><div class="msv">'+monthCount+'<span style="font-size:10px;">台</span></div><div class="msl">修理台数</div></div>' +
+        '<div class="mycal-summary-item"><div class="msv">'+formatYen(monthTotal)+'<span style="font-size:10px;">万</span></div><div class="msl">合計工賃</div></div>' +
+      '</div>' +
+      '<div class="mycal-grid">'+gridHtml+'</div>' +
+    '</div>';
+}
+function switchInputTab(tab) {
+  ['input','history','calendar'].forEach(function(t) {
+    var el = document.getElementById('itab-' + t);
+    if (el) el.style.display = t === tab ? '' : 'none';
+  });
+  document.querySelectorAll('#input-sub-tabs .sub-tab').forEach(function(b, i) {
+    var tabs = ['input','history','calendar'];
+    b.classList.toggle('active', tabs[i] === tab);
+  });
+  if (tab === 'history') renderInputHistory();
+  if (tab === 'calendar') renderInputCalendar();
+}
+
 function saveDayEntry() {
   const amount = parseInt(document.getElementById('day-edit-amount').value);
-  const number = document.getElementById('day-edit-number').value.padStart(4,'0');
+  const numRaw = document.getElementById('day-edit-number').value;
+  const number = numRaw ? numRaw.padStart(4,'0') : '';
+  const cartype = document.getElementById('day-edit-cartype').value.trim();
+  const category = document.getElementById('day-edit-category').value || '鈑金塗装';
   if (!amount || amount <= 0) { showToast('金額を入力してください'); return; }
-  // remove existing for this day and add new
-  wageData = wageData.filter(w => w.date !== currentDayDate);
-  wageData.push({ date: currentDayDate, amount, number: number === '0000' ? '' : number });
+  const idx = parseInt(document.getElementById('day-edit-idx').value);
+  const dayEntries = wageData.filter(w => w.date === currentDayDate);
+  if (idx >= 0 && idx < dayEntries.length) {
+    // 既存エントリを更新
+    const globalIdx = wageData.indexOf(dayEntries[idx]);
+    wageData[globalIdx] = { date: currentDayDate, amount, number: number === '0000' ? '' : number, cartype, category };
+  } else {
+    // 新規追加
+    wageData.push({ date: currentDayDate, amount, number: number === '0000' ? '' : number, cartype, category });
+  }
   saveLocal();
+  renderDayModalBody();
+  document.getElementById('day-add-form').style.display = 'none';
+  document.getElementById('day-add-toggle').textContent = '＋ 工賃を追加';
   renderCalendar();
   renderGoalRing();
   if (myCalYear) renderMyCalendar();
   renderMyStatus();
-  document.getElementById('day-modal-overlay').classList.remove('show');
+  if (inputCalYear) renderInputCalendar();
   showToast('✅ 保存しました');
   checkGoalAndRank();
 }
 
-function deleteEntry(idx) {
+function deleteEntry(idx) { deleteDayEntry(idx); }
+function deleteDayEntry(idx) {
   const entries = wageData.filter(w => w.date === currentDayDate);
   const entry = entries[idx];
-  wageData = wageData.filter(w => !(w.date === entry.date && w.amount === entry.amount));
+  if (!entry) return;
+  const globalIdx = wageData.indexOf(entry);
+  wageData.splice(globalIdx, 1);
   saveLocal();
-  closeDayModal();
+  renderDayModalBody();
   renderCalendar();
   renderGoalRing();
   if (myCalYear) renderMyCalendar();
   renderMyStatus();
+  if (inputCalYear) renderInputCalendar();
   showToast('🗑️ 削除しました');
 }
 
@@ -3543,7 +3748,8 @@ function renderFrontCalendar() {
         '<span class="mycal-amt" style="color:var(--green);">'+info.count+'件</span>' +
         '<span style="font-size:8px;color:'+(rate>=50?'var(--green)':'#e74c3c')+';">'+rate+'%</span>';
     }
-    gridHtml += '<div class="'+cls+'">' +
+    var fds = ym + '-' + String(d).padStart(2,'0');
+    gridHtml += '<div class="'+cls+'" onclick="openFrontDayModal('"+fds+"',"+d+")">' +
       '<span class="mycal-d">'+d+'</span>' +
       infoHtml +
       '</div>';
@@ -3562,8 +3768,180 @@ function renderFrontCalendar() {
         '<div class="mycal-summary-item"><div class="msv">'+s.rate+'<span style="font-size:10px;">%</span></div><div class="msl">成約率</div></div>' +
         '<div class="mycal-summary-item"><div class="msv">'+formatYen(s.orderTotal)+'<span style="font-size:10px;">万</span></div><div class="msl">受注額</div></div>' +
       '</div>' +
+      buildFrontCalGoalBar(s) +
       '<div class="mycal-grid">'+gridHtml+'</div>' +
     '</div>';
+}
+
+// ============================================================
+// フロント カレンダー 目標バー
+// ============================================================
+function buildFrontCalGoalBar(s) {
+  var gc = frontGoal.count || 0;
+  var ga = frontGoal.amount || 0;
+  if (!gc && !ga) return '';
+  var html = '<div style="padding:8px 12px;background:var(--card);border:1px solid var(--border);border-radius:10px;margin:0 12px 8px;">';
+  if (gc > 0) {
+    var cp = Math.min(100, Math.round(s.contracted / gc * 100));
+    var cc = cp >= 100 ? 'var(--green)' : cp >= 50 ? '#f39c12' : '#e74c3c';
+    html += '<div style="display:flex;justify-content:space-between;margin-bottom:4px;font-size:12px;">' +
+      '<span>🎯 成約台数</span><span style="color:'+cc+';font-weight:700;">'+s.contracted+' / '+gc+'台 ('+cp+'%)</span></div>' +
+      '<div style="height:8px;background:var(--border);border-radius:4px;overflow:hidden;margin-bottom:8px;">' +
+      '<div style="height:100%;width:'+cp+'%;background:'+cc+';border-radius:4px;transition:width .6s;"></div></div>';
+  }
+  if (ga > 0) {
+    var ap = Math.min(100, Math.round(s.orderTotal / (ga * 10000) * 100));
+    var ac = ap >= 100 ? 'var(--green)' : ap >= 50 ? '#f39c12' : '#e74c3c';
+    html += '<div style="display:flex;justify-content:space-between;margin-bottom:4px;font-size:12px;">' +
+      '<span>💰 受注金額</span><span style="color:'+ac+';font-weight:700;">'+formatYen(s.orderTotal)+'万 / '+ga+'万 ('+ap+'%)</span></div>' +
+      '<div style="height:8px;background:var(--border);border-radius:4px;overflow:hidden;">' +
+      '<div style="height:100%;width:'+ap+'%;background:'+ac+';border-radius:4px;transition:width .6s;"></div></div>';
+  }
+  return html + '</div>';
+}
+
+// ============================================================
+// フロント デイモーダル
+// ============================================================
+var currentFrontDayDate = '';
+var fdayContractState = 'none';
+
+function openFrontDayModal(dateStr, day) {
+  currentFrontDayDate = dateStr;
+  var _dp = dateStr.split('-');
+  document.getElementById('front-day-modal-title').textContent = _dp[0]+'年'+parseInt(_dp[1])+'月'+day+'日';
+  renderFrontDayModalBody();
+  // フォームリセット
+  document.getElementById('front-day-add-form').style.display = 'none';
+  document.getElementById('fday-edit-idx').value = '-1';
+  document.getElementById('fday-amount').value = '';
+  document.getElementById('fday-order-amount').value = '';
+  document.getElementById('fday-cartype').value = '';
+  document.getElementById('fday-number').value = '';
+  setFdayContract('none');
+  document.getElementById('front-day-modal-overlay').classList.add('show');
+}
+
+function renderFrontDayModalBody() {
+  var entries = frontData.filter(function(d){ return d.date === currentFrontDayDate; });
+  var body = document.getElementById('front-day-modal-body');
+  if (entries.length) {
+    body.innerHTML = entries.map(function(e, i) {
+      var badge = e.immediate ? '<span style="color:var(--green);font-size:11px;">⚡即成約</span>' :
+                  e.later ? '<span style="color:#3498db;font-size:11px;">📅後日</span>' :
+                  '<span style="color:#e74c3c;font-size:11px;">❌未成約</span>';
+      return '<div style="display:flex;align-items:center;padding:10px 0;border-bottom:1px solid var(--border);gap:8px;">' +
+        '<div style="flex:1;">' +
+          (e.cartype ? '<div style="font-size:12px;color:var(--text-sub);">🚗 '+e.cartype+'</div>' : '') +
+          '<div style="font-weight:700;">¥'+(e.amount||0).toLocaleString()+'</div>' +
+          '<div style="display:flex;gap:4px;margin-top:2px;">' +
+            (e.number ? '<span class="chip chip-green">'+e.number+'</span>' : '') +
+            badge +
+          '</div>' +
+          (e.orderAmount ? '<div style="font-size:11px;color:var(--green);">受注: ¥'+e.orderAmount.toLocaleString()+'</div>' : '') +
+        '</div>' +
+        '<button onclick="editFrontDayEntry('+i+')" style="color:var(--green);font-size:12px;padding:5px 10px;background:var(--green-light);border-radius:6px;white-space:nowrap;">編集</button>' +
+        '<button onclick="deleteFrontDayEntry('+i+')" style="color:#e74c3c;font-size:12px;padding:5px 10px;background:#fff0f0;border-radius:6px;white-space:nowrap;">削除</button>' +
+      '</div>';
+    }).join('');
+  } else {
+    body.innerHTML = '<div style="color:var(--text-sub);font-size:13px;padding:8px 0;">入力なし</div>';
+  }
+}
+
+function editFrontDayEntry(idx) {
+  var entries = frontData.filter(function(d){ return d.date === currentFrontDayDate; });
+  var e = entries[idx];
+  if (!e) return;
+  document.getElementById('fday-edit-idx').value = idx;
+  document.getElementById('fday-amount').value = e.amount || '';
+  document.getElementById('fday-cartype').value = e.cartype || '';
+  document.getElementById('fday-number').value = e.number || '';
+  document.getElementById('fday-order-amount').value = e.orderAmount || '';
+  var contractType = e.immediate ? 'immediate' : e.later ? 'later' : 'none';
+  setFdayContract(contractType);
+  document.getElementById('front-day-add-form').style.display = '';
+  document.getElementById('front-day-add-toggle').textContent = '✏️ 編集中';
+}
+
+function deleteFrontDayEntry(idx) {
+  var entries = frontData.filter(function(d){ return d.date === currentFrontDayDate; });
+  var entry = entries[idx];
+  if (!entry) return;
+  var globalIdx = frontData.indexOf(entry);
+  frontData.splice(globalIdx, 1);
+  saveLocal();
+  renderFrontDayModalBody();
+  renderFrontCalendar();
+  if (currentFrontTab === 'summary') renderFrontSummary();
+  showToast('🗑️ 削除しました');
+}
+
+function toggleFrontDayAddForm() {
+  var form = document.getElementById('front-day-add-form');
+  var isHidden = form.style.display === 'none';
+  form.style.display = isHidden ? '' : 'none';
+  if (isHidden) {
+    document.getElementById('fday-edit-idx').value = '-1';
+    document.getElementById('fday-amount').value = '';
+    document.getElementById('fday-cartype').value = '';
+    document.getElementById('fday-number').value = '';
+    document.getElementById('fday-order-amount').value = '';
+    setFdayContract('none');
+    document.getElementById('front-day-add-toggle').textContent = '✕ キャンセル';
+  } else {
+    document.getElementById('front-day-add-toggle').textContent = '＋ 見積りを追加';
+  }
+}
+
+function setFdayContract(type) {
+  fdayContractState = type;
+  document.getElementById('fday-contract-state').value = type;
+  ['immediate','later','none'].forEach(function(t) {
+    var btn = document.getElementById('fday-btn-'+t);
+    if (btn) btn.classList.toggle('active-yes', t === type && type !== 'none');
+  });
+  document.getElementById('fday-order-group').style.display = (type === 'immediate' || type === 'later') ? '' : 'none';
+}
+
+function saveFrontDayEntry() {
+  var amount = parseInt(document.getElementById('fday-amount').value) || 0;
+  var cartype = document.getElementById('fday-cartype').value.trim();
+  var numRaw = document.getElementById('fday-number').value;
+  var number = numRaw ? numRaw.padStart(4,'0') : '';
+  var orderAmount = parseInt(document.getElementById('fday-order-amount').value) || 0;
+  var contractType = document.getElementById('fday-contract-state').value || 'none';
+  if (!amount) { showToast('金額を入力してください'); return; }
+  var entry = {
+    date: currentFrontDayDate,
+    amount: amount,
+    cartype: cartype,
+    number: number === '0000' ? '' : number,
+    orderAmount: orderAmount,
+    contracted: contractType !== 'none',
+    immediate: contractType === 'immediate',
+    later: contractType === 'later'
+  };
+  var idx = parseInt(document.getElementById('fday-edit-idx').value);
+  var dayEntries = frontData.filter(function(d){ return d.date === currentFrontDayDate; });
+  if (idx >= 0 && idx < dayEntries.length) {
+    var globalIdx = frontData.indexOf(dayEntries[idx]);
+    frontData[globalIdx] = entry;
+  } else {
+    frontData.push(entry);
+  }
+  saveLocal();
+  renderFrontDayModalBody();
+  document.getElementById('front-day-add-form').style.display = 'none';
+  document.getElementById('front-day-add-toggle').textContent = '＋ 見積りを追加';
+  renderFrontCalendar();
+  if (currentFrontTab === 'summary') renderFrontSummary();
+  showToast('✅ 保存しました');
+}
+
+function closeFrontDayModal(e) {
+  if (e && e.target !== document.getElementById('front-day-modal-overlay')) return;
+  document.getElementById('front-day-modal-overlay').classList.remove('show');
 }
 
 function renderFrontSummary() {
