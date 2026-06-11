@@ -1410,7 +1410,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = '20260611e';
+const APP_VERSION = '20260611f';
 (function() {
   var stored = localStorage.getItem('appVersion');
   if (stored !== APP_VERSION) {
@@ -4363,6 +4363,8 @@ function saveFrontGoal() {
   showToast('目標を保存しました！');
 }
 
+
+init();
 </script>
 </body>
 </html>
