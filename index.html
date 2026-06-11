@@ -3956,4 +3956,12 @@ function setGoalType(type) {
 function saveFrontGoal() {
   var gc = document.getElementById('front-goal-count');
   var ga = document.getElementById('front-goal-amount');
-  if (gc) frontGoal.count = par
+  if (gc) frontGoal.count = parseInt(gc.value) || 0;
+  if (ga) frontGoal.amount = parseInt(ga.value) || 0;
+  saveLocal();
+  showToast('目標を保存しました！');
+}
+
+</script>
+</body>
+</html>
