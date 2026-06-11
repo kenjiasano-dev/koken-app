@@ -1410,7 +1410,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = '20260612c';
+const APP_VERSION = '20260612d';
 (function() {
   var stored = localStorage.getItem('appVersion');
   if (stored !== APP_VERSION) {
@@ -3513,6 +3513,14 @@ function init() {
 
   // Initial rank baseline
   prevRankIdx = RANKS.indexOf(getRank(getMyMonthlyTotal() / 10000));
+
+  // 起動時に名前＋グループコードがある場合は自動でGASに同期
+  const syncCode = userData.activeGroupCode || userData.groupCode || '';
+  if (userData.name && syncCode && !userData.ninjaMode) {
+    setTimeout(function() {
+      postToGAS({ action: 'updateProfile', name: userData.name, pref: userData.pref || '', store: userData.store || '', goal: userData.goal || 100, role: userData.role || '', groupCode: syncCode });
+    }, 2000);
+  }
 }
 
 // ============================================================
