@@ -1410,7 +1410,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = '20260612e';
+const APP_VERSION = '20260612f';
 (function() {
   var stored = localStorage.getItem('appVersion');
   if (stored !== APP_VERSION) {
@@ -3491,7 +3491,7 @@ async function postToGAS(data) {
   try {
     await fetch(GAS_URL, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'text/plain' },
       body: JSON.stringify({ ...data, token: GAS_TOKEN, uuid: userData.uuid || '' }),
     });
   } catch(e) { console.warn('GAS post failed', e); }
