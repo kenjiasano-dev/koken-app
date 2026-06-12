@@ -1410,7 +1410,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = '20260612i';
+const APP_VERSION = '20260612j';
 (function() {
   var stored = localStorage.getItem('appVersion');
   if (stored !== APP_VERSION) {
@@ -3012,14 +3012,6 @@ function toggleMyMore() {
   if (badge) badge.style.display = showing ? 'none' : '';
   if (btn) btn.textContent = showing ? '···' : '閉じる';
 }
-function toggleFrontWageEdit() {
-  var el = document.getElementById('front-wage-edit');
-  var btn = document.getElementById('front-wage-toggle');
-  if (!el) return;
-  var open = el.style.display !== 'none';
-  el.style.display = open ? 'none' : '';
-  if (btn) btn.textContent = open ? '🔧 工賃を追加・編集' : '✕ 閉じる';
-}
 // 年齢・経験年数ヘルパー
 function calcAge(birthdate) {
   if (!birthdate) return null;
@@ -4367,30 +4359,6 @@ function initGoalTab() {
   renderMemberGoalProgress();
 }
 
-function setGoalType(type) {
-  frontGoal.type = type;
-  ['count','amount','both'].forEach(function(t) {
-    var btn = document.getElementById('gtype-' + t);
-    if (!btn) return;
-    var active = t === type;
-    btn.style.borderColor = active ? 'var(--green)' : 'var(--border)';
-    btn.style.background = active ? 'var(--green-light)' : 'var(--card)';
-    btn.style.color = active ? 'var(--green)' : 'var(--text-sub)';
-  });
-  var ci = document.getElementById('goal-count-input');
-  var ai = document.getElementById('goal-amount-input');
-  if (ci) ci.style.display = (type === 'count' || type === 'both') ? '' : 'none';
-  if (ai) ai.style.display = (type === 'amount' || type === 'both') ? '' : 'none';
-}
-
-function saveFrontGoal() {
-  var gc = document.getElementById('front-goal-count');
-  var ga = document.getElementById('front-goal-amount');
-  if (gc) frontGoal.count = parseInt(gc.value) || 0;
-  if (ga) frontGoal.amount = parseInt(ga.value) || 0;
-  saveLocal();
-  showToast('目標を保存しました！');
-}
 
 
 init();
