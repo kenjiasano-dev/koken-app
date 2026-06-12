@@ -765,16 +765,14 @@ input, select, textarea { font-family: inherit; }
               <button type="button" class="role-btn" data-role="管理" onclick="selectRole('管理')">📊 管理</button>
               <button type="button" class="role-btn" data-role="その他" onclick="selectRole('その他')">👤 その他</button>
             </div>
-            <div id="role-exp-inline" style="display:none;background:var(--border);border-radius:10px;padding:10px 12px;">
-              <div style="font-size:12px;color:var(--text-sub);margin-bottom:6px;"><span id="role-exp-label">この職種</span>、今何年目？</div>
-              <div style="display:flex;align-items:center;gap:8px;">
-                <input type="number" id="role-exp-year" class="form-input" placeholder="0" min="0" max="50" style="width:80px;padding:6px 10px;font-size:18px;font-weight:700;text-align:center;" oninput="updateRoleExpPreview()">
-                <span style="font-size:15px;font-weight:700;">年目</span>
-                <span id="role-exp-preview" style="font-size:12px;color:var(--text-sub);"></span>
-              </div>
-            </div>
           </div>
           <input type="hidden" id="set-role">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">経験年数（職種別・開始年）</label>
+          <div style="font-size:12px;color:var(--text-sub);margin-bottom:6px;">該当する職種に「始めた西暦年」を入力（複数可）。例: 2018</div>
+          <div id="exp-rows" style="display:flex;flex-direction:column;gap:8px;"></div>
         </div>
 
         <div class="form-group">
@@ -1405,7 +1403,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = '20260612k';
+const APP_VERSION = '20260612l';
 (function() {
   var stored = localStorage.getItem('appVersion');
   if (stored !== APP_VERSION) {
@@ -1854,7 +1852,6 @@ function initMyPage() {
       if (myPageTab==='ranking') renderMyRanking();
       if (myPageTab==='trend') renderMyTrend();
       if (myPageTab==='badge') renderMyBadge();
-      if (myPageTab==='calendar') renderMyCalendar();
     });
   }
   renderMyStatus();
@@ -2024,90 +2021,6 @@ function renderMyBadge() {
 // ============================================================
 // マイカレンダー（パチンコ収支カレンダー風）
 // ============================================================
-var myCalYear, myCalMonth;
-
-function initMyCalendar() {
-  var now = new Date();
-  myCalYear = now.getFullYear();
-  myCalMonth = now.getMonth() + 1;
-}
-
-function changeMyCalMonth(delta) {
-  myCalMonth += delta;
-  if (myCalMonth > 12) { myCalMonth = 1; myCalYear++; }
-  if (myCalMonth < 1) { myCalMonth = 12; myCalYear--; }
-  renderMyCalendar();
-}
-
-function renderMyCalendar() {
-  if (!myCalYear) initMyCalendar();
-  var el = document.getElementById('my-calendar-content');
-  if (!el) return;
-
-  var now = new Date();
-  var ym = myCalYear + '-' + String(myCalMonth).padStart(2,'0');
-  var first = new Date(myCalYear, myCalMonth - 1, 1).getDay();
-  var totalDays = new Date(myCalYear, myCalMonth, 0).getDate();
-  var dows = ['日','月','火','水','木','金','土'];
-
-  // 月の日別集計
-  var dayTotals = {};
-  wageData.forEach(function(w) {
-    if (!w.date || !w.date.startsWith(ym)) return;
-    var d = parseInt(w.date.slice(8,10), 10);
-    dayTotals[d] = (dayTotals[d] || 0) + (w.amount || 0);
-  });
-
-  // サマリー計算
-  var monthTotal = Object.values(dayTotals).reduce(function(s,v){return s+v;},0);
-  var activeDays = Object.keys(dayTotals).length;
-  var dayAvg = activeDays > 0 ? Math.round(monthTotal / activeDays) : 0;
-  var goal = (userData && userData.goal) ? userData.goal * 10000 : 0;
-  var rate = goal > 0 ? Math.min(Math.round(monthTotal / goal * 100), 999) : 0;
-
-  // カレンダーグリッドHTML
-  var gridHtml = dows.map(function(d){ return '<div class="mycal-dow">'+d+'</div>'; }).join('');
-  for (var i = 0; i < first; i++) gridHtml += '<div class="mycal-cell empty"></div>';
-  for (var d = 1; d <= totalDays; d++) {
-    var dateStr = ym + '-' + String(d).padStart(2,'0');
-    var total = dayTotals[d] || 0;
-    var dow = new Date(myCalYear, myCalMonth - 1, d).getDay();
-    var isToday = now.getFullYear() === myCalYear && now.getMonth()+1 === myCalMonth && now.getDate() === d;
-    var cls = 'mycal-cell';
-    if (isToday) cls += ' today';
-    if (total > 0) cls += ' has-data';
-    if (dow === 0) cls += ' sun';
-    if (dow === 6) cls += ' sat';
-
-    var amtHtml = '';
-    if (total > 0) {
-      var man = total / 10000;
-      var label = man >= 10 ? Math.round(man) + '万' : man.toFixed(1).replace(/\.0$/,'') + '万';
-      amtHtml = '<span class="mycal-amt">'+label+'</span>';
-    }
-    gridHtml += '<div class="'+cls+'" onclick="openDayModal(\''+dateStr+'\','+d+')">' +
-      '<span class="mycal-d">'+d+'</span>' +
-      amtHtml +
-      '</div>';
-  }
-
-  el.innerHTML =
-    '<div class="mycal-wrap">' +
-      '<div class="mycal-header">' +
-        '<button class="mycal-nav" onclick="changeMyCalMonth(-1)">◀</button>' +
-        '<h3>'+myCalYear+'年'+myCalMonth+'月</h3>' +
-        '<button class="mycal-nav" onclick="changeMyCalMonth(1)">▶</button>' +
-      '</div>' +
-      '<div class="mycal-summary">' +
-        '<div class="mycal-summary-item"><div class="msv">'+formatYen(monthTotal)+'<span style="font-size:10px;">万</span></div><div class="msl">月合計</div></div>' +
-        '<div class="mycal-summary-item"><div class="msv">'+activeDays+'<span style="font-size:10px;">日</span></div><div class="msl">稼働日</div></div>' +
-        '<div class="mycal-summary-item"><div class="msv">'+formatYen(dayAvg)+'<span style="font-size:10px;">万</span></div><div class="msl">日平均</div></div>' +
-        (goal > 0 ? '<div class="mycal-summary-item"><div class="msv">'+rate+'<span style="font-size:10px;">%</span></div><div class="msl">達成率</div></div>' : '') +
-      '</div>' +
-      '<div class="mycal-grid">'+gridHtml+'</div>' +
-    '</div>';
-}
-
 // Ranking sub-tabs（メインと全国展開エリア両方を監視）
 document.addEventListener('click', function(e) {
   var btn = e.target.closest('[data-rtab]');
@@ -2698,7 +2611,6 @@ function saveDayEntry() {
   document.getElementById('day-add-toggle').textContent = '＋ 工賃を追加';
   renderCalendar();
   renderGoalRing();
-  if (myCalYear) renderMyCalendar();
   renderMyStatus();
   if (inputCalYear) renderInputCalendar();
   showToast('✅ 保存しました');
@@ -2716,7 +2628,6 @@ function deleteDayEntry(idx) {
   renderDayModalBody();
   renderCalendar();
   renderGoalRing();
-  if (myCalYear) renderMyCalendar();
   renderMyStatus();
   if (inputCalYear) renderInputCalendar();
   showToast('🗑️ 削除しました');
@@ -3049,15 +2960,15 @@ function saveProfile() {
   userData.store = store;
   userData.goal = goal;
   userData.role = role;
-  // 経験年数（職種ごとの開始年）
-  var expObj = userData.expYears || {};
-  var selRole = document.getElementById('set-role') ? document.getElementById('set-role').value : '';
-  var expYearEl = document.getElementById('role-exp-year');
-  if (selRole && expYearEl) {
-    var yrs = parseInt(expYearEl.value);
-    if (!isNaN(yrs) && yrs >= 0) expObj[selRole] = new Date().getFullYear() - yrs; // 開始年として保存
-    else if (expYearEl.value === '') delete expObj[selRole];
-  }
+  // 経験年数（職種別の開始年を一括保存）
+  var expObj = {};
+  var curY = new Date().getFullYear();
+  document.querySelectorAll('#exp-rows .exp-row').forEach(function(row) {
+    var role = row.getAttribute('data-role');
+    var inp = row.querySelector('.exp-year');
+    var y = inp ? parseInt(inp.value) : NaN;
+    if (role && !isNaN(y) && y > 1950 && y <= curY) expObj[role] = y;
+  });
   userData.expYears = expObj;
   saveLocal();
   showToast('💾 プロフィールを保存しました');
