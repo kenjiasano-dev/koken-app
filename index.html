@@ -341,6 +341,12 @@ input, select, textarea { font-family: inherit; }
           <ul class="rank-list" id="front-rank-list2"></ul>
         </div>
       </div>
+      <!-- メンバー一覧 -->
+      <div id="sstab-members" style="display:none;padding:12px;">
+        <div id="member-list-content">
+          <div style="text-align:center;padding:32px;color:var(--text-sub);font-size:13px;">読み込み中...</div>
+        </div>
+      </div>
     </div>
 
     <!-- マイページ新 -->
@@ -514,12 +520,6 @@ input, select, textarea { font-family: inherit; }
         <div id="store-achievements" style="display:none;" class="card" style="margin-top:0;">
           <div class="card-title">🎉 今月の達成者</div>
           <div id="store-achievement-list"></div>
-        </div>
-      </div>
-      <!-- メンバー一覧 -->
-      <div id="sstab-members" style="display:none;padding:12px;">
-        <div id="member-list-content">
-          <div style="text-align:center;padding:32px;color:var(--text-sub);font-size:13px;">読み込み中...</div>
         </div>
       </div>
     </div>
@@ -1410,7 +1410,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = '20260612g';
+const APP_VERSION = '20260612h';
 (function() {
   var stored = localStorage.getItem('appVersion');
   if (stored !== APP_VERSION) {
