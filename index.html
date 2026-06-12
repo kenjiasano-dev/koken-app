@@ -1410,7 +1410,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = '20260612h';
+const APP_VERSION = '20260612i';
 (function() {
   var stored = localStorage.getItem('appVersion');
   if (stored !== APP_VERSION) {
@@ -1997,7 +1997,7 @@ function renderMyTrend() {
   wageData.forEach(function(d) {
     if (!d.date) return;
     var m = d.date.slice(0,7);
-    months[m] = (months[m]||0) + (d.wage||0);
+    months[m] = (months[m]||0) + (d.amount||0);
   });
   var keys = Object.keys(months).sort().slice(-6);
   if (!keys.length) { el.innerHTML = '<div style="text-align:center;padding:30px;color:var(--text-sub);font-size:13px;">データなし</div>'; return; }
@@ -2211,7 +2211,7 @@ function buildRankItem(item, myName) {
 
 async function fetchStats() {
   try {
-    const res = await fetchGAS({ action: 'getStats' });
+    const res = await fetchFromGAS('getStats');
     if (res && res.totalUsers !== undefined) {
       const tu = document.getElementById('stat-total-users');
       const au = document.getElementById('stat-active-users');
@@ -3083,10 +3083,6 @@ function saveProfile() {
   userData.store = store;
   userData.goal = goal;
   userData.role = role;
-  // GASにroleを反映
-  if (userData.name && role) {
-    fetchFromGAS('updateProfile', { name: userData.name, store: userData.store, pref: userData.pref, goal: userData.goal, role: role, groupCode: userData.activeGroupCode || userData.groupCode }, 'POST').catch(function(){});
-  }
   // 生年月日
   const bd = document.getElementById('set-birthdate');
   if (bd) userData.birthdate = bd.value || '';
