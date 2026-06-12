@@ -776,11 +776,6 @@ input, select, textarea { font-family: inherit; }
           </div>
           <input type="hidden" id="set-role">
         </div>
-        <div class="form-group">
-          <label class="form-label">🎂 生年月日</label>
-          <input type="date" class="form-input" id="set-birthdate" placeholder="例: 1990-04-01">
-          <div id="age-display" style="font-size:12px;color:var(--text-sub);margin-top:4px;"></div>
-        </div>
 
         <div class="form-group">
           <label class="form-label">月間目標（万円）</label>
@@ -1410,7 +1405,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = '20260612j';
+const APP_VERSION = '20260612k';
 (function() {
   var stored = localStorage.getItem('appVersion');
   if (stored !== APP_VERSION) {
@@ -1891,7 +1886,6 @@ function renderMyStatus() {
   var goal = (userData.goal||0) * 10000;
   var rate = goal>0 ? Math.min(Math.round(total/goal*100),100) : 0;
   var frontStats = calcFrontStats(getFrontMonthData());
-  var age = calcAge(userData.birthdate);
   var expYears = userData.expYears || {};
   var expHtml = Object.entries(expYears).filter(function(e){return e[1];}).map(function(e){
     var yrs = calcExpYears(e[1]);
@@ -1907,7 +1901,7 @@ function renderMyStatus() {
         '<div style="width:48px;height:48px;border-radius:50%;background:var(--primary)22;display:flex;align-items:center;justify-content:center;font-size:22px;">👤</div>' +
         '<div style="flex:1;">' +
           '<div style="font-size:16px;font-weight:700;">'+(userData.name||'名前未設定')+getRoleBadge(userData.role)+'</div>' +
-          '<div style="font-size:12px;color:var(--text-sub);margin-top:2px;">'+(userData.store||'')+(age!==null?' ・ '+age+'歳':'')+'</div>' +
+          '<div style="font-size:12px;color:var(--text-sub);margin-top:2px;">'+(userData.store||'')+'</div>' +
           (expHtml?'<div style="margin-top:6px;">'+expHtml+'</div>':'') +
         '</div>' +
       '</div>' +
@@ -2928,9 +2922,6 @@ function initSettings() {
   document.getElementById('set-goal').value = userData.goal || 100;
   document.getElementById('set-group').value = '';
   if (userData.role) { var ri = document.getElementById('set-role'); if(ri) ri.value=userData.role; selectRole(userData.role, true); }
-  // 生年月日
-  var bdEl = document.getElementById('set-birthdate');
-  if (bdEl) { bdEl.value = userData.birthdate || ''; updateAgeDisplay(); }
   // 経験年数
   renderExpRows();
   renderFollowedStores();
@@ -3012,26 +3003,9 @@ function toggleMyMore() {
   if (badge) badge.style.display = showing ? 'none' : '';
   if (btn) btn.textContent = showing ? '···' : '閉じる';
 }
-// 年齢・経験年数ヘルパー
-function calcAge(birthdate) {
-  if (!birthdate) return null;
-  var today = new Date();
-  var bd = new Date(birthdate);
-  var age = today.getFullYear() - bd.getFullYear();
-  var m = today.getMonth() - bd.getMonth();
-  if (m < 0 || (m === 0 && today.getDate() < bd.getDate())) age--;
-  return age;
-}
 function calcExpYears(startYear) {
   if (!startYear) return 0;
   return new Date().getFullYear() - startYear;
-}
-function updateAgeDisplay() {
-  var bd = document.getElementById('set-birthdate');
-  var disp = document.getElementById('age-display');
-  if (!bd || !disp) return;
-  var age = calcAge(bd.value);
-  disp.textContent = age !== null && age >= 0 ? '現在 ' + age + ' 歳' : '';
 }
 var ROLES_ALL = ['鈑金','塗装','整備','フロント','管理','その他'];
 function renderExpRows() {
@@ -3075,9 +3049,6 @@ function saveProfile() {
   userData.store = store;
   userData.goal = goal;
   userData.role = role;
-  // 生年月日
-  const bd = document.getElementById('set-birthdate');
-  if (bd) userData.birthdate = bd.value || '';
   // 経験年数（職種ごとの開始年）
   var expObj = userData.expYears || {};
   var selRole = document.getElementById('set-role') ? document.getElementById('set-role').value : '';
