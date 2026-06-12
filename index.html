@@ -1410,7 +1410,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = '20260612d';
+const APP_VERSION = '20260612e';
 (function() {
   var stored = localStorage.getItem('appVersion');
   if (stored !== APP_VERSION) {
@@ -1702,25 +1702,38 @@ async function renderMemberList() {
   }
   el.innerHTML = '<div style="text-align:center;padding:32px;color:var(--text-sub);font-size:13px;">読み込み中...</div>';
   try {
-    var data = await fetchFromGAS('getMembers', { groupCode: code });
-    var members = (data && data.members) ? data.members : [];
+    var now = new Date();
+    var month = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0');
+    var data = await fetchFromGAS('getStoreRanking', { groupCode: code, month: month });
+    var members = (data && data.data) ? data.data : [];
     if (!members.length) {
-      el.innerHTML = '<div style="text-align:center;padding:32px;color:var(--text-sub);font-size:13px;">メンバーがいません</div>';
+      el.innerHTML = '<div style="text-align:center;padding:32px;color:var(--text-sub);font-size:13px;">メンバーがいません<br><span style="font-size:11px;">グループコードをLINEなどで共有して招待しましょう</span></div>';
       return;
     }
-    var RANK_EMOJIS = {'無名の者':'👤','足軽':'🗡️','侍':'⚔️','剣士':'🗡','武士':'🛡','武将':'🌟','大将':'👑','剣聖':'✨','将軍':'🎌','天下無双':'🏆'};
-    el.innerHTML = members.map(function(m) {
+    var RANK_EMOJIS = {'無名の者':'👤','足軽':'🗡️','侍':'⚔️','武将':'🎌','大名':'🏯','征夷大将軍':'👑'};
+    var NUM_BADGES = ['🥇','🥈','🥉'];
+    var html = '<div style="font-size:12px;color:var(--text-sub);margin-bottom:10px;text-align:right;">' + month.replace('-','年') + '月</div>';
+    html += members.map(function(m, i) {
       var isMe = m.name === userData.name;
-      var rankEmoji = RANK_EMOJIS[m.rank] || '👤';
-      var roleColor = (window.ROLE_COLORS && m.role) ? ROLE_COLORS[m.role] : '#888';
-      return '<div style="display:flex;align-items:center;gap:12px;padding:12px;background:var(--card);border-radius:12px;margin-bottom:8px;' + (isMe?'border:2px solid var(--green);':'border:1px solid var(--border);') + '">' +
-        '<div style="width:44px;height:44px;border-radius:50%;background:' + (isMe?'var(--green)':'var(--border)') + '22;display:flex;align-items:center;justify-content:center;font-size:20px;">' + rankEmoji + '</div>' +
-        '<div style="flex:1;">' +
-          '<div style="font-size:14px;font-weight:700;">' + m.name + (isMe?' <span style="font-size:11px;color:var(--green);">（あなた）</span>':'') + (m.role ? getRoleBadge(m.role) : '') + '</div>' +
-          '<div style="font-size:12px;color:var(--text-sub);margin-top:2px;">' + (m.store||'') + (m.rank ? ' ・ ' + m.rank : '') + '</div>' +
+      var rankObj = m.rank || {};
+      var rankName = rankObj.name || m.rank || '無名の者';
+      var rankEmoji = RANK_EMOJIS[rankName] || '👤';
+      var numBadge = i < 3 ? NUM_BADGES[i] : '<span style="font-size:12px;font-weight:700;color:var(--text-sub);">' + (i+1) + '位</span>';
+      var manyen = (m.amount / 10000).toFixed(1);
+      var amtColor = m.amount > 0 ? 'var(--green)' : 'var(--text-sub)';
+      return '<div style="display:flex;align-items:center;gap:10px;padding:12px;background:var(--card);border-radius:12px;margin-bottom:8px;' + (isMe ? 'border:2px solid var(--green);' : 'border:1px solid var(--border);') + '">' +
+        '<div style="min-width:28px;text-align:center;font-size:20px;line-height:1;">' + numBadge + '</div>' +
+        '<div style="width:38px;height:38px;border-radius:50%;background:' + (isMe ? 'var(--green)' : 'var(--border)') + '33;display:flex;align-items:center;justify-content:center;font-size:18px;">' + rankEmoji + '</div>' +
+        '<div style="flex:1;min-width:0;">' +
+          '<div style="font-size:14px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + m.name + (isMe ? ' <span style="font-size:11px;color:var(--green);">（あなた）</span>' : '') + '</div>' +
+          '<div style="font-size:11px;color:var(--text-sub);margin-top:2px;">' + rankName + '</div>' +
+        '</div>' +
+        '<div style="text-align:right;white-space:nowrap;">' +
+          '<div style="font-size:17px;font-weight:700;color:' + amtColor + ';">' + manyen + '<span style="font-size:11px;font-weight:400;">万円</span></div>' +
         '</div>' +
       '</div>';
     }).join('');
+    el.innerHTML = html;
   } catch(e) {
     el.innerHTML = '<div style="text-align:center;padding:32px;color:var(--text-sub);font-size:13px;">取得できませんでした</div>';
   }
