@@ -1335,7 +1335,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = '20260613g';
+const APP_VERSION = '20260613h';
 (function() {
   var stored = localStorage.getItem('appVersion');
   if (stored !== APP_VERSION) {
@@ -2544,6 +2544,9 @@ function saveDayEntry() {
     wageData.push({ date: currentDayDate, amount, number: number === '0000' ? '' : number, cartype, category });
   }
   saveLocal();
+  if (!userData.ninjaMode) {
+    postToGAS({ action: 'addWage', name: userData.name, store: userData.store, pref: userData.pref, date: currentDayDate, amount, number: number === '0000' ? '' : number, cartype, category, groupCode: userData.activeGroupCode || userData.groupCode || '', uuid: userData.uuid || '' });
+  }
   renderDayModalBody();
   document.getElementById('day-add-form').style.display = 'none';
   document.getElementById('day-add-toggle').textContent = '＋ 工賃を追加';
