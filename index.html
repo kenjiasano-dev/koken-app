@@ -310,10 +310,10 @@ input, select, textarea { font-family: inherit; }
           <span style="font-size:13px;color:var(--text-sub);" id="store-rank-month2"></span>
         </div>
         <div style="display:flex;gap:8px;padding:8px 12px;">
-          <button onclick="setStoreRankType('national')" id="str-nat-btn" style="flex:1;padding:7px;border-radius:8px;font-size:11px;font-weight:700;background:var(--card);color:var(--text-sub);border:1px solid var(--border);cursor:pointer;">全国</button>
-          <button onclick="setStoreRankType('region')" id="str-reg-btn" style="flex:1;padding:7px;border-radius:8px;font-size:11px;font-weight:700;background:var(--card);color:var(--text-sub);border:1px solid var(--border);cursor:pointer;">地域</button>
-          <button onclick="setStoreRankType('pref')" id="str-pref-btn" style="flex:1;padding:7px;border-radius:8px;font-size:11px;font-weight:700;background:var(--card);color:var(--text-sub);border:1px solid var(--border);cursor:pointer;">県内</button>
-          <button onclick="setStoreRankType('store')" id="str-store-btn" style="flex:1;padding:7px;border-radius:8px;font-size:11px;font-weight:700;background:var(--green);color:#111;border:none;cursor:pointer;">社内</button>
+          <button onclick="setStoreRankType('store')" id="str-store-btn" style="flex:1;padding:7px;border-radius:8px;font-size:11px;font-weight:700;background:var(--green);color:#111;border:none;cursor:pointer;">🏪 社内</button>
+          <button id="str-nat-btn" style="flex:1;padding:7px;border-radius:8px;font-size:11px;font-weight:700;background:var(--card);color:var(--text-sub);border:1px solid var(--border);cursor:not-allowed;opacity:.4;" title="ユーザーが増えたら解放">全国</button>
+          <button id="str-reg-btn" style="flex:1;padding:7px;border-radius:8px;font-size:11px;font-weight:700;background:var(--card);color:var(--text-sub);border:1px solid var(--border);cursor:not-allowed;opacity:.4;" title="ユーザーが増えたら解放">地域</button>
+          <button id="str-pref-btn" style="flex:1;padding:7px;border-radius:8px;font-size:11px;font-weight:700;background:var(--card);color:var(--text-sub);border:1px solid var(--border);cursor:not-allowed;opacity:.4;" title="ユーザーが増えたら解放">県内</button>
         </div>
         <!-- カテゴリ別予算進捗 -->
         <div id="category-budget-progress" style="padding:0 12px 0;"></div>
@@ -1335,7 +1335,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = '20260613h';
+const APP_VERSION = '20260613i';
 (function() {
   var stored = localStorage.getItem('appVersion');
   if (stored !== APP_VERSION) {
