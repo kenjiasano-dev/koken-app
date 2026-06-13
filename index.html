@@ -1403,7 +1403,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = '20260612l';
+const APP_VERSION = '20260613a';
 (function() {
   var stored = localStorage.getItem('appVersion');
   if (stored !== APP_VERSION) {
@@ -2975,7 +2975,7 @@ function saveProfile() {
   renderGoalRing();
 
   // Update GAS
-  postToGAS({ action: 'updateProfile', name, pref, store, goal, role, groupCode: userData.activeGroupCode || userData.groupCode || '' });
+  postToGAS({ action: 'updateProfile', name, pref, store, goal, role, expYears: userData.expYears || {}, groupCode: userData.activeGroupCode || userData.groupCode || '' });
 }
 
 function generateGroupCode() {
@@ -3095,6 +3095,10 @@ async function restoreFromGAS() {
         var exists = frontData.some(function(f){ return f.date === r.date && f.amount === r.amount; });
         if (!exists) { frontData.push(r); fCount++; }
       });
+    }
+    if (res.expYears && Object.keys(res.expYears).length) {
+      userData.expYears = res.expYears;
+      if (typeof renderExpRows === 'function') renderExpRows();
     }
     saveLocal();
     if (statusEl) statusEl.textContent = '✅ 復元完了: 工賃' + wCount + '件 / 受付' + fCount + '件 追加';
