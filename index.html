@@ -3653,7 +3653,7 @@ function renderFrontCalendar() {
         '<span style="font-size:8px;color:'+(rate>=50?'var(--green)':'#e74c3c')+';">'+rate+'%</span>';
     }
     var fds = ym + '-' + String(d).padStart(2,'0');
-    gridHtml += '<div class="'+cls+'" onclick="openFrontDayModal(\\''+fds+'\\','+d+')">' +
+    gridHtml += '<div class="'+cls+'" onclick="openFrontDayModal(\''+fds+'\','+d+')">' +
       '<span class="mycal-d">'+d+'</span>' +
       infoHtml +
       '</div>';
