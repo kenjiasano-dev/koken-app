@@ -1403,7 +1403,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = '20260613b';
+const APP_VERSION = '20260613c';
 (function() {
   var stored = localStorage.getItem('appVersion');
   if (stored !== APP_VERSION) {
@@ -1904,6 +1904,16 @@ function renderMyStatus() {
           (goal>0?'<div style="font-size:12px;color:var(--text-sub);margin-top:4px;">目標 ¥'+goal.toLocaleString()+' ('+rate+'%)</div>':'') +
         '</div>' +
         (goal>0?'<div style="height:10px;background:var(--border);border-radius:5px;overflow:hidden;margin-top:8px;"><div style="height:100%;width:'+rate+'%;background:var(--green);border-radius:5px;transition:width .6s;"></div></div>':'') +
+        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px;text-align:center;">' +
+          '<div style="background:var(--green-light);border-radius:8px;padding:10px;">' +
+            '<div style="font-size:10px;color:var(--text-sub);margin-bottom:2px;">今月の修理台数</div>' +
+            '<div style="font-size:22px;font-weight:700;color:var(--green);">'+monthData.length+'<span style="font-size:12px;font-weight:400;">台</span></div>' +
+          '</div>' +
+          '<div style="background:var(--border);border-radius:8px;padding:10px;">' +
+            '<div style="font-size:10px;color:var(--text-sub);margin-bottom:2px;">累計修理台数</div>' +
+            '<div style="font-size:22px;font-weight:700;">'+wageData.length+'<span style="font-size:12px;font-weight:400;">台</span></div>' +
+          '</div>' +
+        '</div>' +
       '</div>' +
     '</div>' +
     // 受付セクション
