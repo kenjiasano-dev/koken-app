@@ -1335,7 +1335,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = '20260613j';
+const APP_VERSION = '20260613k';
 (function() {
   var stored = localStorage.getItem('appVersion');
   if (stored !== APP_VERSION) {
@@ -1951,9 +1951,13 @@ function renderMyTrend() {
   });
 
   var keys = Object.keys(months).sort();
-  var max = Math.max.apply(null, keys.map(function(k){return months[k];})) || 1;
+  var goal = (userData.goal || 0) * 10000;
+  var maxVal = Math.max.apply(null, keys.map(function(k){return months[k];}));
+  // 目標ラインをグラフに表示するため、maxはgoalも考慮
+  var max = Math.max(maxVal, goal) || 1;
   var total = keys.reduce(function(s,k){return s+months[k];},0);
   var peak  = keys.reduce(function(best,k){ return months[k]>months[best]?k:best; }, keys[0]);
+  var achievedCount = goal > 0 ? keys.filter(function(k){ return months[k] >= goal; }).length : 0;
 
   // 年切り替えボタン
   var yearBtns = years.map(function(y) {
@@ -1962,6 +1966,9 @@ function renderMyTrend() {
       + (active ? 'background:var(--green);color:#111;border:none;' : 'background:var(--card);color:var(--text-sub);border:1px solid var(--border);')
       + '">'+y+'年</button>';
   }).join('');
+
+  // 目標ライン位置（%）
+  var goalPct = goal > 0 ? Math.round(goal/max*100) : 0;
 
   // バーグラフ
   var bars = keys.map(function(m) {
@@ -1972,20 +1979,31 @@ function renderMyTrend() {
     var pctS = Math.round(seibi/max*100);
     var mo = parseInt(m.slice(5));
     var isPeak = m === peak && total_m > 0;
+    var isAchieved = goal > 0 && total_m >= goal;
+    var labelColor = isAchieved ? '#FFD700' : 'var(--green)';
+    var achievedBadge = isAchieved ? ' <span style="font-size:10px;background:#2a2000;color:#FFD700;padding:1px 5px;border-radius:6px;">🏆達成</span>' : '';
+    var peakBadge = isPeak && !isAchieved ? ' <span style="font-size:10px;color:#aaa;">▲最高</span>' : (isPeak && isAchieved ? ' <span style="font-size:10px;color:#aaa;">▲最高</span>' : '');
     return '<div style="margin-bottom:10px;">'
       + '<div style="display:flex;justify-content:space-between;align-items:center;font-size:12px;margin-bottom:3px;">'
       +   '<span style="color:var(--text-sub);min-width:28px;">' + mo + '月</span>'
       +   (total_m > 0
-            ? '<span style="font-weight:700;color:var(--green);">¥'+total_m.toLocaleString()
-              + (isPeak ? ' <span style="font-size:10px;color:#FFD700;">▲最高</span>' : '') + '</span>'
+            ? '<span style="font-weight:700;color:'+labelColor+';">¥'+total_m.toLocaleString()+achievedBadge+peakBadge+'</span>'
             : '<span style="color:var(--text-sub);font-size:11px;">—</span>')
       + '</div>'
-      + '<div style="height:14px;background:var(--border);border-radius:6px;overflow:hidden;display:flex;">'
-      +   '<div style="height:100%;width:'+pctB+'%;background:#4A9ECC;transition:width .6s;"></div>'
-      +   '<div style="height:100%;width:'+pctS+'%;background:#27ae60;transition:width .6s;"></div>'
+      + '<div style="position:relative;height:14px;background:var(--border);border-radius:6px;overflow:hidden;">'
+      +   '<div style="height:100%;width:'+pctB+'%;background:'+(isAchieved?'#C9A84C':'#4A9ECC')+';transition:width .6s;float:left;"></div>'
+      +   '<div style="height:100%;width:'+pctS+'%;background:'+(isAchieved?'#e6c06a':'#27ae60')+';transition:width .6s;float:left;"></div>'
+      + (goalPct > 0 ? '<div style="position:absolute;top:0;left:'+goalPct+'%;width:2px;height:100%;background:#FF6B6B;"></div>' : '')
       + '</div>'
       + '</div>';
   }).join('');
+
+  var goalLine = goal > 0
+    ? '<div style="display:flex;gap:12px;padding:0 12px 4px;font-size:11px;align-items:center;">'
+      + '<span style="display:flex;align-items:center;gap:4px;"><span style="display:inline-block;width:2px;height:12px;background:#FF6B6B;"></span>目標 ¥'+goal.toLocaleString()+'</span>'
+      + (achievedCount > 0 ? '<span style="color:#FFD700;font-weight:700;">🏆 '+achievedCount+'ヶ月達成</span>' : '<span style="color:var(--text-sub);">未達成</span>')
+      + '</div>'
+    : '';
 
   el.innerHTML = ''
     + '<div style="padding:10px 12px 4px;display:flex;gap:6px;flex-wrap:wrap;align-items:center;">'
@@ -1994,11 +2012,14 @@ function renderMyTrend() {
     + '<div style="margin:6px 12px 8px;padding:10px 14px;background:var(--card);border:1px solid var(--border);border-radius:10px;display:flex;gap:16px;">'
     +   '<div><div style="font-size:10px;color:var(--text-sub);">'+trendYear+'年 合計</div><div style="font-size:18px;font-weight:900;color:var(--green);">¥'+total.toLocaleString()+'</div></div>'
     +   '<div><div style="font-size:10px;color:var(--text-sub);">月平均</div><div style="font-size:18px;font-weight:900;color:var(--green);">¥'+Math.round(total/12).toLocaleString()+'</div></div>'
+    +   (achievedCount > 0 ? '<div><div style="font-size:10px;color:var(--text-sub);">達成月数</div><div style="font-size:18px;font-weight:900;color:#FFD700;">'+achievedCount+' ヶ月</div></div>' : '')
     + '</div>'
-    + '<div style="display:flex;gap:12px;padding:0 12px 6px;font-size:11px;">'
+    + '<div style="display:flex;gap:10px;padding:0 12px 6px;font-size:11px;flex-wrap:wrap;">'
     +   '<span style="display:flex;align-items:center;gap:4px;"><span style="display:inline-block;width:12px;height:12px;background:#4A9ECC;border-radius:2px;"></span>鈑金塗装</span>'
     +   '<span style="display:flex;align-items:center;gap:4px;"><span style="display:inline-block;width:12px;height:12px;background:#27ae60;border-radius:2px;"></span>整備</span>'
+    +   (goal > 0 ? '<span style="display:flex;align-items:center;gap:4px;"><span style="display:inline-block;width:2px;height:12px;background:#FF6B6B;"></span>目標ライン</span>' : '')
     + '</div>'
+    + goalLine
     + '<div style="padding:0 12px 12px;">' + bars + '</div>';
 }
 
