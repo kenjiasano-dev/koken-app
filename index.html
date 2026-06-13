@@ -305,9 +305,7 @@ input, select, textarea { font-family: inherit; }
       </div>
       <!-- チーム工賃 -->
       <div id="sstab-team-wage">
-        <div style="padding:8px 12px 0;">
-          <button onclick="switchTab('settings');setTimeout(function(){var m=document.getElementById('admin-menu');var a=document.getElementById('admin-arrow');if(m&&m.style.display==='none'){m.style.display='block';a.textContent='▲';loadAdminMenu();}m.scrollIntoView({behavior:'smooth'});},300)" style="width:100%;padding:9px;background:var(--green-light);color:var(--green);border:1px solid var(--green);border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;">⚙️ 目標を設定する（管理者メニュー）</button>
-        </div>
+        
         <div style="padding:8px 12px 0;display:flex;gap:8px;align-items:center;">
           <span style="font-size:13px;color:var(--text-sub);" id="store-rank-month2"></span>
         </div>
@@ -1018,75 +1016,6 @@ input, select, textarea { font-family: inherit; }
           </div>
         </div>
       </div>
-      <!-- 管理者メニュー -->
-      <div class="card">
-        <div class="card-title" onclick="toggleAdminMenu()" style="cursor:pointer;display:flex;justify-content:space-between;align-items:center;">
-          <span>👑 管理者メニュー</span>
-          <span id="admin-arrow" style="color:var(--text-sub);font-size:16px;">▼</span>
-        </div>
-        <div id="admin-menu" style="display:none;">
-
-          <!-- 先月引き継ぎ -->
-          <div style="padding:12px 0 4px;">
-            <button onclick="copyLastMonthGoals()" style="width:100%;padding:10px;background:#fff3cd;color:#856404;border:1px solid #ffc107;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;">📋 前回の設定をそのまま使う</button>
-          </div>
-          <!-- 店舗目標 -->
-          <div style="border-top:1px solid var(--border);padding-top:14px;margin-top:4px;">
-            <div style="font-size:13px;font-weight:700;color:var(--green);margin-bottom:12px;">🏪 店舗目標</div>
-            <div class="form-group">
-              <label class="form-label">受注台数の目標</label>
-              <div style="display:flex;gap:8px;align-items:center;">
-                <input type="number" class="form-input" id="admin-store-count" placeholder="100" min="1" style="flex:1;">
-                <span style="color:var(--text-sub);white-space:nowrap;">台</span>
-              </div>
-            </div>
-            <div class="form-group">
-              <label class="form-label">受注金額の目標</label>
-              <div style="display:flex;gap:8px;align-items:center;">
-                <input type="number" class="form-input" id="admin-store-amount" placeholder="1000" min="1" style="flex:1;">
-                <span style="color:var(--text-sub);white-space:nowrap;">万円</span>
-              </div>
-            </div>
-          </div>
-
-          <!-- カテゴリ別目標 -->
-          <div style="border-top:1px solid var(--border);padding-top:14px;margin-top:4px;">
-            <div style="font-size:13px;font-weight:700;color:var(--green);margin-bottom:12px;">📊 カテゴリ別 月次工賃目標</div>
-            <div class="form-group">
-              <label class="form-label">🔨 鈑金塗装 目標（万円）</label>
-              <div style="display:flex;gap:8px;align-items:center;">
-                <input type="number" class="form-input" id="admin-cat-bankin" placeholder="500" min="0" style="flex:1;">
-                <span style="color:var(--text-sub);white-space:nowrap;">万円</span>
-              </div>
-            </div>
-            <div class="form-group">
-              <label class="form-label">🔧 整備 目標（万円）</label>
-              <div style="display:flex;gap:8px;align-items:center;">
-                <input type="number" class="form-input" id="admin-cat-seibi" placeholder="200" min="0" style="flex:1;">
-                <span style="color:var(--text-sub);white-space:nowrap;">万円</span>
-              </div>
-            </div>
-            <div class="form-group">
-              <label class="form-label">📋 フロント（受付）目標（万円）</label>
-              <div style="display:flex;gap:8px;align-items:center;">
-                <input type="number" class="form-input" id="admin-cat-front" placeholder="300" min="0" style="flex:1;">
-                <span style="color:var(--text-sub);white-space:nowrap;">万円</span>
-              </div>
-            </div>
-          </div>
-
-          <!-- 個人目標 -->
-          <div style="border-top:1px solid var(--border);padding-top:14px;margin-top:4px;">
-            <div style="font-size:13px;font-weight:700;color:var(--green);margin-bottom:4px;">👥 個人目標</div>
-            <div style="font-size:12px;color:var(--text-sub);margin-bottom:12px;">メンバーの名前と目標を入力してください</div>
-            <div id="admin-member-goals"></div>
-            <button onclick="addMemberGoalRow()" style="width:100%;padding:10px;background:var(--green-light);color:var(--green);border-radius:10px;font-size:13px;font-weight:700;margin-top:8px;">＋ メンバーを追加</button>
-          </div>
-
-          <button class="submit-btn" onclick="saveAdminGoals()" style="margin-top:16px;">💾 目標を保存する</button>
-        </div>
-      </div>
-
       </div><!-- /advanced-settings-block -->
 
       <!-- データ復元（常時表示） -->
@@ -1410,7 +1339,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = '20260613d';
+const APP_VERSION = '20260613e';
 (function() {
   var stored = localStorage.getItem('appVersion');
   if (stored !== APP_VERSION) {
@@ -3995,110 +3924,6 @@ function setFrontRankType(type) {
   renderFrontRanking();
 }
 
-// ============================================================
-// 管理者メニュー
-// ============================================================
-function toggleAdminMenu() {
-  const menu = document.getElementById('admin-menu');
-  const arrow = document.getElementById('admin-arrow');
-  const open = menu.style.display === 'none';
-  menu.style.display = open ? 'block' : 'none';
-  arrow.textContent = open ? '▲' : '▼';
-  if (open) loadAdminMenu();
-}
-
-function loadAdminMenu() {
-  document.getElementById('admin-store-count').value = adminGoals.storeCount || '';
-  document.getElementById('admin-store-amount').value = adminGoals.storeAmount || '';
-  var bc = document.getElementById('admin-cat-bankin');
-  var sc = document.getElementById('admin-cat-seibi');
-  var fc = document.getElementById('admin-cat-front');
-  if (bc) bc.value = adminGoals.catBankin || '';
-  if (sc) sc.value = adminGoals.catSeibi || '';
-  if (fc) fc.value = adminGoals.catFront || '';
-  renderMemberGoalRows();
-}
-
-function renderMemberGoalRows() {
-  const el = document.getElementById('admin-member-goals');
-  if (!el) return;
-  const members = adminGoals.members || [];
-  if (!members.length) {
-    el.innerHTML = '<div style="font-size:12px;color:var(--text-sub);padding:8px 0;">まだメンバーがいません</div>';
-    return;
-  }
-  el.innerHTML = members.map((m, i) => `
-    <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;">
-      <input type="text" class="form-input" value="${m.name}" onchange="adminGoals.members[${i}].name=this.value"
-        placeholder="名前" style="flex:2;font-size:13px;padding:10px;">
-      <input type="number" class="form-input" value="${m.count||''}" onchange="adminGoals.members[${i}].count=Number(this.value)"
-        placeholder="台数" style="flex:1;font-size:13px;padding:10px;" min="0">
-      <input type="number" class="form-input" value="${m.amount||''}" onchange="adminGoals.members[${i}].amount=Number(this.value)"
-        placeholder="金額(万)" style="flex:1;font-size:13px;padding:10px;" min="0">
-      <button onclick="removeMemberGoal(${i})" style="color:#e74c3c;font-size:18px;padding:4px 8px;flex-shrink:0;">✕</button>
-    </div>`).join('') +
-    '<div style="display:flex;gap:4px;font-size:10px;color:var(--text-sub);padding-bottom:4px;"><span style="flex:2;padding-left:4px;">名前</span><span style="flex:1;padding-left:4px;">台数目標</span><span style="flex:1;padding-left:4px;">金額目標(万)</span><span style="width:32px;"></span></div>';
-}
-
-function addMemberGoalRow() {
-  if (!adminGoals.members) adminGoals.members = [];
-  adminGoals.members.push({ name: '', count: 0, amount: 0 });
-  renderMemberGoalRows();
-}
-
-function removeMemberGoal(idx) {
-  adminGoals.members.splice(idx, 1);
-  saveLocal();
-  renderMemberGoalRows();
-}
-
-function saveAdminGoals() {
-  adminGoals.storeCount = parseInt(document.getElementById('admin-store-count').value) || 0;
-  adminGoals.storeAmount = parseInt(document.getElementById('admin-store-amount').value) || 0;
-  var bc = document.getElementById('admin-cat-bankin');
-  var sc = document.getElementById('admin-cat-seibi');
-  var fc = document.getElementById('admin-cat-front');
-  if (bc) adminGoals.catBankin = parseInt(bc.value) || 0;
-  if (sc) adminGoals.catSeibi = parseInt(sc.value) || 0;
-  if (fc) adminGoals.catFront = parseInt(fc.value) || 0;
-  saveLocal();
-  showToast('💾 目標を保存しました！');
-}
-
-
-// 前回の目標をそのまま使う（フォームに再ロード）
-function copyLastMonthGoals() {
-  loadAdminMenu();
-  showToast('📋 保存済みの目標を読み込みました');
-}
-
-// グループからメンバーを自動取得して個人目標に追加
-async function autoFetchMembers() {
-  var code = userData.activeGroupCode || userData.groupCode;
-  if (!code) { showToast('グループコードを設定してください'); return; }
-  showToast('📥 メンバーを取得中...');
-  try {
-    var now = new Date();
-    var month = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0');
-    var data = await fetchFromGAS('getStoreRanking', { groupCode: code, month: month });
-    var members = (data && data.data) ? data.data : [];
-    if (!members.length) { showToast('メンバーが見つかりませんでした'); return; }
-    if (!adminGoals.members) adminGoals.members = [];
-    var existing = adminGoals.members.map(function(m){ return m.name; });
-    var added = 0;
-    members.forEach(function(m) {
-      if (!existing.includes(m.name)) {
-        adminGoals.members.push({ name: m.name, count: 0, amount: 0 });
-        added++;
-      }
-    });
-    renderMemberGoalRows();
-    showToast(added > 0 ? ('✅ ' + added + '人を追加しました') : '全員すでに登録済みです');
-  } catch(e) {
-    showToast('取得に失敗しました');
-  }
-}
-// ============================================================
 // FRONT GOAL
 // ============================================================
 function renderMonthlyList() {
