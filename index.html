@@ -305,6 +305,9 @@ input, select, textarea { font-family: inherit; }
       </div>
       <!-- チーム工賃 -->
       <div id="sstab-team-wage">
+        <div style="padding:8px 12px 0;">
+          <button onclick="switchTab('settings');setTimeout(function(){var m=document.getElementById('admin-menu');var a=document.getElementById('admin-arrow');if(m&&m.style.display==='none'){m.style.display='block';a.textContent='▲';loadAdminMenu();}m.scrollIntoView({behavior:'smooth'});},300)" style="width:100%;padding:9px;background:var(--green-light);color:var(--green);border:1px solid var(--green);border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;">⚙️ 目標を設定する（管理者メニュー）</button>
+        </div>
         <div style="padding:8px 12px 0;display:flex;gap:8px;align-items:center;">
           <span style="font-size:13px;color:var(--text-sub);" id="store-rank-month2"></span>
         </div>
@@ -1023,6 +1026,10 @@ input, select, textarea { font-family: inherit; }
         </div>
         <div id="admin-menu" style="display:none;">
 
+          <!-- 先月引き継ぎ -->
+          <div style="padding:12px 0 4px;">
+            <button onclick="copyLastMonthGoals()" style="width:100%;padding:10px;background:#fff3cd;color:#856404;border:1px solid #ffc107;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;">📋 前回の設定をそのまま使う</button>
+          </div>
           <!-- 店舗目標 -->
           <div style="border-top:1px solid var(--border);padding-top:14px;margin-top:4px;">
             <div style="font-size:13px;font-weight:700;color:var(--green);margin-bottom:12px;">🏪 店舗目標</div>
@@ -1403,7 +1410,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = '20260613c';
+const APP_VERSION = '20260613d';
 (function() {
   var stored = localStorage.getItem('appVersion');
   if (stored !== APP_VERSION) {
@@ -4058,6 +4065,39 @@ function saveAdminGoals() {
   showToast('💾 目標を保存しました！');
 }
 
+
+// 前回の目標をそのまま使う（フォームに再ロード）
+function copyLastMonthGoals() {
+  loadAdminMenu();
+  showToast('📋 保存済みの目標を読み込みました');
+}
+
+// グループからメンバーを自動取得して個人目標に追加
+async function autoFetchMembers() {
+  var code = userData.activeGroupCode || userData.groupCode;
+  if (!code) { showToast('グループコードを設定してください'); return; }
+  showToast('📥 メンバーを取得中...');
+  try {
+    var now = new Date();
+    var month = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0');
+    var data = await fetchFromGAS('getStoreRanking', { groupCode: code, month: month });
+    var members = (data && data.data) ? data.data : [];
+    if (!members.length) { showToast('メンバーが見つかりませんでした'); return; }
+    if (!adminGoals.members) adminGoals.members = [];
+    var existing = adminGoals.members.map(function(m){ return m.name; });
+    var added = 0;
+    members.forEach(function(m) {
+      if (!existing.includes(m.name)) {
+        adminGoals.members.push({ name: m.name, count: 0, amount: 0 });
+        added++;
+      }
+    });
+    renderMemberGoalRows();
+    showToast(added > 0 ? ('✅ ' + added + '人を追加しました') : '全員すでに登録済みです');
+  } catch(e) {
+    showToast('取得に失敗しました');
+  }
+}
 // ============================================================
 // FRONT GOAL
 // ============================================================
