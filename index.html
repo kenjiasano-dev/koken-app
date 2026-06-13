@@ -372,10 +372,10 @@ input, select, textarea { font-family: inherit; }
           </div>
         </div>
         <div style="display:flex;gap:8px;padding:0 12px 8px;">
-          <button onclick="setMyRankType('national')" id="mrt-nat-btn" style="flex:1;padding:7px;border-radius:8px;font-size:11px;font-weight:700;background:var(--green);color:#111;border:none;cursor:pointer;">全国</button>
-          <button onclick="setMyRankType('region')" id="mrt-reg-btn" style="flex:1;padding:7px;border-radius:8px;font-size:11px;font-weight:700;background:var(--card);color:var(--text-sub);border:1px solid var(--border);cursor:pointer;">地域</button>
-          <button onclick="setMyRankType('pref')" id="mrt-pref-btn" style="flex:1;padding:7px;border-radius:8px;font-size:11px;font-weight:700;background:var(--card);color:var(--text-sub);border:1px solid var(--border);cursor:pointer;">県内</button>
-          <button onclick="setMyRankType('store')" id="mrt-store-btn" style="flex:1;padding:7px;border-radius:8px;font-size:11px;font-weight:700;background:var(--card);color:var(--text-sub);border:1px solid var(--border);cursor:pointer;">社内</button>
+          <button onclick="setMyRankType('store')" id="mrt-store-btn" style="flex:1;padding:7px;border-radius:8px;font-size:11px;font-weight:700;background:var(--green);color:#111;border:none;cursor:pointer;">🏪 社内</button>
+          <button id="mrt-nat-btn" style="flex:1;padding:7px;border-radius:8px;font-size:11px;font-weight:700;background:var(--card);color:var(--text-sub);border:1px solid var(--border);cursor:not-allowed;opacity:.4;" title="ユーザーが増えたら解放">全国</button>
+          <button id="mrt-reg-btn" style="flex:1;padding:7px;border-radius:8px;font-size:11px;font-weight:700;background:var(--card);color:var(--text-sub);border:1px solid var(--border);cursor:not-allowed;opacity:.4;" title="ユーザーが増えたら解放">地域</button>
+          <button id="mrt-pref-btn" style="flex:1;padding:7px;border-radius:8px;font-size:11px;font-weight:700;background:var(--card);color:var(--text-sub);border:1px solid var(--border);cursor:not-allowed;opacity:.4;" title="ユーザーが増えたら解放">県内</button>
         </div>
         <div class="card" style="padding:0;overflow:hidden;">
           <ul class="rank-list" id="my-rank-list"></ul>
@@ -394,7 +394,7 @@ input, select, textarea { font-family: inherit; }
     <div class="page" id="page-ranking">
       <div class="sub-tabs" id="ranking-sub-tabs">
         <button class="sub-tab active" data-rtab="store">🏪 社内</button>
-        <button id="rank-more-btn" onclick="toggleRankMore()" style="margin-left:auto;padding:6px 12px;border-radius:8px;font-size:11px;background:var(--card);color:var(--text-sub);border:1px solid var(--border);cursor:pointer;white-space:nowrap;">🌐 全国 ···</button>
+        <button id="rank-more-btn" style="margin-left:auto;padding:6px 12px;border-radius:8px;font-size:11px;background:var(--card);color:var(--text-sub);border:1px solid var(--border);cursor:not-allowed;opacity:.4;white-space:nowrap;" title="ユーザーが増えたら解放">🌐 全国（準備中）</button>
       </div>
       <!-- 全国・地域・県内は折りたたみ -->
       <div id="rank-more-tabs" style="display:none;">
@@ -1339,7 +1339,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = '20260613e';
+const APP_VERSION = '20260613f';
 (function() {
   var stored = localStorage.getItem('appVersion');
   if (stored !== APP_VERSION) {
@@ -1755,7 +1755,7 @@ async function renderFrontRanking2() {
 // マイページ新
 // ============================================================
 let myPageTab = 'status';
-let myRankType = 'national';
+let myRankType = 'store';
 
 function initMyPage() {
   var subTabs = document.getElementById('my-sub-tabs');
