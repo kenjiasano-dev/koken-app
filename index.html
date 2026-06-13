@@ -1353,7 +1353,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = '20260613l';
+const APP_VERSION = '20260613m';
 (function() {
   var stored = localStorage.getItem('appVersion');
   if (stored !== APP_VERSION) {
@@ -3037,7 +3037,7 @@ function saveProfile() {
   renderGoalRing();
 
   // Update GAS
-  postToGAS({ action: 'updateProfile', name, pref, store, goal, role, expYears: userData.expYears || {}, groupCode: userData.activeGroupCode || userData.groupCode || '' });
+  postToGAS({ action: 'updateProfile', name, pref, store, goal, role, expYears: userData.expYears || {}, fiscalStart: userData.fiscalStart || 1, groupCode: userData.activeGroupCode || userData.groupCode || '' });
 }
 
 function generateGroupCode() {
@@ -3161,6 +3161,10 @@ async function restoreFromGAS() {
     if (res.expYears && Object.keys(res.expYears).length) {
       userData.expYears = res.expYears;
       if (typeof renderExpRows === 'function') renderExpRows();
+    }
+    if (res.fiscalStart) {
+      userData.fiscalStart = parseInt(res.fiscalStart) || 1;
+      if (document.getElementById('set-fiscal-start')) document.getElementById('set-fiscal-start').value = userData.fiscalStart;
     }
     saveLocal();
     if (statusEl) statusEl.textContent = '✅ 復元完了: 工賃' + wCount + '件 / 受付' + fCount + '件 追加';
