@@ -776,6 +776,24 @@ input, select, textarea { font-family: inherit; }
           <label class="form-label">月間目標（万円）</label>
           <input type="number" class="form-input" id="set-goal" placeholder="100" min="1" max="500">
         </div>
+        <div class="form-group">
+          <label class="form-label">年度開始月</label>
+          <div style="font-size:12px;color:var(--text-sub);margin-bottom:6px;">会社の年度に合わせて設定（例：4月始まりなら4）</div>
+          <select class="form-input" id="set-fiscal-start">
+            <option value="1">1月始まり（1月〜12月）</option>
+            <option value="2">2月始まり</option>
+            <option value="3">3月始まり</option>
+            <option value="4">4月始まり（4月〜3月）</option>
+            <option value="5">5月始まり</option>
+            <option value="6">6月始まり</option>
+            <option value="7">7月始まり</option>
+            <option value="8">8月始まり</option>
+            <option value="9">9月始まり</option>
+            <option value="10">10月始まり</option>
+            <option value="11">11月始まり</option>
+            <option value="12">12月始まり</option>
+          </select>
+        </div>
         <button class="submit-btn" onclick="saveProfile()">💾 保存する</button>
       </div>
       <!-- Group -->
@@ -1335,7 +1353,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = '20260613k';
+const APP_VERSION = '20260613l';
 (function() {
   var stored = localStorage.getItem('appVersion');
   if (stored !== APP_VERSION) {
@@ -1366,6 +1384,7 @@ if (!userData.name) userData.name = '';
 if (!userData.store) userData.store = '';
 if (!userData.pref) userData.pref = '';
 if (!userData.goal) userData.goal = 100;
+if (!userData.fiscalStart) userData.fiscalStart = 1;
 if (!userData.groupCode) userData.groupCode = '';
 if (!userData.groupCodes) userData.groupCodes = [];
 if (!userData.activeGroupCode) userData.activeGroupCode = '';
@@ -1920,28 +1939,51 @@ async function renderMyRanking() {
 
 var trendYear = new Date().getFullYear();
 
+// 年度キー: 年度開始月を考慮した "年度" の識別子を返す
+// 例) 4月始まりなら 2026年4月〜2027年3月 → 年度キー "2026"
+function getFiscalYear(dateStr, fiscalStart) {
+  var y = parseInt(dateStr.slice(0,4));
+  var m = parseInt(dateStr.slice(5,7));
+  if (fiscalStart <= 1) return y;
+  return m >= fiscalStart ? y : y - 1;
+}
+
+// 年度の12ヶ月を "YYYY-MM" 形式で返す
+function getFiscalMonths(fiscalYear, fiscalStart) {
+  var keys = [];
+  for (var i = 0; i < 12; i++) {
+    var m = ((fiscalStart - 1 + i) % 12) + 1;
+    var y = fiscalStart + i > 12 ? fiscalYear + 1 : fiscalYear;
+    // より正確に
+    var absMonth = fiscalStart + i;
+    var yy = absMonth > 12 ? fiscalYear + 1 : fiscalYear;
+    var mm = ((absMonth - 1) % 12) + 1;
+    keys.push(yy + '-' + String(mm).padStart(2,'0'));
+  }
+  return keys;
+}
+
 function renderMyTrend() {
   var el = document.getElementById('my-trend-content');
   if (!el) return;
+  var fiscalStart = parseInt(userData.fiscalStart) || 1;
 
-  // 全データから存在する年リストを作成
-  var yearSet = {};
-  wageData.forEach(function(d) { if (d.date) yearSet[d.date.slice(0,4)] = true; });
-  var years = Object.keys(yearSet).sort();
-  if (!years.length) { el.innerHTML = '<div style="text-align:center;padding:30px;color:var(--text-sub);font-size:13px;">データなし</div>'; return; }
-  // trendYearが存在しない年なら最新年に補正
-  if (!yearSet[trendYear]) trendYear = parseInt(years[years.length-1]);
+  // 全データから年度リストを作成
+  var fySet = {};
+  wageData.forEach(function(d) { if (d.date) fySet[getFiscalYear(d.date, fiscalStart)] = true; });
+  var fiscalYears = Object.keys(fySet).map(Number).sort();
+  if (!fiscalYears.length) { el.innerHTML = '<div style="text-align:center;padding:30px;color:var(--text-sub);font-size:13px;">データなし</div>'; return; }
+  if (!fySet[trendYear]) trendYear = fiscalYears[fiscalYears.length-1];
 
-  // 選択年の1〜12月データを集計
+  // 年度の12ヶ月キーを生成（年度開始月順）
+  var fiscalKeys = getFiscalMonths(trendYear, fiscalStart);
   var months = {};
-  for (var mo = 1; mo <= 12; mo++) {
-    var key = trendYear + '-' + String(mo).padStart(2,'0');
-    months[key] = 0;
-  }
+  fiscalKeys.forEach(function(k){ months[k] = 0; });
   var bankinMonths = JSON.parse(JSON.stringify(months));
   var seibiMonths  = JSON.parse(JSON.stringify(months));
   wageData.forEach(function(d) {
-    if (!d.date || d.date.slice(0,4) != trendYear) return;
+    if (!d.date) return;
+    if (getFiscalYear(d.date, fiscalStart) != trendYear) return;
     var key = d.date.slice(0,7);
     if (months[key] !== undefined) {
       months[key] += (d.amount||0);
@@ -1950,7 +1992,7 @@ function renderMyTrend() {
     }
   });
 
-  var keys = Object.keys(months).sort();
+  var keys = fiscalKeys;
   var goal = (userData.goal || 0) * 10000;
   var maxVal = Math.max.apply(null, keys.map(function(k){return months[k];}));
   // 目標ラインをグラフに表示するため、maxはgoalも考慮
@@ -2010,7 +2052,7 @@ function renderMyTrend() {
     +   yearBtns
     + '</div>'
     + '<div style="margin:6px 12px 8px;padding:10px 14px;background:var(--card);border:1px solid var(--border);border-radius:10px;display:flex;gap:16px;">'
-    +   '<div><div style="font-size:10px;color:var(--text-sub);">'+trendYear+'年 合計</div><div style="font-size:18px;font-weight:900;color:var(--green);">¥'+total.toLocaleString()+'</div></div>'
+    +   '<div><div style="font-size:10px;color:var(--text-sub);">'+(fiscalStart<=1?trendYear+'年':trendYear+'年度')+' 合計</div><div style="font-size:18px;font-weight:900;color:var(--green);">¥'+total.toLocaleString()+'</div></div>'
     +   '<div><div style="font-size:10px;color:var(--text-sub);">月平均</div><div style="font-size:18px;font-weight:900;color:var(--green);">¥'+Math.round(total/12).toLocaleString()+'</div></div>'
     +   (achievedCount > 0 ? '<div><div style="font-size:10px;color:var(--text-sub);">達成月数</div><div style="font-size:18px;font-weight:900;color:#FFD700;">'+achievedCount+' ヶ月</div></div>' : '')
     + '</div>'
@@ -2849,6 +2891,7 @@ function initSettings() {
   document.getElementById('set-pref').value = userData.pref || '';
   document.getElementById('set-store').value = userData.store || '';
   document.getElementById('set-goal').value = userData.goal || 100;
+  if (document.getElementById('set-fiscal-start')) document.getElementById('set-fiscal-start').value = userData.fiscalStart || 1;
   document.getElementById('set-group').value = '';
   if (userData.role) { var ri = document.getElementById('set-role'); if(ri) ri.value=userData.role; selectRole(userData.role, true); }
   // 経験年数
@@ -2977,6 +3020,7 @@ function saveProfile() {
   userData.pref = pref;
   userData.store = store;
   userData.goal = goal;
+  userData.fiscalStart = parseInt(document.getElementById('set-fiscal-start').value) || 1;
   userData.role = role;
   // 経験年数（職種別の開始年を一括保存）
   var expObj = {};
