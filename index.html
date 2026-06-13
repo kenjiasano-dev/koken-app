@@ -365,19 +365,15 @@ input, select, textarea { font-family: inherit; }
       </div>
       <!-- ランキング -->
       <div id="mytab-ranking" style="display:none;">
-        <div style="padding:8px 12px 0;">
-          <div class="card" style="background:var(--green-light);border:1px solid var(--green);margin-bottom:8px;">
-            <div style="font-size:13px;font-weight:700;color:var(--green);">自分の順位</div>
-            <div style="font-size:11px;color:var(--text-sub);margin-top:4px;">各ランキングでの自分の位置が表示されます</div>
+        <div style="padding:8px 12px 4px;">
+          <div style="display:flex;gap:6px;">
+            <button onclick="setRankCategory('total')" id="rcat-total-btn" style="flex:1;padding:8px 4px;border-radius:8px;font-size:11px;font-weight:700;background:var(--green);color:#111;border:none;cursor:pointer;">🏆 総合</button>
+            <button onclick="setRankCategory('bankin')" id="rcat-bankin-btn" style="flex:1;padding:8px 4px;border-radius:8px;font-size:11px;font-weight:700;background:var(--card);color:var(--text-sub);border:1px solid var(--border);cursor:pointer;">🔨 鈑金塗装</button>
+            <button onclick="setRankCategory('seibi')" id="rcat-seibi-btn" style="flex:1;padding:8px 4px;border-radius:8px;font-size:11px;font-weight:700;background:var(--card);color:var(--text-sub);border:1px solid var(--border);cursor:pointer;">🔧 整備</button>
           </div>
+          <div id="rcat-label" style="font-size:11px;color:var(--text-sub);margin-top:6px;text-align:center;">社内 総合ランキング</div>
         </div>
-        <div style="display:flex;gap:8px;padding:0 12px 8px;">
-          <button onclick="setMyRankType('store')" id="mrt-store-btn" style="flex:1;padding:7px;border-radius:8px;font-size:11px;font-weight:700;background:var(--green);color:#111;border:none;cursor:pointer;">🏪 社内</button>
-          <button id="mrt-nat-btn" style="flex:1;padding:7px;border-radius:8px;font-size:11px;font-weight:700;background:var(--card);color:var(--text-sub);border:1px solid var(--border);cursor:not-allowed;opacity:.4;" title="ユーザーが増えたら解放">全国</button>
-          <button id="mrt-reg-btn" style="flex:1;padding:7px;border-radius:8px;font-size:11px;font-weight:700;background:var(--card);color:var(--text-sub);border:1px solid var(--border);cursor:not-allowed;opacity:.4;" title="ユーザーが増えたら解放">地域</button>
-          <button id="mrt-pref-btn" style="flex:1;padding:7px;border-radius:8px;font-size:11px;font-weight:700;background:var(--card);color:var(--text-sub);border:1px solid var(--border);cursor:not-allowed;opacity:.4;" title="ユーザーが増えたら解放">県内</button>
-        </div>
-        <div class="card" style="padding:0;overflow:hidden;">
+        <div class="card" style="padding:0;overflow:hidden;margin-top:4px;">
           <ul class="rank-list" id="my-rank-list"></ul>
         </div>
       </div>
@@ -1339,7 +1335,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = '20260613f';
+const APP_VERSION = '20260613g';
 (function() {
   var stored = localStorage.getItem('appVersion');
   if (stored !== APP_VERSION) {
@@ -1756,6 +1752,7 @@ async function renderFrontRanking2() {
 // ============================================================
 let myPageTab = 'status';
 let myRankType = 'store';
+let rankCategory = 'total'; // 'total' | 'bankin' | 'seibi'
 
 function initMyPage() {
   var subTabs = document.getElementById('my-sub-tabs');
@@ -1873,15 +1870,22 @@ function renderMyStatus() {
   setMyStatusView(myStatusView);
 }
 
-function setMyRankType(type) {
-  myRankType = type;
-  var map = {national:'nat', region:'reg', pref:'pref', store:'store'};
-  ['national','region','pref','store'].forEach(function(t){
-    var btn = document.getElementById('mrt-'+map[t]+'-btn');
+function setRankCategory(cat) {
+  rankCategory = cat;
+  var labels = { total:'社内 総合ランキング', bankin:'社内 🔨鈑金塗装部門', seibi:'社内 🔧整備部門' };
+  var lbl = document.getElementById('rcat-label');
+  if (lbl) lbl.textContent = labels[cat] || '';
+  ['total','bankin','seibi'].forEach(function(c){
+    var btn = document.getElementById('rcat-'+c+'-btn');
     if (!btn) return;
-    if (t===type) { btn.style.background='var(--green)'; btn.style.color='#111'; btn.style.border='none'; }
+    if (c===cat) { btn.style.background='var(--green)'; btn.style.color='#111'; btn.style.border='none'; }
     else { btn.style.background='var(--card)'; btn.style.color='var(--text-sub)'; btn.style.border='1px solid var(--border)'; }
   });
+  renderMyRanking();
+}
+
+function setMyRankType(type) {
+  myRankType = type;
   renderMyRanking();
 }
 
@@ -1890,22 +1894,23 @@ async function renderMyRanking() {
   if (!list) return;
   list.innerHTML = '<li style="padding:16px;text-align:center;color:var(--text-sub);font-size:13px;">読み込み中...</li>';
   try {
-    var params = { type: myRankType };
-    if (myRankType === 'store') {
-      var code = userData.activeGroupCode || userData.groupCode;
-      if (!code) { list.innerHTML = '<li style="padding:16px;text-align:center;color:var(--text-sub);font-size:13px;">グループコードを設定してください</li>'; return; }
-      params.groupCode = code;
-    }
-    var data = await fetchFromGAS('getRanking', params);
+    var code = userData.activeGroupCode || userData.groupCode;
+    if (!code) { list.innerHTML = '<li style="padding:16px;text-align:center;color:var(--text-sub);font-size:13px;">グループコードを設定してください</li>'; return; }
+    var params = { type: 'store', groupCode: code };
+    if (rankCategory === 'bankin') params.category = '鈑金塗装';
+    else if (rankCategory === 'seibi') params.category = '整備';
+    var data = await fetchFromGAS('getStoreRanking', params);
     if (!data || !data.data) { list.innerHTML = '<li style="padding:16px;text-align:center;color:var(--text-sub);font-size:13px;">データなし</li>'; return; }
     var myIdx = data.data.findIndex(function(r){return r.name===userData.name;});
+    var catColor = rankCategory==='bankin'?'#4A9ECC':rankCategory==='seibi'?'#27ae60':'var(--green)';
     list.innerHTML = data.data.slice(0,20).map(function(r,i){
-      var medal = i===0?'🥇':i===1?'🥈':i===2?'🥉':(i+1)+'';
+      var medal = i===0?'🥇':i===1?'🥈':i===2?'🥉':(i+1)+'位';
       var isMe = r.name===userData.name;
-      return '<li class="rank-item'+(isMe?' rank-me':'')+'">' +
-        '<span class="rank-medal">'+medal+'</span>' +
+      return '<li class="rank-item'+(isMe?' is-me':'')+'">' +
+        '<span class="rank-num'+(i===0?' gold':i===1?' silver':i===2?' bronze':'')+'">'+medal+'</span>' +
         '<div class="rank-info"><div class="rank-name">'+r.name+'</div><div class="rank-sub">'+(r.store||'')+'</div></div>' +
-        '<span class="rank-wage">'+(r.amount||0).toLocaleString()+'円</span></li>';
+        '<div class="rank-score"><div class="amount" style="color:'+catColor+';">¥'+(r.amount||0).toLocaleString()+'</div><div class="unit">円</div></div>' +
+        '</li>';
     }).join('') +
     (myIdx>=20?'<li style="padding:12px;text-align:center;font-size:13px;color:var(--green);font-weight:700;">あなたの順位: '+(myIdx+1)+'位</li>':'');
   } catch(e) {
