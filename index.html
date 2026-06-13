@@ -355,7 +355,7 @@ input, select, textarea { font-family: inherit; }
       <div class="sub-tabs" id="my-sub-tabs">
         <button class="sub-tab active" data-mytab="status">📊 状況</button>
         <button class="sub-tab" data-mytab="ranking">🏆 ランキング</button>
-        <button class="sub-tab" data-mytab="trend" style="display:none;">📈 推移</button>
+        <button class="sub-tab" data-mytab="trend">📈 推移</button>
         <button class="sub-tab" data-mytab="badge" style="display:none;">⚔️ 称号</button>
         <button id="my-more-btn" onclick="toggleMyMore()" style="padding:6px 10px;border-radius:8px;font-size:11px;background:var(--card);color:var(--text-sub);border:1px solid var(--border);cursor:pointer;">···</button>
       </div>
@@ -1335,7 +1335,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = '20260613i';
+const APP_VERSION = '20260613j';
 (function() {
   var stored = localStorage.getItem('appVersion');
   if (stored !== APP_VERSION) {
@@ -1918,32 +1918,88 @@ async function renderMyRanking() {
   }
 }
 
+var trendYear = new Date().getFullYear();
+
 function renderMyTrend() {
   var el = document.getElementById('my-trend-content');
   if (!el) return;
-  // 月別工賃を簡易棒グラフで表示
+
+  // 全データから存在する年リストを作成
+  var yearSet = {};
+  wageData.forEach(function(d) { if (d.date) yearSet[d.date.slice(0,4)] = true; });
+  var years = Object.keys(yearSet).sort();
+  if (!years.length) { el.innerHTML = '<div style="text-align:center;padding:30px;color:var(--text-sub);font-size:13px;">データなし</div>'; return; }
+  // trendYearが存在しない年なら最新年に補正
+  if (!yearSet[trendYear]) trendYear = parseInt(years[years.length-1]);
+
+  // 選択年の1〜12月データを集計
   var months = {};
+  for (var mo = 1; mo <= 12; mo++) {
+    var key = trendYear + '-' + String(mo).padStart(2,'0');
+    months[key] = 0;
+  }
+  var bankinMonths = JSON.parse(JSON.stringify(months));
+  var seibiMonths  = JSON.parse(JSON.stringify(months));
   wageData.forEach(function(d) {
-    if (!d.date) return;
-    var m = d.date.slice(0,7);
-    months[m] = (months[m]||0) + (d.amount||0);
+    if (!d.date || d.date.slice(0,4) != trendYear) return;
+    var key = d.date.slice(0,7);
+    if (months[key] !== undefined) {
+      months[key] += (d.amount||0);
+      if ((d.category||'鈑金塗装') === '整備') seibiMonths[key]  += (d.amount||0);
+      else                                       bankinMonths[key] += (d.amount||0);
+    }
   });
-  var keys = Object.keys(months).sort().slice(-6);
-  if (!keys.length) { el.innerHTML = '<div style="text-align:center;padding:30px;color:var(--text-sub);font-size:13px;">データなし</div>'; return; }
+
+  var keys = Object.keys(months).sort();
   var max = Math.max.apply(null, keys.map(function(k){return months[k];})) || 1;
-  el.innerHTML = '<div style="padding:12px;">' + keys.map(function(m) {
-    var val = months[m];
-    var pct = Math.round(val/max*100);
-    var label = m.replace(/^(\d+)-(\d+)$/, function(_,y,mo){ return y.slice(2)+'年'+parseInt(mo)+'月'; });
-    return '<div style="margin-bottom:12px;">' +
-      '<div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px;">' +
-        '<span style="color:var(--text-sub);">'+label+'</span>' +
-        '<span style="font-weight:700;color:var(--green);">¥'+val.toLocaleString()+'</span>' +
-      '</div>' +
-      '<div style="height:12px;background:var(--border);border-radius:6px;overflow:hidden;">' +
-        '<div style="height:100%;width:'+pct+'%;background:var(--green);border-radius:6px;transition:width .6s;"></div>' +
-      '</div></div>';
-  }).join('') + '</div>';
+  var total = keys.reduce(function(s,k){return s+months[k];},0);
+  var peak  = keys.reduce(function(best,k){ return months[k]>months[best]?k:best; }, keys[0]);
+
+  // 年切り替えボタン
+  var yearBtns = years.map(function(y) {
+    var active = (y == trendYear);
+    return '<button onclick="trendYear='+y+';renderMyTrend();" style="padding:5px 12px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;'
+      + (active ? 'background:var(--green);color:#111;border:none;' : 'background:var(--card);color:var(--text-sub);border:1px solid var(--border);')
+      + '">'+y+'年</button>';
+  }).join('');
+
+  // バーグラフ
+  var bars = keys.map(function(m) {
+    var total_m = months[m];
+    var bankin  = bankinMonths[m];
+    var seibi   = seibiMonths[m];
+    var pctB = Math.round(bankin/max*100);
+    var pctS = Math.round(seibi/max*100);
+    var mo = parseInt(m.slice(5));
+    var isPeak = m === peak && total_m > 0;
+    return '<div style="margin-bottom:10px;">'
+      + '<div style="display:flex;justify-content:space-between;align-items:center;font-size:12px;margin-bottom:3px;">'
+      +   '<span style="color:var(--text-sub);min-width:28px;">' + mo + '月</span>'
+      +   (total_m > 0
+            ? '<span style="font-weight:700;color:var(--green);">¥'+total_m.toLocaleString()
+              + (isPeak ? ' <span style="font-size:10px;color:#FFD700;">▲最高</span>' : '') + '</span>'
+            : '<span style="color:var(--text-sub);font-size:11px;">—</span>')
+      + '</div>'
+      + '<div style="height:14px;background:var(--border);border-radius:6px;overflow:hidden;display:flex;">'
+      +   '<div style="height:100%;width:'+pctB+'%;background:#4A9ECC;transition:width .6s;"></div>'
+      +   '<div style="height:100%;width:'+pctS+'%;background:#27ae60;transition:width .6s;"></div>'
+      + '</div>'
+      + '</div>';
+  }).join('');
+
+  el.innerHTML = ''
+    + '<div style="padding:10px 12px 4px;display:flex;gap:6px;flex-wrap:wrap;align-items:center;">'
+    +   yearBtns
+    + '</div>'
+    + '<div style="margin:6px 12px 8px;padding:10px 14px;background:var(--card);border:1px solid var(--border);border-radius:10px;display:flex;gap:16px;">'
+    +   '<div><div style="font-size:10px;color:var(--text-sub);">'+trendYear+'年 合計</div><div style="font-size:18px;font-weight:900;color:var(--green);">¥'+total.toLocaleString()+'</div></div>'
+    +   '<div><div style="font-size:10px;color:var(--text-sub);">月平均</div><div style="font-size:18px;font-weight:900;color:var(--green);">¥'+Math.round(total/12).toLocaleString()+'</div></div>'
+    + '</div>'
+    + '<div style="display:flex;gap:12px;padding:0 12px 6px;font-size:11px;">'
+    +   '<span style="display:flex;align-items:center;gap:4px;"><span style="display:inline-block;width:12px;height:12px;background:#4A9ECC;border-radius:2px;"></span>鈑金塗装</span>'
+    +   '<span style="display:flex;align-items:center;gap:4px;"><span style="display:inline-block;width:12px;height:12px;background:#27ae60;border-radius:2px;"></span>整備</span>'
+    + '</div>'
+    + '<div style="padding:0 12px 12px;">' + bars + '</div>';
 }
 
 function renderMyBadge() {
