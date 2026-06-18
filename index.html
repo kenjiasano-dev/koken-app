@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
@@ -1355,7 +1355,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = '20260618d';
+const APP_VERSION = '20260618g';
 (function() {
   var stored = localStorage.getItem('appVersion');
   if (stored !== APP_VERSION) {
@@ -1469,12 +1469,12 @@ function formatYen(n) {
 function getMyMonthlyTotal() {
   const now = new Date();
   const ym = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
-  return wageData.filter(w => w.date.startsWith(ym)).reduce((s, w) => s + w.amount, 0);
+  return wageData.filter(w => w.date && w.date.startsWith(ym)).reduce((s, w) => s + w.amount, 0);
 }
 
 function getWageByMonth(year, month) {
   const ym = `${year}-${String(month).padStart(2,'0')}`;
-  return wageData.filter(w => w.date.startsWith(ym));
+  return wageData.filter(w => w.date && w.date.startsWith(ym));
 }
 
 // Prefecture list
@@ -1775,7 +1775,6 @@ async function renderFrontRanking2() {
 // マイページ新
 // ============================================================
 let myPageTab = 'status';
-let myRankType = 'store';
 let rankCategory = 'total'; // 'total' | 'bankin' | 'seibi'
 
 function initMyPage() {
@@ -1908,11 +1907,6 @@ function setRankCategory(cat) {
   renderMyRanking();
 }
 
-function setMyRankType(type) {
-  myRankType = type;
-  renderMyRanking();
-}
-
 async function renderMyRanking() {
   var list = document.getElementById('my-rank-list');
   if (!list) return;
@@ -2007,7 +2001,7 @@ function renderMyTrend() {
   var achievedCount = goal > 0 ? keys.filter(function(k){ return months[k] >= goal; }).length : 0;
 
   // 年切り替えボタン
-  var yearBtns = years.map(function(y) {
+  var yearBtns = fiscalYears.map(function(y) {
     var active = (y == trendYear);
     return '<button onclick="trendYear='+y+';renderMyTrend();" style="padding:5px 12px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;'
       + (active ? 'background:var(--green);color:#111;border:none;' : 'background:var(--card);color:var(--text-sub);border:1px solid var(--border);')
@@ -2190,34 +2184,53 @@ async function fetchStats() {
   } catch(e) {}
 }
 
-function renderNational() {
-  const list = document.getElementById('national-list');
-  // inject self into demo data at correct position
-  const myTotal = getMyMonthlyTotal();
-  let data = [...DEMO_NATIONAL];
-  if (userData.name) {
-    data = data.filter(d => d.name !== (userData.name));
-    data.push({ name: userData.name, store: userData.store, pref: userData.pref, amount: myTotal, isMe: true });
-    data.sort((a, b) => b.amount - a.amount);
-    data = data.map((d, i) => ({ ...d, rank: i+1 }));
+let _rankCache = null;
+let _rankCacheTime = 0;
+
+async function _fetchRankingCached() {
+  const now = Date.now();
+  if (_rankCache && now - _rankCacheTime < 300000) return _rankCache;
+  const res = await fetchFromGAS('getRanking');
+  if (res && res.data && res.data.length > 0) {
+    _rankCache = res.data;
+    _rankCacheTime = now;
   }
+  return _rankCache;
+}
+
+function _rankMergeMe(rawData, myTotal) {
+  let data = rawData
+    ? rawData.map(d => ({ name: d.name, store: d.store || '', pref: d.pref || '', amount: d.amount }))
+    : [...DEMO_NATIONAL];
+  if (userData.name) {
+    const idx = data.findIndex(d => d.name === userData.name);
+    if (idx >= 0) { if (myTotal >= data[idx].amount) data[idx].amount = myTotal; }
+    else data.push({ name: userData.name, store: userData.store || '', pref: userData.pref || '', amount: myTotal });
+  }
+  data.sort((a, b) => b.amount - a.amount);
+  return data.map((d, i) => ({ ...d, rank: i + 1, isMe: !!(userData.name && d.name === userData.name) }));
+}
+
+async function renderNational() {
+  const list = document.getElementById('national-list');
+  list.innerHTML = '<li style="padding:16px;text-align:center;color:var(--text-sub);font-size:13px;">読み込み中...</li>';
+  const myTotal = getMyMonthlyTotal();
+  let raw = null;
+  try { raw = await _fetchRankingCached(); } catch(e) {}
+  const data = _rankMergeMe(raw, myTotal);
   list.innerHTML = data.slice(0, 20).map(d => buildRankItem(d, userData.name)).join('');
 }
 
-function renderRegion() {
+async function renderRegion() {
   const filter = document.getElementById('region-filter').value;
   const myTotal = getMyMonthlyTotal();
-  let data = [...DEMO_NATIONAL];
-  if (userData.name) {
-    data = data.filter(d => d.name !== userData.name);
-    data.push({ name: userData.name, store: userData.store, pref: userData.pref, amount: myTotal, isMe: true });
-    data.sort((a, b) => b.amount - a.amount);
-  }
+  let raw = null;
+  try { raw = await _fetchRankingCached(); } catch(e) {}
+  let data = _rankMergeMe(raw, myTotal);
   if (filter !== 'all') {
     const prefs = REGION_MAP[filter] || [];
-    data = data.filter(d => prefs.includes(d.pref));
+    data = data.filter(d => prefs.includes(d.pref)).map((d, i) => ({ ...d, rank: i + 1 }));
   }
-  data = data.map((d, i) => ({ ...d, rank: i+1 }));
   document.getElementById('region-list').innerHTML = data.map(d => buildRankItem(d, userData.name)).join('');
 }
 
@@ -2228,21 +2241,19 @@ function setRegionFilter(val) {
   renderRegion();
 }
 
-function renderPref() {
+async function renderPref() {
   const filter = document.getElementById('pref-filter').value;
   if (!filter) {
     document.getElementById('pref-list').innerHTML = '<li class="rank-item"><span style="color:var(--text-sub);font-size:13px;padding:8px 0;">都道府県を選択してください</span></li>';
     return;
   }
   const myTotal = getMyMonthlyTotal();
-  let data = [...DEMO_NATIONAL];
-  if (userData.name) {
-    data = data.filter(d => d.name !== userData.name);
-    data.push({ name: userData.name, store: userData.store, pref: userData.pref, amount: myTotal, isMe: true });
-    data.sort((a, b) => b.amount - a.amount);
-  }
-  data = data.filter(d => d.pref === filter).map((d, i) => ({ ...d, rank: i+1 }));
-  document.getElementById('pref-list').innerHTML = data.length ? data.map(d => buildRankItem(d, userData.name)).join('') : '<li class="rank-item"><span style="color:var(--text-sub);font-size:13px;">データがありません</span></li>';
+  let raw = null;
+  try { raw = await _fetchRankingCached(); } catch(e) {}
+  const data = _rankMergeMe(raw, myTotal).filter(d => d.pref === filter).map((d, i) => ({ ...d, rank: i + 1 }));
+  document.getElementById('pref-list').innerHTML = data.length
+    ? data.map(d => buildRankItem(d, userData.name)).join('')
+    : '<li class="rank-item"><span style="color:var(--text-sub);font-size:13px;">データがありません</span></li>';
 }
 
 document.getElementById('pref-filter').addEventListener('change', renderPref);
@@ -2749,7 +2760,7 @@ function submitWage() {
 function renderInputHistory() {
   const now = new Date();
   const ym = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
-  const entries = wageData.filter(w => w.date.startsWith(ym)).sort((a,b)=>b.date.localeCompare(a.date));
+  const entries = wageData.filter(w => w.date && w.date.startsWith(ym)).sort((a,b)=>b.date.localeCompare(a.date));
   const el = document.getElementById('input-history');
   if (!entries.length) { el.innerHTML = '<div class="empty-state"><div class="empty-icon">📝</div><p>今月の入力はまだありません</p></div>'; return; }
   el.innerHTML = entries.map(e => `
@@ -2768,7 +2779,7 @@ function renderSummary() {
   const now = new Date();
   document.getElementById('summary-month-title').textContent = `📊 ${now.getMonth()+1}月度 サマリー`;
   const ym = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
-  const entries = wageData.filter(w => w.date.startsWith(ym));
+  const entries = wageData.filter(w => w.date && w.date.startsWith(ym));
   const total = entries.reduce((s, w) => s + w.amount, 0);
   const goal = userData.goal * 10000;
   const days = [...new Set(entries.map(w => w.date))].length;
@@ -2812,7 +2823,7 @@ function renderTrend() {
   const months = Array.from({length:12}, (_,i) => i+1);
   const totals = months.map(m => {
     const ym = `${year}-${String(m).padStart(2,'0')}`;
-    return wageData.filter(w => w.date.startsWith(ym)).reduce((s,w)=>s+w.amount,0);
+    return wageData.filter(w => w.date && w.date.startsWith(ym)).reduce((s,w)=>s+w.amount,0);
   });
   const goal = userData.goal * 10000;
   const maxVal = Math.max(...totals, goal, 1);
@@ -3026,8 +3037,6 @@ function saveProfile() {
   const pref = document.getElementById('set-pref').value;
   const store = document.getElementById('set-store').value.trim();
   const goal = parseInt(document.getElementById('set-goal').value) || 100;
-  const oldRank = getRank(getMyMonthlyTotal() / 10000);
-
   const role = document.getElementById('set-role') ? document.getElementById('set-role').value : '';
   userData.name = name;
   userData.pref = pref;
@@ -3328,6 +3337,7 @@ function resetData() {
 // GOAL & RANK CHECK
 // ============================================================
 let prevRankIdx = -1;
+let prevGoalAchieved = false;
 
 function checkGoalAndRank() {
   const total = getMyMonthlyTotal();
@@ -3336,8 +3346,10 @@ function checkGoalAndRank() {
   const rank = getRank(manyTotal);
   const rankIdx = RANKS.indexOf(rank);
 
-  // Personal goal achievement
-  if (total >= goal && settings.notifGoal !== false) {
+  // Personal goal achievement (only fire when first crossing the threshold)
+  const justAchieved = total >= goal && !prevGoalAchieved;
+  prevGoalAchieved = total >= goal;
+  if (justAchieved && settings.notifGoal !== false) {
     setTimeout(() => triggerFireworks(), 300);
     if (userData.name && userData.store) {
       postToGAS({ action: 'notifyGoal', name: userData.name, store: userData.store, pref: userData.pref, amount: total });
@@ -3509,6 +3521,7 @@ function init() {
 
   // Initial rank baseline
   prevRankIdx = RANKS.indexOf(getRank(getMyMonthlyTotal() / 10000));
+  prevGoalAchieved = getMyMonthlyTotal() >= (userData.goal || 100) * 10000;
 
   // 起動時に名前＋グループコードがある場合は自動でGASに同期
   const syncCode = userData.activeGroupCode || userData.groupCode || '';
