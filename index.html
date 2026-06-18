@@ -1353,7 +1353,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = '20260618b';
+const APP_VERSION = '20260618c';
 (function() {
   var stored = localStorage.getItem('appVersion');
   if (stored !== APP_VERSION) {
@@ -1373,6 +1373,8 @@ let userData = JSON.parse(localStorage.getItem('userData') || '{}');
 let wageData = JSON.parse(localStorage.getItem('wageData') || '[]');
 let settings = JSON.parse(localStorage.getItem('settings') || '{}');
 let frontData = JSON.parse(localStorage.getItem('frontData') || '[]');
+[wageData, frontData].forEach(function(_a){ if(Array.isArray(_a)) _a.forEach(function(_x){ if(_x && !_x.entryId) _x.entryId = (Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,8)); }); });
+try { localStorage.setItem('wageData', JSON.stringify(wageData)); localStorage.setItem('frontData', JSON.stringify(frontData)); } catch(e){}
 let frontGoal = JSON.parse(localStorage.getItem('frontGoal') || '{"type":"both","count":50,"amount":500}');
 let adminGoals = JSON.parse(localStorage.getItem('adminGoals') || '{"storeCount":0,"storeAmount":0,"members":[]}');
 let contractedState = null;
@@ -1441,6 +1443,7 @@ const DEMO_STORE = [
 // ============================================================
 // UTILITY
 // ============================================================
+function newEid() { return Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8); }
 function saveLocal() {
   localStorage.setItem('userData', JSON.stringify(userData));
   localStorage.setItem('wageData', JSON.stringify(wageData));
@@ -2654,18 +2657,24 @@ function saveDayEntry() {
   if (!amount || amount <= 0) { showToast('金額を入力してください'); return; }
   if (!userData.name) { showToast('⚠️ 先に設定でお名前を登録してください'); switchTab('settings'); return; }
   const idx = parseInt(document.getElementById('day-edit-idx').value);
-  const dayEntries = wageData.filter(w => w.date === currentDayDate);
-  if (idx >= 0 && idx < dayEntries.length) {
-    // 既存エントリを更新
-    const globalIdx = wageData.indexOf(dayEntries[idx]);
-    wageData[globalIdx] = { date: currentDayDate, amount, number: number === '0000' ? '' : number, cartype, category };
+  const dayEntries2 = wageData.filter(w => w.date === currentDayDate);
+  const isEditW = (idx >= 0 && idx < dayEntries2.length);
+  if (isEditW) {
+    const globalIdx = wageData.indexOf(dayEntries2[idx]);
+    const prevW = wageData[globalIdx];
+    const eidW = prevW.entryId || newEid();
+    wageData[globalIdx] = { date: currentDayDate, amount, number: number === '0000' ? '' : number, cartype, category, entryId: eidW };
+    saveLocal();
+    if (!userData.ninjaMode) {
+      postToGAS({ action: 'updateWage', entryId: eidW, name: userData.name, uuid: userData.uuid || '', date: currentDayDate, amount, number: number === '0000' ? '' : number, category, oldDate: prevW.date, oldAmount: prevW.amount });
+    }
   } else {
-    // 新規追加
-    wageData.push({ date: currentDayDate, amount, number: number === '0000' ? '' : number, cartype, category });
-  }
-  saveLocal();
-  if (!userData.ninjaMode) {
-    postToGAS({ action: 'addWage', name: userData.name, store: userData.store, pref: userData.pref, date: currentDayDate, amount, number: number === '0000' ? '' : number, cartype, category, groupCode: userData.activeGroupCode || userData.groupCode || '', uuid: userData.uuid || '' });
+    const eidW = newEid();
+    wageData.push({ date: currentDayDate, amount, number: number === '0000' ? '' : number, cartype, category, entryId: eidW });
+    saveLocal();
+    if (!userData.ninjaMode) {
+      postToGAS({ action: 'addWage', name: userData.name, store: userData.store, pref: userData.pref, date: currentDayDate, amount, number: number === '0000' ? '' : number, cartype, category, groupCode: userData.activeGroupCode || userData.groupCode || '', uuid: userData.uuid || '', entryId: eidW });
+    }
   }
   renderDayModalBody();
   document.getElementById('day-add-form').style.display = 'none';
@@ -2684,6 +2693,7 @@ function deleteDayEntry(idx) {
   const entry = entries[idx];
   if (!entry) return;
   const globalIdx = wageData.indexOf(entry);
+  if (!userData.ninjaMode) { postToGAS({ action: 'deleteWage', entryId: entry.entryId || '', name: userData.name, uuid: userData.uuid || '', date: entry.date, amount: entry.amount }); }
   wageData.splice(globalIdx, 1);
   saveLocal();
   renderDayModalBody();
@@ -2719,7 +2729,7 @@ function submitWage() {
 
   const cartype = document.getElementById('input-cartype').value.trim();
   const category = document.getElementById('input-category') ? document.getElementById('input-category').value || '鈑金塗装' : '鈑金塗装';
-  wageData.push({ date, amount, number: number === '0000' ? '' : number, cartype, category });
+  const wid = newEid(); wageData.push({ date, amount, number: number === '0000' ? '' : number, cartype, category, entryId: wid });
   saveLocal();
   document.getElementById('input-amount').value = '';
   document.getElementById('input-number').value = '';
@@ -2730,7 +2740,7 @@ function submitWage() {
   showToast(`✅ ${formatYen(amount)}万円 登録しました！`);
   checkGoalAndRank();
   if (!userData.ninjaMode) {
-    postToGAS({ action: 'addWage', name: userData.name, store: userData.store, pref: userData.pref, date, amount, number, cartype, category, groupCode: userData.activeGroupCode || userData.groupCode || '', uuid: userData.uuid || '' });
+    postToGAS({ action: 'addWage', name: userData.name, store: userData.store, pref: userData.pref, date, amount, number: number === '0000' ? '' : number, cartype, category, groupCode: userData.activeGroupCode || userData.groupCode || '', uuid: userData.uuid || '', entryId: wid });
   }
 }
 
@@ -3559,10 +3569,12 @@ function submitEstimate() {
     name: userData.name || '', store: userData.store || '', pref: userData.pref || '',
     groupCode: userData.activeGroupCode || userData.groupCode || ''
   };
+  entry.entryId = newEid();
+  entry.uuid = userData.uuid || '';
   frontData.push(entry);
   saveLocal();
 
-  postToGAS({ action: 'addEstimate', ...entry });
+  if (!userData.ninjaMode) postToGAS({ action: 'addEstimate', ...entry });
 
   // リセット
   document.getElementById('front-amount').value = '';
@@ -3631,8 +3643,10 @@ function convertToLater(idx) {
   saveLocal();
 
   // GASに成約状態を同期
-  postToGAS({
+  if (!userData.ninjaMode) postToGAS({
     action: 'updateEstimate',
+    entryId: frontData[idx].entryId || '',
+    uuid: userData.uuid || '',
     name: userData.name,
     date: frontData[idx].date,
     number: frontData[idx].number || '',
@@ -3853,6 +3867,7 @@ function deleteFrontDayEntry(idx) {
   var entry = entries[idx];
   if (!entry) return;
   var globalIdx = frontData.indexOf(entry);
+  if (!userData.ninjaMode) postToGAS({ action: 'deleteEstimate', entryId: entry.entryId || '', name: userData.name, uuid: userData.uuid || '', date: entry.date, amount: entry.amount });
   frontData.splice(globalIdx, 1);
   saveLocal();
   renderFrontDayModalBody();
@@ -3908,11 +3923,18 @@ function saveFrontDayEntry() {
   };
   var idx = parseInt(document.getElementById('fday-edit-idx').value);
   var dayEntries = frontData.filter(function(d){ return d.date === currentFrontDayDate; });
+  entry.name = userData.name || ''; entry.store = userData.store || ''; entry.pref = userData.pref || '';
+  entry.groupCode = userData.activeGroupCode || userData.groupCode || ''; entry.uuid = userData.uuid || '';
   if (idx >= 0 && idx < dayEntries.length) {
     var globalIdx = frontData.indexOf(dayEntries[idx]);
+    var prevF = frontData[globalIdx];
+    entry.entryId = prevF.entryId || newEid();
     frontData[globalIdx] = entry;
+    if (!userData.ninjaMode) postToGAS({ action: 'updateEstimate', entryId: entry.entryId, name: entry.name, uuid: entry.uuid, date: entry.date, number: entry.number, amount: entry.amount, orderAmount: entry.orderAmount, contracted: entry.contracted, immediate: entry.immediate, later: entry.later, cartype: entry.cartype, oldDate: prevF.date, oldNumber: prevF.number });
   } else {
+    entry.entryId = newEid();
     frontData.push(entry);
+    if (!userData.ninjaMode) postToGAS({ action: 'addEstimate', ...entry });
   }
   saveLocal();
   renderFrontDayModalBody();
