@@ -795,6 +795,13 @@ input, select, textarea { font-family: inherit; }
           </select>
         </div>
         <button class="submit-btn" onclick="saveProfile()">💾 保存する</button>
+        <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border);">
+          <div style="font-size:12px;color:var(--text-sub);margin-bottom:6px;">📱 端末ID（機種変更時にメモしてください）</div>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <div id="uuid-display" style="flex:1;font-size:11px;color:var(--text-sub);background:var(--border);padding:8px 10px;border-radius:8px;word-break:break-all;font-family:monospace;"></div>
+            <button onclick="copyUUID()" style="padding:8px 12px;background:var(--card);border:1px solid var(--border);border-radius:8px;font-size:12px;cursor:pointer;white-space:nowrap;">📋 コピー</button>
+          </div>
+        </div>
       </div>
       <!-- Group -->
       <div class="card">
@@ -1355,7 +1362,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = '20260618h';
+const APP_VERSION = '20260618i';
 (function() {
   var stored = localStorage.getItem('appVersion');
   if (stored !== APP_VERSION) {
@@ -1655,21 +1662,28 @@ async function renderMemberList() {
     var month = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0');
     var data = await fetchFromGAS('getStoreRanking', { groupCode: code, month: month });
     var members = (data && data.data) ? data.data : [];
+    var memberHtml = '';
     if (!members.length) {
-      el.innerHTML = '<div style="text-align:center;padding:32px;color:var(--text-sub);font-size:13px;">メンバーがいません<br><span style="font-size:11px;">グループコードをLINEなどで共有して招待しましょう</span></div>';
-      return;
+      memberHtml = '<div style="text-align:center;padding:32px;color:var(--text-sub);font-size:13px;">メンバーがいません<br><span style="font-size:11px;">下のボタンからLINEで招待しましょう</span></div>';
+    } else {
+      memberHtml = members.map(function(m) {
+        var isMe = m.name === userData.name;
+        return '<div style="display:flex;align-items:center;gap:10px;padding:12px;background:var(--card);border-radius:12px;margin-bottom:8px;' + (isMe ? 'border:2px solid var(--green);' : 'border:1px solid var(--border);') + '">' +
+          '<div style="width:36px;height:36px;border-radius:50%;background:' + (isMe ? 'var(--green)' : 'var(--border)') + '33;display:flex;align-items:center;justify-content:center;font-size:18px;">👤</div>' +
+          '<div style="flex:1;min-width:0;">' +
+            '<div style="font-size:14px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + m.name + (isMe ? ' <span style="font-size:11px;color:var(--green);">（あなた）</span>' : '') + '</div>' +
+          '</div>' +
+        '</div>';
+      }).join('');
     }
-    var html = '';
-    html += members.map(function(m) {
-      var isMe = m.name === userData.name;
-      return '<div style="display:flex;align-items:center;gap:10px;padding:12px;background:var(--card);border-radius:12px;margin-bottom:8px;' + (isMe ? 'border:2px solid var(--green);' : 'border:1px solid var(--border);') + '">' +
-        '<div style="width:36px;height:36px;border-radius:50%;background:' + (isMe ? 'var(--green)' : 'var(--border)') + '33;display:flex;align-items:center;justify-content:center;font-size:18px;">👤</div>' +
-        '<div style="flex:1;min-width:0;">' +
-          '<div style="font-size:14px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + m.name + (isMe ? ' <span style="font-size:11px;color:var(--green);">（あなた）</span>' : '') + '</div>' +
-        '</div>' +
-      '</div>';
-    }).join('');
-    el.innerHTML = html;
+    var inviteUrl = 'https://line.me/R/msg/text/?' + encodeURIComponent('工賃管理アプリに招待します！\nグループコード: ' + code + '\nhttps://kenjiasano-dev.github.io/koken-app/');
+    memberHtml += '<div style="margin-top:12px;padding:12px;background:var(--card);border-radius:10px;border:1px solid var(--border);">' +
+      '<div style="font-size:12px;font-weight:700;margin-bottom:6px;color:var(--text-sub);">グループコードを共有</div>' +
+      '<div style="font-size:20px;font-weight:700;text-align:center;letter-spacing:4px;padding:8px;background:var(--border);border-radius:8px;margin-bottom:8px;">' + code + '</div>' +
+      '<img src="https://chart.googleapis.com/chart?cht=qr&chs=160x160&chl=' + encodeURIComponent(code) + '" style="display:block;margin:0 auto 8px;border-radius:8px;" width="100" height="100" alt="QR">' +
+      '<a href="' + inviteUrl + '" target="_blank" style="display:block;width:100%;padding:10px;background:#00b900;color:#fff;border-radius:10px;font-size:13px;font-weight:700;text-align:center;text-decoration:none;box-sizing:border-box;">📲 LINEで招待する</a>' +
+    '</div>';
+    el.innerHTML = memberHtml;
   } catch(e) {
     el.innerHTML = '<div style="text-align:center;padding:32px;color:var(--text-sub);font-size:13px;">取得できませんでした</div>';
   }
@@ -1827,6 +1841,18 @@ function renderMyStatus() {
   var rate = goal>0 ? Math.min(Math.round(total/goal*100),100) : 0;
   var frontStats = calcFrontStats(getFrontMonthData());
   var expYears = userData.expYears || {};
+  var prevMonth = (function(){ var d=new Date(now.getFullYear(),now.getMonth()-1,1); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'); })();
+  var prevTotal = wageData.filter(function(d){ return d.date && d.date.startsWith(prevMonth); }).reduce(function(s,d){return s+(d.amount||d.wage||0);},0);
+  var diff = total - prevTotal;
+  var diffSign = diff >= 0 ? '+' : '';
+  var diffColor = diff >= 0 ? 'var(--green)' : '#e74c3c';
+  var todayStr = now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0')+'-'+String(now.getDate()).padStart(2,'0');
+  var weekStart = new Date(now); weekStart.setDate(now.getDate() - now.getDay());
+  var weekStartStr = weekStart.getFullYear()+'-'+String(weekStart.getMonth()+1).padStart(2,'0')+'-'+String(weekStart.getDate()).padStart(2,'0');
+  var weekTotal = wageData.filter(function(d){ return d.date && d.date >= weekStartStr && d.date <= todayStr; }).reduce(function(s,d){return s+(d.amount||d.wage||0);},0);
+  var streak = (function(){ if(!userData.goal)return 0; var g=userData.goal*10000,s=0,ch=new Date(now.getFullYear(),now.getMonth(),1); for(var i=0;i<24;i++){var ym=ch.getFullYear()+'-'+String(ch.getMonth()+1).padStart(2,'0');var mt=wageData.filter(function(d){return d.date&&d.date.startsWith(ym);}).reduce(function(s2,d){return s2+(d.amount||d.wage||0);},0);if(mt>=g)s++;else break;ch.setMonth(ch.getMonth()-1);}return s;})();
+  var top1Diff = null;
+  if (_rankCache && _rankCache.length > 0 && userData.name) { var _r0=_rankCache[0].amount,_me=_rankCache.find(function(d){return d.name===userData.name;}); top1Diff=_r0-(_me?Math.max(_me.amount,total):total); if(isNaN(top1Diff))top1Diff=null; }
   var expHtml = Object.entries(expYears).filter(function(e){return e[1];}).map(function(e){
     var yrs = calcExpYears(e[1]);
     return '<span style="display:inline-flex;align-items:center;gap:3px;background:var(--border);border-radius:8px;padding:2px 8px;font-size:11px;margin:2px;">' +
@@ -1868,6 +1894,27 @@ function renderMyStatus() {
           '<div style="background:var(--border);border-radius:8px;padding:10px;">' +
             '<div style="font-size:10px;color:var(--text-sub);margin-bottom:2px;">累計修理台数</div>' +
             '<div style="font-size:22px;font-weight:700;">'+wageData.length+'<span style="font-size:12px;font-weight:400;">台</span></div>' +
+          '</div>' +
+        '</div>' +
+      '</div>' +
+      '<div class="card" style="margin-top:8px;">' +
+        '<div class="card-title">📊 今月のサマリー</div>' +
+        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;text-align:center;">' +
+          '<div style="background:var(--border);border-radius:8px;padding:10px;">' +
+            '<div style="font-size:10px;color:var(--text-sub);margin-bottom:2px;">先月比</div>' +
+            '<div style="font-size:18px;font-weight:700;color:'+diffColor+'">'+diffSign+(diff/10000).toFixed(1)+'<span style="font-size:10px;">万</span></div>' +
+          '</div>' +
+          '<div style="background:var(--border);border-radius:8px;padding:10px;">' +
+            '<div style="font-size:10px;color:var(--text-sub);margin-bottom:2px;">今週の工賃</div>' +
+            '<div style="font-size:18px;font-weight:700;">'+(weekTotal/10000).toFixed(1)+'<span style="font-size:10px;">万</span></div>' +
+          '</div>' +
+          '<div style="background:var(--border);border-radius:8px;padding:10px;">' +
+            '<div style="font-size:10px;color:var(--text-sub);margin-bottom:2px;">目標連続達成</div>' +
+            '<div style="font-size:18px;font-weight:700;color:var(--green);">'+streak+'<span style="font-size:10px;">ヶ月</span></div>' +
+          '</div>' +
+          '<div style="background:var(--border);border-radius:8px;padding:10px;">' +
+            '<div style="font-size:10px;color:var(--text-sub);margin-bottom:2px;">全国首位まで</div>' +
+            (top1Diff !== null ? (top1Diff <= 0 ? '<div style="font-size:16px;font-weight:700;color:var(--green);">👑 首位!</div>' : '<div style="font-size:16px;font-weight:700;">△'+(top1Diff/10000).toFixed(1)+'<span style="font-size:10px;">万</span></div>') : '<div style="font-size:12px;color:var(--text-sub);">取得中...</div>') +
           '</div>' +
         '</div>' +
       '</div>' +
@@ -2919,6 +2966,8 @@ function initSettings() {
   document.getElementById('set-group').value = '';
   if (userData.role) { var ri = document.getElementById('set-role'); if(ri) ri.value=userData.role; selectRole(userData.role, true); }
   // 経験年数
+  const uuidEl = document.getElementById('uuid-display');
+  if (uuidEl) uuidEl.textContent = userData.uuid || '未生成';
   renderExpRows();
   renderFollowedStores();
   document.getElementById('ninja-mode-toggle').checked = userData.ninjaMode === true;
@@ -3311,6 +3360,14 @@ function copyGroupCode() {
   navigator.clipboard.writeText(userData.groupCode).then(() => showToast('📋 コードをコピーしました'));
 }
 
+function copyUUID() {
+  const uuid = userData.uuid || '';
+  if (!uuid) { showToast('端末IDが見つかりません', 2000); return; }
+  navigator.clipboard.writeText(uuid)
+    .then(() => showToast('📋 端末IDをコピーしました', 2000))
+    .catch(() => showToast('コピーできませんでした。手動でコピーしてください', 3000));
+}
+
 function uploadAvatar(input) {
   const file = input.files[0];
   if (!file) return;
@@ -3338,6 +3395,7 @@ function resetData() {
 // ============================================================
 let prevRankIdx = -1;
 let prevGoalAchieved = false;
+let prevTop10 = false;
 
 function checkGoalAndRank() {
   const total = getMyMonthlyTotal();
@@ -3362,6 +3420,22 @@ function checkGoalAndRank() {
     setTimeout(() => triggerRankUp(rank), 800);
   }
   prevRankIdx = rankIdx;
+
+  // TOP10 detection
+  if (_rankCache && _rankCache.length > 0 && userData.name) {
+    const merged = _rankMergeMe(_rankCache, total);
+    const myEntry = merged.find(d => d.name === userData.name);
+    const inTop10 = myEntry && myEntry.rank <= 10;
+    if (inTop10 && !prevTop10 && settings.notifGoal !== false) {
+      const r10 = myEntry.rank;
+      showToast('🏆 全国TOP10入り！現在' + r10 + '位', 6000);
+      if (userData.name && userData.store) {
+        postToGAS({ action: 'notifyTop10', name: userData.name, store: userData.store, pref: userData.pref || '', rank: r10, amount: total });
+      }
+    }
+    prevTop10 = !!inTop10;
+  }
+
   renderGoalRing();
 }
 
@@ -3522,6 +3596,7 @@ function init() {
   // Initial rank baseline
   prevRankIdx = RANKS.indexOf(getRank(getMyMonthlyTotal() / 10000));
   prevGoalAchieved = getMyMonthlyTotal() >= (userData.goal || 100) * 10000;
+  prevTop10 = false;
 
   // 起動時に名前＋グループコードがある場合は自動でGASに同期
   const syncCode = userData.activeGroupCode || userData.groupCode || '';
@@ -3529,6 +3604,22 @@ function init() {
     setTimeout(function() {
       postToGAS({ action: 'updateProfile', name: userData.name, pref: userData.pref || '', store: userData.store || '', goal: userData.goal || 100, role: userData.role || '', groupCode: syncCode });
     }, 2000);
+  }
+
+  // 起動時データ整合性チェック（5秒後・差異3件超で警告）
+  if (userData.name && userData.uuid && !userData.ninjaMode) {
+    setTimeout(async function() {
+      try {
+        var res = await fetchFromGAS('restoreUserData', { name: userData.name, uuid: userData.uuid });
+        if (res && res.wages && Array.isArray(res.wages)) {
+          var gasCount = res.wages.length;
+          var localCount = wageData.length;
+          if (Math.abs(gasCount - localCount) > 2) {
+            showToast('⚠️ データ数が合いません（端末:' + localCount + '件 / サーバー:' + gasCount + '件）', 8000);
+          }
+        }
+      } catch(e) {}
+    }, 5000);
   }
 }
 
