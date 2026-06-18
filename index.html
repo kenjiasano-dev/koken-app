@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
@@ -1353,7 +1353,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = '20260613m';
+const APP_VERSION = '20260618a';
 (function() {
   var stored = localStorage.getItem('appVersion');
   if (stored !== APP_VERSION) {
@@ -2652,6 +2652,7 @@ function saveDayEntry() {
   const cartype = document.getElementById('day-edit-cartype').value.trim();
   const category = document.getElementById('day-edit-category').value || '鈑金塗装';
   if (!amount || amount <= 0) { showToast('金額を入力してください'); return; }
+  if (!userData.name) { showToast('⚠️ 先に設定でお名前を登録してください'); switchTab('settings'); return; }
   const idx = parseInt(document.getElementById('day-edit-idx').value);
   const dayEntries = wageData.filter(w => w.date === currentDayDate);
   if (idx >= 0 && idx < dayEntries.length) {
@@ -3009,7 +3010,7 @@ function getRoleBadge(role) {
 }
 
 function saveProfile() {
-  const name = document.getElementById('set-name').value.trim();
+  const name = document.getElementById('set-name').value.replace(/　/g,' ').trim().replace(/\s+/g,' ');
   const pref = document.getElementById('set-pref').value;
   const store = document.getElementById('set-store').value.trim();
   const goal = parseInt(document.getElementById('set-goal').value) || 100;
