@@ -1038,6 +1038,8 @@ input, select, textarea { font-family: inherit; }
         <div style="font-size:12px;color:var(--text-sub);margin-bottom:12px;line-height:1.7;">機種変更・キャッシュ消去後にサーバーからデータを復元できます。<br>※ 忍びモードONのデータは復元できません。</div>
         <button onclick="restoreFromGAS()" style="width:100%;padding:12px;background:var(--green);color:#fff;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;border:none;">📥 データを復元する</button>
         <div id="restore-status" style="margin-top:8px;font-size:12px;color:var(--text-sub);text-align:center;"></div>
+        <div style="margin-top:8px;"><button id="force-resync-btn" onclick="forceResync()" style="width:100%;padding:12px;background:#0a0a0a;color:var(--green);border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;border:1px solid var(--green);">工賃データをサーバーへ再同期</button></div>
+        <div id="resync-status" style="margin-top:6px;font-size:12px;color:var(--text-sub);text-align:center;"></div>
       </div>
 
       <!-- App info -->
@@ -1353,7 +1355,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = '20260618c';
+const APP_VERSION = '20260618d';
 (function() {
   var stored = localStorage.getItem('appVersion');
   if (stored !== APP_VERSION) {
@@ -3185,6 +3187,35 @@ async function restoreFromGAS() {
     if (statusEl) statusEl.textContent = '❌ エラーが発生しました';
     console.error('restore error', e);
   }
+}
+
+// ============================================================
+// サーバーへ再同期（localStorage → GAS）
+// ============================================================
+async function forceResync() {
+  if (userData.ninjaMode) { showToast('忍びモードONのため同期できません'); return; }
+  if (!userData.name) { showToast('先に名前を設定してください'); return; }
+  if (!wageData.length) { showToast('同期する工賃データがありません'); return; }
+  var btn = document.getElementById('force-resync-btn');
+  var st = document.getElementById('resync-status');
+  if (btn) { btn.disabled = true; btn.textContent = '送信中...'; }
+  if (st) st.textContent = '0/' + wageData.length + ' 件送信中...';
+  for (var i = 0; i < wageData.length; i++) {
+    var d = wageData[i];
+    var eid = d.entryId || ((d.date||'')+'|'+(d.amount||0)+'|'+(d.category||'鈑金塗装')+'|'+(userData.uuid||''));
+    await postToGAS({
+      action: 'addWage',
+      name: userData.name, store: userData.store||'', pref: userData.pref||'',
+      date: d.date, amount: d.amount, number: d.number||'',
+      cartype: d.cartype||'', category: d.category||'鈑金塗装',
+      groupCode: userData.activeGroupCode || userData.groupCode || '',
+      uuid: userData.uuid || '', entryId: eid
+    });
+    if (st) st.textContent = (i+1) + '/' + wageData.length + ' 件送信中...';
+  }
+  if (btn) { btn.disabled = false; btn.textContent = '工賃データをサーバーへ再同期'; }
+  if (st) st.textContent = wageData.length + '件の送信が完了しました';
+  showToast(wageData.length + '件をサーバーへ送信しました');
 }
 
 function applyNinjaMode() {
