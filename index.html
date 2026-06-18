@@ -1355,7 +1355,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = '20260618g';
+const APP_VERSION = '20260618h';
 (function() {
   var stored = localStorage.getItem('appVersion');
   if (stored !== APP_VERSION) {
@@ -3595,8 +3595,6 @@ function submitEstimate() {
   const amount = parseFloat(document.getElementById('front-amount').value) || 0;
   if (amount <= 0) { showToast('金額を入力してください'); return; }
   if (contractedState === null) { showToast('成約・未成約を選んでください'); return; }
-
-  if (contractedState === null) { showToast('結果を選んでください'); return; }
   const date = document.getElementById('front-date').value || new Date().toISOString().slice(0,10);
   const number = document.getElementById('front-number').value.trim();
   const cartype = document.getElementById('front-cartype').value.trim();
@@ -4072,7 +4070,7 @@ async function renderFrontRanking() {
   const myStats = calcFrontStats(myData);
   const myCount = myStats.count;
   const myContracted = myStats.contracted;
-  const myAmount = myStats.orderTotal;
+  const myAmount = myStats.estimateTotal;
   const myRate = myStats.rate;
 
   const myEntry = data.find(d => d.name === userData.name);
