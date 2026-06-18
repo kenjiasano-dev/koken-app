@@ -1353,7 +1353,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = '20260618a';
+const APP_VERSION = '20260618b';
 (function() {
   var stored = localStorage.getItem('appVersion');
   if (stored !== APP_VERSION) {
@@ -3010,7 +3010,7 @@ function getRoleBadge(role) {
 }
 
 function saveProfile() {
-  const name = document.getElementById('set-name').value.replace(/　/g,' ').trim().replace(/\s+/g,' ');
+  const name = document.getElementById('set-name').value.trim();
   const pref = document.getElementById('set-pref').value;
   const store = document.getElementById('set-store').value.trim();
   const goal = parseInt(document.getElementById('set-goal').value) || 100;
