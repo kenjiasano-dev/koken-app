@@ -299,27 +299,15 @@ input, select, textarea { font-family: inherit; }
     <!-- 店舗状況ページ -->
     <div class="page" id="page-store-status">
       <div class="sub-tabs" id="store-status-sub-tabs">
-        <button class="sub-tab active" data-sstab="team-wage">💪 チーム工賃</button>
+        <button class="sub-tab active" data-sstab="team-wage">🎯 店舗目標</button>
         <button class="sub-tab" data-sstab="front-status">📋 受付状況</button>
         <button class="sub-tab" data-sstab="members">👥 メンバー</button>
       </div>
-      <!-- チーム工賃 -->
+      <!-- 店舗目標 -->
       <div id="sstab-team-wage">
-        
-        <div style="padding:8px 12px 0;display:flex;gap:8px;align-items:center;">
-          <span style="font-size:13px;color:var(--text-sub);" id="store-rank-month2"></span>
-        </div>
-        <div style="display:flex;gap:8px;padding:8px 12px;">
-          <button onclick="setStoreRankType('store')" id="str-store-btn" style="flex:1;padding:7px;border-radius:8px;font-size:11px;font-weight:700;background:var(--green);color:#111;border:none;cursor:pointer;">🏪 社内</button>
-          <button id="str-nat-btn" style="flex:1;padding:7px;border-radius:8px;font-size:11px;font-weight:700;background:var(--card);color:var(--text-sub);border:1px solid var(--border);cursor:not-allowed;opacity:.4;" title="ユーザーが増えたら解放">全国</button>
-          <button id="str-reg-btn" style="flex:1;padding:7px;border-radius:8px;font-size:11px;font-weight:700;background:var(--card);color:var(--text-sub);border:1px solid var(--border);cursor:not-allowed;opacity:.4;" title="ユーザーが増えたら解放">地域</button>
-          <button id="str-pref-btn" style="flex:1;padding:7px;border-radius:8px;font-size:11px;font-weight:700;background:var(--card);color:var(--text-sub);border:1px solid var(--border);cursor:not-allowed;opacity:.4;" title="ユーザーが増えたら解放">県内</button>
-        </div>
         <!-- カテゴリ別予算進捗 -->
-        <div id="category-budget-progress" style="padding:0 12px 0;"></div>
-        <div class="card" style="padding:0;overflow:hidden;">
-          <ul class="rank-list" id="store-rank-list2"></ul>
-        </div>
+        <div id="category-budget-progress" style="padding:12px 12px 0;"></div>
+        <div style="padding:8px 16px;font-size:12px;color:var(--text-sub);text-align:center;">社内ランキングは「マイ → 🏆ランキング」で見られます</div>
       </div>
       <!-- 受付状況 -->
       <div id="sstab-front-status" style="display:none;">
@@ -1362,7 +1350,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = '20260618j';
+const APP_VERSION = '20260618k';
 (function() {
   var stored = localStorage.getItem('appVersion');
   if (stored !== APP_VERSION) {
