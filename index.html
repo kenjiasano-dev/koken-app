@@ -539,7 +539,7 @@ input, select, textarea { font-family: inherit; }
           </div>
           <div class="form-group">
             <label class="form-label">ナンバー4桁（任意）</label>
-            <input type="text" class="form-input" id="input-number" maxlength="4" placeholder="0000" inputmode="numeric" pattern="[0-9]*" style="letter-spacing:6px;font-size:22px;font-weight:700;text-align:center;">
+            <input type="text" class="form-input" id="input-number" maxlength="4" placeholder="0000" inputmode="numeric" pattern="[0-9]*" oninput="numAutoNext(this,&#39;input-cartype&#39;)" style="letter-spacing:6px;font-size:22px;font-weight:700;text-align:center;">
           </div>
           <div class="form-group">
             <label class="form-label">🚗 車種（任意）</label>
@@ -1074,7 +1074,7 @@ input, select, textarea { font-family: inherit; }
           </div>
           <div class="form-group">
             <label class="form-label">ナンバー（任意）</label>
-            <input type="text" class="form-input" id="front-number" maxlength="4" placeholder="0000" inputmode="numeric" style="letter-spacing:6px;font-size:22px;font-weight:700;text-align:center;">
+            <input type="text" class="form-input" id="front-number" maxlength="4" placeholder="0000" inputmode="numeric" oninput="numAutoNext(this,&#39;front-cartype&#39;)" style="letter-spacing:6px;font-size:22px;font-weight:700;text-align:center;">
           </div>
           <div class="form-group">
             <label class="form-label">🚗 車種（任意）</label>
@@ -1113,7 +1113,7 @@ input, select, textarea { font-family: inherit; }
           <div style="margin-top:16px;">
             <div class="section-header" style="padding:0 0 8px;">🔍 後日受注に変更する</div>
             <div style="display:flex;gap:8px;margin-bottom:8px;">
-              <input type="text" class="form-input" id="search-number" maxlength="4" placeholder="ナンバー4桁" inputmode="numeric" style="flex:1;letter-spacing:6px;font-size:18px;font-weight:700;text-align:center;">
+              <input type="text" class="form-input" id="search-number" maxlength="4" placeholder="ナンバー4桁" inputmode="numeric" oninput="numAutoSearch(this)" style="flex:1;letter-spacing:6px;font-size:18px;font-weight:700;text-align:center;">
               <button onclick="searchByNumber()" style="padding:12px 16px;background:var(--green);color:#fff;border-radius:10px;font-size:13px;font-weight:700;white-space:nowrap;">検索</button>
             </div>
             <div id="search-results"></div>
@@ -1280,7 +1280,7 @@ input, select, textarea { font-family: inherit; }
         </div>
         <input type="hidden" id="day-edit-category">
         <input type="text" class="form-input" id="day-edit-cartype" placeholder="🚗 車種（任意）" list="cartype-list" style="margin-bottom:8px;" autocomplete="off">
-        <input type="text" class="form-input" id="day-edit-number" placeholder="ナンバー4桁（任意）" maxlength="4" style="margin-bottom:8px;letter-spacing:6px;font-size:18px;font-weight:700;text-align:center;">
+        <input type="text" class="form-input" id="day-edit-number" placeholder="ナンバー4桁（任意）" maxlength="4" inputmode="numeric" oninput="numAutoNext(this,&#39;day-edit-amount&#39;)" style="margin-bottom:8px;letter-spacing:6px;font-size:18px;font-weight:700;text-align:center;">
         <div class="amount-input-wrap" style="margin-bottom:10px;">
           <span class="yen">¥</span>
           <input type="text" class="form-input" id="day-edit-amount" placeholder="工賃金額" inputmode="numeric" oninput="formatAmountInput(this)">
@@ -1304,7 +1304,7 @@ input, select, textarea { font-family: inherit; }
       <button onclick="toggleFrontDayAddForm()" style="width:100%;padding:10px;background:var(--green-light);color:var(--green);border:1px solid var(--green);border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;" id="front-day-add-toggle">＋ 見積りを追加</button>
       <div id="front-day-add-form" style="display:none;margin-top:10px;padding:12px;background:var(--card);border-radius:10px;border:1px solid var(--border);">
         <input type="text" class="form-input" id="fday-cartype" placeholder="🚗 車種（任意）" list="cartype-list" style="margin-bottom:8px;" autocomplete="off">
-        <input type="text" class="form-input" id="fday-number" placeholder="ナンバー4桁（任意）" maxlength="4" style="margin-bottom:8px;letter-spacing:6px;font-size:18px;font-weight:700;text-align:center;">
+        <input type="text" class="form-input" id="fday-number" placeholder="ナンバー4桁（任意）" maxlength="4" inputmode="numeric" oninput="numAutoNext(this,&#39;fday-amount&#39;)" style="margin-bottom:8px;letter-spacing:6px;font-size:18px;font-weight:700;text-align:center;">
         <div class="amount-input-wrap" style="margin-bottom:8px;">
           <span class="yen">¥</span>
           <input type="text" class="form-input" id="fday-amount" placeholder="見積り金額" inputmode="numeric" oninput="formatAmountInput(this)">
@@ -1350,6 +1350,21 @@ function formatAmountInput(el) {
   el.value = digits ? Number(digits).toLocaleString('en-US') : '';
 }
 
+// ナンバー4桁で自動的に次のフィールドへ
+function numAutoNext(el, nextId) {
+  var d = el.value.replace(/[^0-9]/g, '');
+  if (d !== el.value) el.value = d;
+  if (el.value.length >= 4) {
+    var n = document.getElementById(nextId);
+    if (n) n.focus();
+  }
+}
+function numAutoSearch(el) {
+  var d = el.value.replace(/[^0-9]/g, '');
+  if (d !== el.value) el.value = d;
+  if (el.value.length >= 4) searchByNumber();
+}
+
 function generateUUID() {
   return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
     var r = Math.random() * 16 | 0, v = c === 'x' ? r : (r & 0x3 | 0x8);
@@ -1360,7 +1375,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = '20260618l';
+const APP_VERSION = '20260618m';
 (function() {
   var stored = localStorage.getItem('appVersion');
   if (stored !== APP_VERSION) {
