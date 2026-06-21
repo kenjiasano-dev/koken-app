@@ -555,7 +555,7 @@ input, select, textarea { font-family: inherit; }
             <label class="form-label">工賃金額</label>
             <div class="amount-input-wrap">
               <span class="yen">¥</span>
-              <input type="number" class="form-input" id="input-amount" placeholder="000000" inputmode="numeric" min="0" step="1000">
+              <input type="text" class="form-input" id="input-amount" placeholder="0" inputmode="numeric" oninput="formatAmountInput(this)">
             </div>
           </div>
           <div class="form-group" id="date-group">
@@ -1084,7 +1084,7 @@ input, select, textarea { font-family: inherit; }
             <label class="form-label">📋 見積り金額</label>
             <div class="amount-input-wrap">
               <span class="yen">¥</span>
-              <input type="number" class="form-input" id="front-amount" placeholder="000000" inputmode="numeric" min="0" step="1000">
+              <input type="text" class="form-input" id="front-amount" placeholder="0" inputmode="numeric" oninput="formatAmountInput(this)">
             </div>
 
           </div>
@@ -1101,7 +1101,7 @@ input, select, textarea { font-family: inherit; }
             <label class="form-label">💰 受注金額</label>
             <div class="amount-input-wrap">
               <span class="yen">¥</span>
-              <input type="number" class="form-input" id="front-order-amount" placeholder="000000" inputmode="numeric" min="0" step="1000">
+              <input type="text" class="form-input" id="front-order-amount" placeholder="0" inputmode="numeric" oninput="formatAmountInput(this)">
             </div>
           </div>
           <div class="form-group">
@@ -1283,7 +1283,7 @@ input, select, textarea { font-family: inherit; }
         <input type="text" class="form-input" id="day-edit-number" placeholder="ナンバー4桁（任意）" maxlength="4" style="margin-bottom:8px;letter-spacing:6px;font-size:18px;font-weight:700;text-align:center;">
         <div class="amount-input-wrap" style="margin-bottom:10px;">
           <span class="yen">¥</span>
-          <input type="number" class="form-input" id="day-edit-amount" placeholder="工賃金額" inputmode="numeric">
+          <input type="text" class="form-input" id="day-edit-amount" placeholder="工賃金額" inputmode="numeric" oninput="formatAmountInput(this)">
         </div>
         <input type="hidden" id="day-edit-idx" value="-1">
         <button class="submit-btn" onclick="saveDayEntry()" style="margin-top:0;">💾 保存</button>
@@ -1307,7 +1307,7 @@ input, select, textarea { font-family: inherit; }
         <input type="text" class="form-input" id="fday-number" placeholder="ナンバー4桁（任意）" maxlength="4" style="margin-bottom:8px;letter-spacing:6px;font-size:18px;font-weight:700;text-align:center;">
         <div class="amount-input-wrap" style="margin-bottom:8px;">
           <span class="yen">¥</span>
-          <input type="number" class="form-input" id="fday-amount" placeholder="見積り金額" inputmode="numeric">
+          <input type="text" class="form-input" id="fday-amount" placeholder="見積り金額" inputmode="numeric" oninput="formatAmountInput(this)">
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:10px;">
           <button class="contract-btn" id="fday-btn-immediate" onclick="setFdayContract('immediate')" style="padding:10px 4px;font-size:12px;">⚡ 即成約</button>
@@ -1317,7 +1317,7 @@ input, select, textarea { font-family: inherit; }
         <div id="fday-order-group" style="display:none;margin-bottom:8px;">
           <div class="amount-input-wrap">
             <span class="yen">¥</span>
-            <input type="number" class="form-input" id="fday-order-amount" placeholder="受注金額" inputmode="numeric">
+            <input type="text" class="form-input" id="fday-order-amount" placeholder="受注金額" inputmode="numeric" oninput="formatAmountInput(this)">
           </div>
         </div>
         <input type="hidden" id="fday-contract-state" value="none">
@@ -1340,6 +1340,16 @@ const GAS_TOKEN = 'carcon-kotin-2025'; // code.gsのSECRET_TOKENと一致させ�
 // GAS_URLが設定されていない場合はデモデータを使用します
 
 // UUID生成（初回のみ）
+// 金額入力フォーマット（カンマ自動挿入）
+function parseAmount(v) {
+  if (v == null) return 0;
+  return parseFloat(String(v).replace(/,/g, '')) || 0;
+}
+function formatAmountInput(el) {
+  var digits = el.value.replace(/[^0-9]/g, '');
+  el.value = digits ? Number(digits).toLocaleString('en-US') : '';
+}
+
 function generateUUID() {
   return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
     var r = Math.random() * 16 | 0, v = c === 'x' ? r : (r & 0x3 | 0x8);
@@ -1350,7 +1360,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = '20260618k';
+const APP_VERSION = '20260618l';
 (function() {
   var stored = localStorage.getItem('appVersion');
   if (stored !== APP_VERSION) {
@@ -2571,7 +2581,7 @@ function editDayEntry(idx) {
   const e = entries[idx];
   if (!e) return;
   document.getElementById('day-edit-idx').value = idx;
-  document.getElementById('day-edit-amount').value = e.amount;
+  document.getElementById('day-edit-amount').value = e.amount ? Number(e.amount).toLocaleString('en-US') : '';
   document.getElementById('day-edit-number').value = e.number || '';
   document.getElementById('day-edit-cartype').value = e.cartype || '';
   document.getElementById('day-edit-category').value = e.category || '';
@@ -2697,7 +2707,7 @@ function switchInputTab(tab) {
 }
 
 function saveDayEntry() {
-  const amount = parseInt(document.getElementById('day-edit-amount').value);
+  const amount = parseAmount(document.getElementById('day-edit-amount').value);
   const numRaw = document.getElementById('day-edit-number').value;
   const number = numRaw ? numRaw.padStart(4,'0') : '';
   const cartype = document.getElementById('day-edit-cartype').value.trim();
@@ -2765,11 +2775,11 @@ function initInputPage() {
 
 function addAmount(n) {
   const el = document.getElementById('input-amount');
-  el.value = (parseInt(el.value || 0) + n);
+  el.value = (parseAmount(el.value) + n).toLocaleString('en-US');
 }
 
 function submitWage() {
-  const amount = parseInt(document.getElementById('input-amount').value);
+  const amount = parseAmount(document.getElementById('input-amount').value);
   const number = document.getElementById('input-number').value.padStart(4, '0');
   const date = document.getElementById('input-date').value;
   if (!amount || amount <= 0) { showToast('⚠️ 金額を入力してください'); return; }
@@ -3661,7 +3671,7 @@ function initFrontPage() {
 
 function addFrontAmount(val) {
   const el = document.getElementById('front-amount');
-  el.value = (parseFloat(el.value) || 0) + val;
+  el.value = (parseAmount(el.value) + val).toLocaleString('en-US');
 }
 
 function setContract(val) {
@@ -3675,14 +3685,14 @@ function setContract(val) {
 }
 
 function submitEstimate() {
-  const amount = parseFloat(document.getElementById('front-amount').value) || 0;
+  const amount = parseAmount(document.getElementById('front-amount').value);
   if (amount <= 0) { showToast('金額を入力してください'); return; }
   if (contractedState === null) { showToast('成約・未成約を選んでください'); return; }
   const date = document.getElementById('front-date').value || new Date().toISOString().slice(0,10);
   const number = document.getElementById('front-number').value.trim();
   const cartype = document.getElementById('front-cartype').value.trim();
   const orderAmount = (contractedState === 'immediate' || contractedState === 'later')
-    ? (parseFloat(document.getElementById('front-order-amount').value) || amount)
+    ? (parseAmount(document.getElementById('front-order-amount').value) || amount)
     : 0;
 
   const entry = {
@@ -3977,10 +3987,10 @@ function editFrontDayEntry(idx) {
   var e = entries[idx];
   if (!e) return;
   document.getElementById('fday-edit-idx').value = idx;
-  document.getElementById('fday-amount').value = e.amount || '';
+  document.getElementById('fday-amount').value = e.amount ? Number(e.amount).toLocaleString('en-US') : '';
   document.getElementById('fday-cartype').value = e.cartype || '';
   document.getElementById('fday-number').value = e.number || '';
-  document.getElementById('fday-order-amount').value = e.orderAmount || '';
+  document.getElementById('fday-order-amount').value = e.orderAmount ? Number(e.orderAmount).toLocaleString('en-US') : '';
   var contractType = e.immediate ? 'immediate' : e.later ? 'later' : 'none';
   setFdayContract(contractType);
   document.getElementById('front-day-add-form').style.display = '';
@@ -4029,11 +4039,11 @@ function setFdayContract(type) {
 }
 
 function saveFrontDayEntry() {
-  var amount = parseInt(document.getElementById('fday-amount').value) || 0;
+  var amount = parseAmount(document.getElementById('fday-amount').value);
   var cartype = document.getElementById('fday-cartype').value.trim();
   var numRaw = document.getElementById('fday-number').value;
   var number = numRaw ? numRaw.padStart(4,'0') : '';
-  var orderAmount = parseInt(document.getElementById('fday-order-amount').value) || 0;
+  var orderAmount = parseAmount(document.getElementById('fday-order-amount').value);
   var contractType = document.getElementById('fday-contract-state').value || 'none';
   if (!amount) { showToast('金額を入力してください'); return; }
   var entry = {
