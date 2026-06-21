@@ -1411,7 +1411,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = '20260618o';
+const APP_VERSION = '20260618p';
 (function() {
   var stored = localStorage.getItem('appVersion');
   if (stored !== APP_VERSION) {
@@ -1729,7 +1729,7 @@ async function renderMemberList() {
     memberHtml += '<div style="margin-top:12px;padding:12px;background:var(--card);border-radius:10px;border:1px solid var(--border);">' +
       '<div style="font-size:12px;font-weight:700;margin-bottom:6px;color:var(--text-sub);">グループコードを共有</div>' +
       '<div style="font-size:20px;font-weight:700;text-align:center;letter-spacing:4px;padding:8px;background:var(--border);border-radius:8px;margin-bottom:8px;">' + code + '</div>' +
-      '<img src="https://chart.googleapis.com/chart?cht=qr&chs=160x160&chl=' + encodeURIComponent(code) + '" style="display:block;margin:0 auto 8px;border-radius:8px;" width="100" height="100" alt="QR">' +
+      '<img src="https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=' + encodeURIComponent(code) + '" style="display:block;margin:0 auto 8px;border-radius:8px;" width="100" height="100" alt="QR">' +
       '<a href="' + inviteUrl + '" target="_blank" style="display:block;width:100%;padding:10px;background:#00b900;color:#fff;border-radius:10px;font-size:13px;font-weight:700;text-align:center;text-decoration:none;box-sizing:border-box;">📲 LINEで招待する</a>' +
     '</div>';
     el.innerHTML = memberHtml;
