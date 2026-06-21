@@ -318,7 +318,7 @@ input, select, textarea { font-family: inherit; }
         <div class="card">
           <div class="card-title">🏪 店舗目標 進捗</div>
           <div id="store-goal-progress2">
-            <div style="text-align:center;padding:20px;color:var(--text-sub);font-size:13px;">管理者メニューで目標を設定してください</div>
+            <div style="text-align:center;padding:20px;color:var(--text-sub);font-size:13px;">設定タブの🎯 目標設定で目標を設定してください</div>
           </div>
         </div>
         <div class="card" style="margin-top:0;">
@@ -1063,6 +1063,34 @@ input, select, textarea { font-family: inherit; }
       </div>
       </div><!-- /advanced-settings-block -->
 
+      <!-- 目標設定（各自が設定・常時表示） -->
+      <div class="card">
+        <div class="card-title">🎯 目標設定</div>
+        <div style="font-size:12px;color:var(--text-sub);margin-bottom:12px;line-height:1.7;">店舗状況ページに表示される目標です。各自で入力してください。<br>空欄または0にすると、その項目は非表示になります。</div>
+        <div style="font-weight:700;font-size:13px;margin-bottom:8px;">🏪 店舗目標（今月）</div>
+        <div class="form-group">
+          <label class="form-label">受注台数（台）</label>
+          <input type="number" class="form-input" id="goal-store-count" inputmode="numeric" min="0" step="1" placeholder="例: 30">
+        </div>
+        <div class="form-group">
+          <label class="form-label">受注金額（万円）</label>
+          <input type="number" class="form-input" id="goal-store-amount" inputmode="numeric" min="0" step="1" placeholder="例: 300">
+        </div>
+        <div style="font-weight:700;font-size:13px;margin:12px 0 8px;">💴 工賃目標（カテゴリ別・万円）</div>
+        <div class="form-group">
+          <label class="form-label">🔨 鈑金塗装</label>
+          <input type="number" class="form-input" id="goal-cat-bankin" inputmode="numeric" min="0" step="1" placeholder="例: 200">
+        </div>
+        <div class="form-group">
+          <label class="form-label">🔧 整備</label>
+          <input type="number" class="form-input" id="goal-cat-seibi" inputmode="numeric" min="0" step="1" placeholder="例: 50">
+        </div>
+        <div class="form-group">
+          <label class="form-label">📋 フロント（受注金額）</label>
+          <input type="number" class="form-input" id="goal-cat-front" inputmode="numeric" min="0" step="1" placeholder="例: 100">
+        </div>
+        <button class="submit-btn" onclick="saveStoreGoals()">🎯 目標を保存</button>
+      </div>
       <!-- データ復元（常時表示） -->
       <div class="card">
         <div class="card-title">☁️ データのバックアップ・復元</div>
@@ -1184,7 +1212,7 @@ input, select, textarea { font-family: inherit; }
         <div class="card" style="background:var(--green-light);border:1px solid var(--green);">
           <div style="font-size:13px;color:var(--green);font-weight:700;">💡 目標の設定方法</div>
           <div style="font-size:12px;color:var(--text-sub);margin-top:6px;line-height:1.8;">
-            設定タブ → 👑 管理者メニュー<br>から店舗目標・個人目標を設定できます
+            設定タブ → 🎯 目標設定<br>から店舗目標・カテゴリ別目標を設定できます
           </div>
         </div>
 
@@ -1192,7 +1220,7 @@ input, select, textarea { font-family: inherit; }
         <div class="card">
           <div class="card-title">🏪 店舗目標 進捗</div>
           <div id="store-goal-progress">
-            <div style="text-align:center;padding:20px;color:var(--text-sub);font-size:13px;">管理者メニューで目標を設定してください</div>
+            <div style="text-align:center;padding:20px;color:var(--text-sub);font-size:13px;">設定タブの🎯 目標設定で目標を設定してください</div>
           </div>
         </div>
 
@@ -1411,7 +1439,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = '20260621a';
+const APP_VERSION = '20260621b';
 (function() {
   var stored = localStorage.getItem('appVersion');
   if (stored !== APP_VERSION) {
@@ -1598,6 +1626,19 @@ function initStoreStatusPage() {
   renderCategoryBudget();
 }
 
+function saveStoreGoals() {
+  var gi = function(id){ var e=document.getElementById(id); return e ? (parseInt(e.value)||0) : 0; };
+  adminGoals.storeCount  = gi('goal-store-count');
+  adminGoals.storeAmount = gi('goal-store-amount');
+  adminGoals.catBankin   = gi('goal-cat-bankin');
+  adminGoals.catSeibi    = gi('goal-cat-seibi');
+  adminGoals.catFront    = gi('goal-cat-front');
+  saveLocal();
+  showToast('🎯 目標を保存しました');
+  if (typeof renderCategoryBudget === 'function') renderCategoryBudget();
+  if (typeof initStoreFrontStatus === 'function') initStoreFrontStatus();
+}
+
 async function renderCategoryBudget() {
   var el = document.getElementById('category-budget-progress');
   if (!el) return;
@@ -1614,7 +1655,7 @@ async function renderCategoryBudget() {
     { label:'📋 フロント',  total: frontTotal,  goal: (adminGoals.catFront||0)*10000,  color:'#8e44ad' }
   ];
   if (!cats.some(function(c){return c.goal>0;})) {
-    el.innerHTML = '<div style="text-align:center;padding:8px 0;font-size:12px;color:var(--text-sub);">設定 → 管理者メニューでカテゴリ別目標を設定できます</div>';
+    el.innerHTML = '<div style="text-align:center;padding:8px 0;font-size:12px;color:var(--text-sub);">設定タブの🎯 目標設定でカテゴリ別目標を設定できます</div>';
     return;
   }
   el.innerHTML = '<div class="card" style="margin-bottom:0;">' +
@@ -1685,7 +1726,7 @@ async function initStoreFrontStatus() {
   var el1 = document.getElementById('store-goal-progress2');
   var el2 = document.getElementById('member-goal-progress2');
   if (!adminGoals.storeCount && !adminGoals.storeAmount) {
-    if (el1) el1.innerHTML = '<div style="text-align:center;padding:16px;color:var(--text-sub);font-size:13px;">設定タブ → 管理者メニューで目標を設定してください</div>';
+    if (el1) el1.innerHTML = '<div style="text-align:center;padding:16px;color:var(--text-sub);font-size:13px;">設定タブの🎯 目標設定で目標を設定してください</div>';
     if (el2) el2.innerHTML = '';
     renderFrontRanking2();
     return;
@@ -2970,6 +3011,13 @@ function initSettings() {
   document.getElementById('notif-goal').checked = settings.notifGoal !== false;
   document.getElementById('notif-rocket').checked = settings.notifRocket !== false;
   document.getElementById('notif-receive').checked = settings.notifReceive !== false;
+  // 目標設定の入力欄を現在値で埋める
+  var _gv = function(id, val){ var e=document.getElementById(id); if(e) e.value = (val ? val : ''); };
+  _gv('goal-store-count', adminGoals.storeCount);
+  _gv('goal-store-amount', adminGoals.storeAmount);
+  _gv('goal-cat-bankin', adminGoals.catBankin);
+  _gv('goal-cat-seibi', adminGoals.catSeibi);
+  _gv('goal-cat-front', adminGoals.catFront);
 
   // toggle listeners
   ['notif-rankup','notif-goal','notif-rocket','notif-receive'].forEach(id => {
@@ -4377,7 +4425,7 @@ async function renderStoreGoalProgress() {
   const el = document.getElementById('store-goal-progress');
   if (!el) return;
   if (!adminGoals.storeCount && !adminGoals.storeAmount) {
-    el.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text-sub);font-size:13px;">設定タブ → 管理者メニューで目標を設定してください</div>';
+    el.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text-sub);font-size:13px;">設定タブの🎯 目標設定で目標を設定してください</div>';
     return;
   }
   const activeCode = userData.activeGroupCode || userData.groupCode;
@@ -4433,7 +4481,7 @@ async function renderMemberGoalProgress() {
   if (!el) return;
   const members = adminGoals.members || [];
   if (!members.length) {
-    el.innerHTML = '<div style="text-align:center;padding:16px;color:var(--text-sub);font-size:13px;">管理者メニューでメンバーを追加してください</div>';
+    el.innerHTML = '<div style="text-align:center;padding:16px;color:var(--text-sub);font-size:13px;">個人目標は今後対応予定です</div>';
     return;
   }
   const activeCode = userData.activeGroupCode || userData.groupCode;
