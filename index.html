@@ -1432,7 +1432,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = '20260621c';
+const APP_VERSION = '20260621d';
 (function() {
   var stored = localStorage.getItem('appVersion');
   if (stored !== APP_VERSION) {
@@ -1638,24 +1638,25 @@ async function renderCategoryBudget() {
   // 個人の工賃（自分の今月合計）／月間目標を流用
   var myTotal = (typeof getMyMonthlyTotal === 'function') ? getMyMonthlyTotal() : 0;
   var myGoal = (userData.goal || 0) * 10000;
-  // お店の工賃（グループ全員の今月合計）
   var storeGoal = (adminGoals.storeWageGoal || 0) * 10000;
-  var teamTotal = null;
+  // グループ全員の今月工賃を取得
+  var members = null, teamTotal = null;
   var code = userData.activeGroupCode || userData.groupCode;
-  if (code && storeGoal > 0) {
+  if (code) {
     try {
       var d = await fetchFromGAS('getStoreRanking', { groupCode: code, month: ym });
-      if (d && d.data) teamTotal = d.data.reduce(function(s, r){ return s + (Number(r.amount) || 0); }, 0);
+      if (d && d.data) { members = d.data.slice(); teamTotal = members.reduce(function(s, r){ return s + (Number(r.amount) || 0); }, 0); }
     } catch(e) {}
   }
   var bars = [];
   if (storeGoal > 0) bars.push({ label: '🏪 お店の工賃（みんなの合計）', total: (teamTotal != null ? teamTotal : 0), goal: storeGoal, color: '#4A9ECC', pending: (teamTotal == null) });
   if (myGoal > 0) bars.push({ label: '👤 あなたの工賃', total: myTotal, goal: myGoal, color: '#27ae60', pending: false });
-  if (bars.length === 0) {
+  var hasMembers = members && members.length > 0;
+  if (bars.length === 0 && !hasMembers) {
     el.innerHTML = '<div style="text-align:center;padding:8px 0;font-size:12px;color:var(--text-sub);">設定タブの🎯 目標設定で工賃目標を設定できます</div>';
     return;
   }
-  el.innerHTML = '<div class="card" style="margin-bottom:0;">' +
+  var html = '<div class="card" style="margin-bottom:0;">' +
     '<div class="card-title">💴 今月の工賃 進捗</div>' +
     bars.map(function(c) {
       var rate = c.goal > 0 ? Math.min(Math.round(c.total / c.goal * 100), 100) : 0;
@@ -1670,8 +1671,31 @@ async function renderCategoryBudget() {
         '</div>' +
         '<div style="text-align:right;font-size:11px;color:' + c.color + ';margin-top:2px;">' + rate + '%' + (rate>=100?' 🎉':'') + '</div>' +
       '</div>';
-    }).join('') +
-  '</div>';
+    }).join('');
+  if (hasMembers) {
+    members.sort(function(a, b){ return (Number(b.amount)||0) - (Number(a.amount)||0); });
+    var maxA = Math.max.apply(null, members.map(function(m){ return Number(m.amount)||0; }).concat([1]));
+    var scale = storeGoal > 0 ? storeGoal : maxA;
+    html += '<div style="border-top:1px solid var(--border);margin-top:4px;padding-top:10px;">' +
+      '<div style="font-size:12px;font-weight:700;color:var(--text-sub);margin-bottom:8px;">👥 メンバー別 工賃（今月）</div>' +
+      members.map(function(m) {
+        var amt = Number(m.amount) || 0;
+        var w = scale > 0 ? Math.min(Math.round(amt / scale * 100), 100) : 0;
+        var isMe = m.name === userData.name;
+        return '<div style="margin-bottom:10px;">' +
+          '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px;">' +
+            '<span style="font-size:12px;font-weight:700;' + (isMe?'color:var(--green);':'') + '">' + (m.name||'') + (isMe?'（あなた）':'') + '</span>' +
+            '<span style="font-size:11px;color:var(--text-sub);">' + Math.round(amt/10000) + '万円</span>' +
+          '</div>' +
+          '<div style="height:8px;background:var(--border);border-radius:4px;overflow:hidden;">' +
+            '<div style="height:100%;width:' + w + '%;background:' + (isMe?'#27ae60':'#4A9ECC') + ';border-radius:4px;transition:width .6s;"></div>' +
+          '</div>' +
+        '</div>';
+      }).join('') +
+    '</div>';
+  }
+  html += '</div>';
+  el.innerHTML = html;
 }
 async function renderMemberList() {
   var el = document.getElementById('member-list-content');
