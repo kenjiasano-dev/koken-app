@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
@@ -1411,7 +1411,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = '20260618s';
+const APP_VERSION = '20260621a';
 (function() {
   var stored = localStorage.getItem('appVersion');
   if (stored !== APP_VERSION) {
@@ -3586,15 +3586,68 @@ function closeRankUp() {
 // ============================================================
 async function postToGAS(data) {
   if (!GAS_URL || GAS_URL === 'YOUR_GAS_WEB_APP_URL_HERE') return;
-  try {
-    await fetch(GAS_URL, {
-      method: 'POST',
-      mode: 'no-cors',
-      headers: { 'Content-Type': 'text/plain' },
-      body: JSON.stringify({ ...data, token: GAS_TOKEN, uuid: userData.uuid || '' }),
-    });
-  } catch(e) { console.warn('GAS post failed', e); }
+  const q = _loadQueue();
+  q.push({ ...data, token: GAS_TOKEN, uuid: userData.uuid || '', _ts: Date.now() });
+  if (q.length > 500) q.splice(0, q.length - 500); // 上限ガード（暴走防止）
+  _saveQueue(q);
+  await flushQueue();
 }
+
+// ============================================================
+// 送信キュー（オフライン対策）
+// postToGASは必ずキューに積んでから送信を試みる。失敗（オフライン等）した分は
+// localStorageに残り、オンライン復帰時／定期／次回起動時に順序を保って自動再送する。
+// ============================================================
+const GAS_QUEUE_KEY = 'gasSendQueue';
+let _gasFlushing = false;
+let _gasWasOffline = false;
+
+function _loadQueue() {
+  try { return JSON.parse(localStorage.getItem(GAS_QUEUE_KEY) || '[]'); }
+  catch(e) { return []; }
+}
+function _saveQueue(q) {
+  try { localStorage.setItem(GAS_QUEUE_KEY, JSON.stringify(q)); } catch(e) {}
+}
+
+async function flushQueue() {
+  if (_gasFlushing) return;
+  if (!GAS_URL || GAS_URL === 'YOUR_GAS_WEB_APP_URL_HERE') return;
+  _gasFlushing = true;
+  try {
+    while (true) {
+      let q = _loadQueue();
+      if (q.length === 0) break;
+      try {
+        await fetch(GAS_URL, {
+          method: 'POST',
+          mode: 'no-cors',
+          headers: { 'Content-Type': 'text/plain' },
+          body: JSON.stringify(q[0]),
+        });
+      } catch(e) {
+        // ネットワーク不通 → 送信待ちのまま残し、順序維持のため中断
+        if (!_gasWasOffline) {
+          _gasWasOffline = true;
+          if (typeof showToast === 'function') showToast('📡 オフライン：データは端末に保存。通信が戻ると自動送信します');
+        }
+        break;
+      }
+      q = _loadQueue();   // 送信中に追加された分を取りこぼさない
+      q.shift();          // 送信成功した先頭を除去
+      _saveQueue(q);
+    }
+    if (_loadQueue().length === 0 && _gasWasOffline) {
+      _gasWasOffline = false;
+      if (typeof showToast === 'function') showToast('✅ 送信待ちデータをすべて送信しました');
+    }
+  } finally {
+    _gasFlushing = false;
+  }
+}
+
+window.addEventListener('online', flushQueue);
+setInterval(function() { if (_loadQueue().length > 0) flushQueue(); }, 60000);
 
 async function fetchFromGAS(action, params = {}) {
   if (!GAS_URL || GAS_URL === 'YOUR_GAS_WEB_APP_URL_HERE') return null;
@@ -3609,6 +3662,7 @@ async function fetchFromGAS(action, params = {}) {
 // INIT
 // ============================================================
 function init() {
+  flushQueue();
   initCalendar();
   initInputPage();
   initSettings();
