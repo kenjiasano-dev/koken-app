@@ -28,6 +28,10 @@
   --safe-bottom: env(safe-area-inset-bottom, 0px);
 }
 /* ===== THEMES ===== */
+[data-theme="light"] {
+  --green: #2e9b5b; --green-dark: #24814a; --green-light: #e3f3ea;
+  --bg: #f1f3f6; --card: #ffffff; --text: #1a1a1a; --text-sub: #707883; --border: #e2e6ec;
+}
 [data-theme="samurai"] {
   --green: #C9A84C; --green-dark: #a8873a; --green-light: #2a2310;
   --bg: #0d0d0d; --card: #1a1a1a; --text: #f0e6cc; --text-sub: #8a7a5a; --border: #2e2e2e;
@@ -54,7 +58,7 @@ input, select, textarea { font-family: inherit; }
 #header h1 { color: #fff; font-size: 17px; font-weight: 700; flex: 1; }
 #header .rank-badge { background: rgba(255,255,255,.2); border-radius: 20px; padding: 4px 12px; color: #fff; font-size: 12px; display: flex; align-items: center; gap: 4px; }
 #main { flex: 1; overflow-y: auto; overflow-x: hidden; }
-#tabs { height: var(--tab-h); background: #111; border-top: 1px solid var(--green-light); display: flex; flex-shrink: 0; padding-bottom: var(--safe-bottom); }
+#tabs { height: var(--tab-h); background: var(--card); border-top: 1px solid var(--green-light); display: flex; flex-shrink: 0; padding-bottom: var(--safe-bottom); }
 .role-btn { padding:8px 4px;border-radius:8px;font-size:12px;font-weight:700;background:var(--card);color:var(--text-sub);border:1px solid var(--border);cursor:pointer;text-align:center;width:100%; }
 .role-btn.active { background:var(--green-light);color:var(--green);border-color:var(--green); }
 .tab-btn { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; font-size: 9px; color: var(--text-sub); transition: color .2s; border-top: 3px solid transparent; }
@@ -952,6 +956,38 @@ input, select, textarea { font-family: inherit; }
             <button style="width:100%;padding:8px;background:#4ACC7A;color:#000;font-size:12px;font-weight:700;border:none;">🌿 深緑グリーン</button>
           </div>
 
+          <!-- ライト -->
+          <div id="theme-wrap-light" onclick="setTheme(&#39;light&#39;)" style="cursor:pointer;border-radius:12px;border:3px solid transparent;overflow:hidden;transition:border-color .2s;">
+            <div style="background:#f1f3f6;padding:10px 8px 6px;">
+              <div style="background:#ffffff;border-radius:8px;overflow:hidden;border:1px solid #e2e6ec;">
+                <div style="background:linear-gradient(135deg,#2e9b5b,#1f8048);border-bottom:2px solid #2e9b5b;padding:5px 8px;display:flex;align-items:center;gap:4px;">
+                  <span style="font-size:11px;color:#fff;font-weight:700;">⚔️ 社内</span>
+                </div>
+                <div style="padding:4px 6px;">
+                  <div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid #e2e6ec;">
+                    <span style="font-size:10px;color:#1a1a1a;font-weight:700;">田中 誠</span>
+                    <span style="font-size:10px;color:#2e9b5b;font-weight:700;">168万</span>
+                  </div>
+                  <div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid #e2e6ec;border-left:2px solid #2e9b5b;padding-left:4px;">
+                    <span style="font-size:10px;color:#1a1a1a;">あなた</span>
+                    <span style="font-size:10px;color:#2e9b5b;font-weight:700;">92万</span>
+                  </div>
+                  <div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;">
+                    <span style="font-size:10px;color:#1a1a1a;">鈴木 光</span>
+                    <span style="font-size:10px;color:#707883;">65万</span>
+                  </div>
+                </div>
+                <div style="background:#ffffff;border-top:1px solid #e2e6ec;display:flex;justify-content:space-around;padding:5px 0;">
+                  <span style="font-size:8px;color:#2e9b5b;">⚔️ 社内</span>
+                  <span style="font-size:8px;color:#707883;">✏️ 入力</span>
+                  <span style="font-size:8px;color:#707883;">👤 マイ</span>
+                  <span style="font-size:8px;color:#707883;">⚙️ 設定</span>
+                </div>
+              </div>
+            </div>
+            <button style="width:100%;padding:8px;background:#2e9b5b;color:#fff;font-size:12px;font-weight:700;border:none;">☀️ ライト</button>
+          </div>
+
         </div>
       </div>
       <!-- Ninja Mode -->
@@ -1375,7 +1411,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = '20260618n';
+const APP_VERSION = '20260618o';
 (function() {
   var stored = localStorage.getItem('appVersion');
   if (stored !== APP_VERSION) {
@@ -1415,7 +1451,7 @@ if (!userData.activeGroupCode) userData.activeGroupCode = '';
 if (!userData.avatar) userData.avatar = '';
 if (!userData.role) userData.role = '';
 if (userData.ninjaMode === undefined) userData.ninjaMode = false;
-if (!userData.theme) userData.theme = 'samurai';
+if (!userData.theme) userData.theme = 'light';
 if (!settings.notifRankup) settings.notifRankup = true;
 if (!settings.notifGoal) settings.notifGoal = true;
 if (!settings.notifRocket) settings.notifRocket = true;
@@ -3180,7 +3216,7 @@ function setTheme(name) {
   userData.theme = name;
   saveLocal();
   applyTheme();
-  const labels = { samurai:'🖤 侍ブラック', ocean:'🌊 蒼海ブルー', crimson:'🔥 紅蓮レッド', forest:'🌿 深緑グリーン' };
+  const labels = { light:'☀️ ライト', samurai:'🖤 侍ブラック', ocean:'🌊 蒼海ブルー', crimson:'🔥 紅蓮レッド', forest:'🌿 深緑グリーン' };
   showToast('テーマを変更しました: ' + (labels[name] || name));
 }
 
@@ -3189,6 +3225,7 @@ function applyTheme() {
   document.documentElement.setAttribute('data-theme', t);
   // header gradient
   const hdrGrads = {
+    light:   '135deg, #2e9b5b 0%, #1f8048 100%',
     samurai: '135deg, #0d0d0d 0%, #1a1208 100%',
     ocean:   '135deg, #0a0f14 0%, #0d1e2a 100%',
     crimson: '135deg, #0d0808 0%, #2a0d0d 100%',
@@ -3197,8 +3234,8 @@ function applyTheme() {
   const hdr = document.getElementById('header');
   if (hdr) hdr.style.background = 'linear-gradient(' + (hdrGrads[t] || hdrGrads.samurai) + ')';
   // highlight active preview
-  const accentColors = { samurai:'#C9A84C', ocean:'#4A9ECC', crimson:'#CC4444', forest:'#4ACC7A' };
-  ['samurai','ocean','crimson','forest'].forEach(k => {
+  const accentColors = { light:'#2e9b5b', samurai:'#C9A84C', ocean:'#4A9ECC', crimson:'#CC4444', forest:'#4ACC7A' };
+  ['light','samurai','ocean','crimson','forest'].forEach(k => {
     const wrap = document.getElementById('theme-wrap-' + k);
     if (wrap) wrap.style.borderColor = k === t ? (accentColors[k] || '#fff') : 'transparent';
   });
