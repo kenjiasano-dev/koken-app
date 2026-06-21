@@ -752,7 +752,7 @@ input, select, textarea { font-family: inherit; }
           <input type="text" class="form-input" id="set-store" placeholder="カーコン○○店">
         </div>
         <div class="form-group">
-          <label class="form-label">職種</label>
+          <label class="form-label">職種 <span style="font-size:11px;color:var(--text-sub);font-weight:400;">（複数選択可）</span></label>
           <div style="display:flex;flex-direction:column;gap:6px;margin-top:4px;" id="role-btns">
             <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;">
               <button type="button" class="role-btn" data-role="鈑金" onclick="selectRole('鈑金')">🔨 鈑金</button>
@@ -1362,7 +1362,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = '20260618i';
+const APP_VERSION = '20260618j';
 (function() {
   var stored = localStorage.getItem('appVersion');
   if (stored !== APP_VERSION) {
@@ -2964,7 +2964,11 @@ function initSettings() {
   document.getElementById('set-goal').value = userData.goal || 100;
   if (document.getElementById('set-fiscal-start')) document.getElementById('set-fiscal-start').value = userData.fiscalStart || 1;
   document.getElementById('set-group').value = '';
-  if (userData.role) { var ri = document.getElementById('set-role'); if(ri) ri.value=userData.role; selectRole(userData.role, true); }
+  document.querySelectorAll('#role-btns .role-btn').forEach(function(b){ b.classList.remove('active'); });
+  var savedRoles = userData.role ? String(userData.role).split(',').filter(Boolean) : [];
+  var ri = document.getElementById('set-role'); if(ri) ri.value = savedRoles.join(',');
+  savedRoles.forEach(function(r){ var rb=document.querySelector('#role-btns .role-btn[data-role="'+r+'"]'); if(rb)rb.classList.add('active'); });
+  if (savedRoles.length > 0) selectRole(savedRoles[0], true);
   // 経験年数
   const uuidEl = document.getElementById('uuid-display');
   if (uuidEl) uuidEl.textContent = userData.uuid || '未生成';
