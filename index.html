@@ -1076,19 +1076,12 @@ input, select, textarea { font-family: inherit; }
           <label class="form-label">受注金額（万円）</label>
           <input type="number" class="form-input" id="goal-store-amount" inputmode="numeric" min="0" step="1" placeholder="例: 300">
         </div>
-        <div style="font-weight:700;font-size:13px;margin:12px 0 8px;">💴 工賃目標（カテゴリ別・万円）</div>
+        <div style="font-weight:700;font-size:13px;margin:12px 0 8px;">💴 工賃目標（万円）</div>
         <div class="form-group">
-          <label class="form-label">🔨 鈑金塗装</label>
-          <input type="number" class="form-input" id="goal-cat-bankin" inputmode="numeric" min="0" step="1" placeholder="例: 200">
+          <label class="form-label">🏪 お店の工賃目標（みんなの合計）</label>
+          <input type="number" class="form-input" id="goal-store-wage" inputmode="numeric" min="0" step="1" placeholder="例: 800">
         </div>
-        <div class="form-group">
-          <label class="form-label">🔧 整備</label>
-          <input type="number" class="form-input" id="goal-cat-seibi" inputmode="numeric" min="0" step="1" placeholder="例: 50">
-        </div>
-        <div class="form-group">
-          <label class="form-label">📋 フロント（受注金額）</label>
-          <input type="number" class="form-input" id="goal-cat-front" inputmode="numeric" min="0" step="1" placeholder="例: 100">
-        </div>
+        <div style="font-size:11px;color:var(--text-sub);margin:-4px 0 8px;line-height:1.6;">※ 個人の工賃目標は、プロフィールの「月間目標」がそのまま使われます。</div>
         <button class="submit-btn" onclick="saveStoreGoals()">🎯 目標を保存</button>
       </div>
       <!-- データ復元（常時表示） -->
@@ -1439,7 +1432,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = '20260621b';
+const APP_VERSION = '20260621c';
 (function() {
   var stored = localStorage.getItem('appVersion');
   if (stored !== APP_VERSION) {
@@ -1630,9 +1623,7 @@ function saveStoreGoals() {
   var gi = function(id){ var e=document.getElementById(id); return e ? (parseInt(e.value)||0) : 0; };
   adminGoals.storeCount  = gi('goal-store-count');
   adminGoals.storeAmount = gi('goal-store-amount');
-  adminGoals.catBankin   = gi('goal-cat-bankin');
-  adminGoals.catSeibi    = gi('goal-cat-seibi');
-  adminGoals.catFront    = gi('goal-cat-front');
+  adminGoals.storeWageGoal = gi('goal-store-wage');
   saveLocal();
   showToast('🎯 目標を保存しました');
   if (typeof renderCategoryBudget === 'function') renderCategoryBudget();
@@ -1644,41 +1635,44 @@ async function renderCategoryBudget() {
   if (!el) return;
   var now = new Date();
   var ym = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0');
-  var monthWage = wageData.filter(function(d){ return d.date && d.date.startsWith(ym); });
-  var bankinTotal = monthWage.filter(function(d){ return (d.category||'鈑金塗装') === '鈑金塗装'; }).reduce(function(s,d){return s+(d.amount||0);},0);
-  var seibiTotal = monthWage.filter(function(d){ return d.category === '整備'; }).reduce(function(s,d){return s+(d.amount||0);},0);
-  var frontStats = calcFrontStats(getFrontMonthData());
-  var frontTotal = frontStats.orderTotal || 0;
-  var cats = [
-    { label:'🔨 鈑金塗装', total: bankinTotal, goal: (adminGoals.catBankin||0)*10000, color:'#4A9ECC' },
-    { label:'🔧 整備',      total: seibiTotal,  goal: (adminGoals.catSeibi||0)*10000,  color:'#27ae60' },
-    { label:'📋 フロント',  total: frontTotal,  goal: (adminGoals.catFront||0)*10000,  color:'#8e44ad' }
-  ];
-  if (!cats.some(function(c){return c.goal>0;})) {
-    el.innerHTML = '<div style="text-align:center;padding:8px 0;font-size:12px;color:var(--text-sub);">設定タブの🎯 目標設定でカテゴリ別目標を設定できます</div>';
+  // 個人の工賃（自分の今月合計）／月間目標を流用
+  var myTotal = (typeof getMyMonthlyTotal === 'function') ? getMyMonthlyTotal() : 0;
+  var myGoal = (userData.goal || 0) * 10000;
+  // お店の工賃（グループ全員の今月合計）
+  var storeGoal = (adminGoals.storeWageGoal || 0) * 10000;
+  var teamTotal = null;
+  var code = userData.activeGroupCode || userData.groupCode;
+  if (code && storeGoal > 0) {
+    try {
+      var d = await fetchFromGAS('getStoreRanking', { groupCode: code, month: ym });
+      if (d && d.data) teamTotal = d.data.reduce(function(s, r){ return s + (Number(r.amount) || 0); }, 0);
+    } catch(e) {}
+  }
+  var bars = [];
+  if (storeGoal > 0) bars.push({ label: '🏪 お店の工賃（みんなの合計）', total: (teamTotal != null ? teamTotal : 0), goal: storeGoal, color: '#4A9ECC', pending: (teamTotal == null) });
+  if (myGoal > 0) bars.push({ label: '👤 あなたの工賃', total: myTotal, goal: myGoal, color: '#27ae60', pending: false });
+  if (bars.length === 0) {
+    el.innerHTML = '<div style="text-align:center;padding:8px 0;font-size:12px;color:var(--text-sub);">設定タブの🎯 目標設定で工賃目標を設定できます</div>';
     return;
   }
   el.innerHTML = '<div class="card" style="margin-bottom:0;">' +
-    '<div class="card-title">📊 カテゴリ別 今月の進捗</div>' +
-    cats.map(function(c) {
-      var rate = c.goal > 0 ? Math.min(Math.round(c.total/c.goal*100), 100) : 0;
-      var goalStr = c.goal > 0 ? '目標 ' + Math.round(c.goal/10000) + '万円' : '目標未設定';
+    '<div class="card-title">💴 今月の工賃 進捗</div>' +
+    bars.map(function(c) {
+      var rate = c.goal > 0 ? Math.min(Math.round(c.total / c.goal * 100), 100) : 0;
+      var rightTxt = c.pending ? 'グループ未設定' : (Math.round(c.total/10000) + '万 / 目標 ' + Math.round(c.goal/10000) + '万円');
       return '<div style="margin-bottom:12px;">' +
         '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">' +
-          '<span style="font-size:13px;font-weight:700;">'+c.label+'</span>' +
-          '<span style="font-size:12px;color:var(--text-sub);">'+Math.round(c.total/10000)+'万 / '+goalStr+'</span>' +
+          '<span style="font-size:13px;font-weight:700;">' + c.label + '</span>' +
+          '<span style="font-size:12px;color:var(--text-sub);">' + rightTxt + '</span>' +
         '</div>' +
-        (c.goal > 0 ?
-          '<div style="height:10px;background:var(--border);border-radius:5px;overflow:hidden;">' +
-            '<div style="height:100%;width:'+rate+'%;background:'+c.color+';border-radius:5px;transition:width .6s;"></div>' +
-          '</div>' +
-          '<div style="text-align:right;font-size:11px;color:'+c.color+';margin-top:2px;">'+rate+'%</div>'
-        : '<div style="height:10px;background:var(--border);border-radius:5px;"></div>') +
+        '<div style="height:10px;background:var(--border);border-radius:5px;overflow:hidden;">' +
+          '<div style="height:100%;width:' + rate + '%;background:' + c.color + ';border-radius:5px;transition:width .6s;"></div>' +
+        '</div>' +
+        '<div style="text-align:right;font-size:11px;color:' + c.color + ';margin-top:2px;">' + rate + '%' + (rate>=100?' 🎉':'') + '</div>' +
       '</div>';
     }).join('') +
   '</div>';
 }
-
 async function renderMemberList() {
   var el = document.getElementById('member-list-content');
   if (!el) return;
@@ -3015,9 +3009,7 @@ function initSettings() {
   var _gv = function(id, val){ var e=document.getElementById(id); if(e) e.value = (val ? val : ''); };
   _gv('goal-store-count', adminGoals.storeCount);
   _gv('goal-store-amount', adminGoals.storeAmount);
-  _gv('goal-cat-bankin', adminGoals.catBankin);
-  _gv('goal-cat-seibi', adminGoals.catSeibi);
-  _gv('goal-cat-front', adminGoals.catFront);
+  _gv('goal-store-wage', adminGoals.storeWageGoal);
 
   // toggle listeners
   ['notif-rankup','notif-goal','notif-rocket','notif-receive'].forEach(id => {
