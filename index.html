@@ -1279,8 +1279,8 @@ input, select, textarea { font-family: inherit; }
           <button type="button" class="role-btn" data-cat="整備" onclick="selectDayCategory('整備')" style="padding:10px 6px;font-size:13px;">🔧 整備</button>
         </div>
         <input type="hidden" id="day-edit-category">
+        <input type="text" class="form-input" id="day-edit-number" placeholder="ナンバー4桁（任意）" maxlength="4" inputmode="numeric" oninput="numAutoNext(this,&#39;day-edit-cartype&#39;)" style="margin-bottom:8px;letter-spacing:6px;font-size:18px;font-weight:700;text-align:center;">
         <input type="text" class="form-input" id="day-edit-cartype" placeholder="🚗 車種（任意）" list="cartype-list" style="margin-bottom:8px;" autocomplete="off">
-        <input type="text" class="form-input" id="day-edit-number" placeholder="ナンバー4桁（任意）" maxlength="4" inputmode="numeric" oninput="numAutoNext(this,&#39;day-edit-amount&#39;)" style="margin-bottom:8px;letter-spacing:6px;font-size:18px;font-weight:700;text-align:center;">
         <div class="amount-input-wrap" style="margin-bottom:10px;">
           <span class="yen">¥</span>
           <input type="text" class="form-input" id="day-edit-amount" placeholder="工賃金額" inputmode="numeric" oninput="formatAmountInput(this)">
@@ -1303,8 +1303,8 @@ input, select, textarea { font-family: inherit; }
     <div style="margin-top:12px;">
       <button onclick="toggleFrontDayAddForm()" style="width:100%;padding:10px;background:var(--green-light);color:var(--green);border:1px solid var(--green);border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;" id="front-day-add-toggle">＋ 見積りを追加</button>
       <div id="front-day-add-form" style="display:none;margin-top:10px;padding:12px;background:var(--card);border-radius:10px;border:1px solid var(--border);">
+        <input type="text" class="form-input" id="fday-number" placeholder="ナンバー4桁（任意）" maxlength="4" inputmode="numeric" oninput="numAutoNext(this,&#39;fday-cartype&#39;)" style="margin-bottom:8px;letter-spacing:6px;font-size:18px;font-weight:700;text-align:center;">
         <input type="text" class="form-input" id="fday-cartype" placeholder="🚗 車種（任意）" list="cartype-list" style="margin-bottom:8px;" autocomplete="off">
-        <input type="text" class="form-input" id="fday-number" placeholder="ナンバー4桁（任意）" maxlength="4" inputmode="numeric" oninput="numAutoNext(this,&#39;fday-amount&#39;)" style="margin-bottom:8px;letter-spacing:6px;font-size:18px;font-weight:700;text-align:center;">
         <div class="amount-input-wrap" style="margin-bottom:8px;">
           <span class="yen">¥</span>
           <input type="text" class="form-input" id="fday-amount" placeholder="見積り金額" inputmode="numeric" oninput="formatAmountInput(this)">
@@ -1375,7 +1375,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = '20260618m';
+const APP_VERSION = '20260618n';
 (function() {
   var stored = localStorage.getItem('appVersion');
   if (stored !== APP_VERSION) {
