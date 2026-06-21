@@ -1436,7 +1436,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = '20260622a';
+const APP_VERSION = '20260622b';
 (function() {
   var stored = localStorage.getItem('appVersion');
   if (stored !== APP_VERSION) {
@@ -1657,7 +1657,8 @@ async function renderCategoryBudget() {
     } catch(e) {}
   }
   var bars = [];
-  if (storeGoal > 0) bars.push({ label: '🏪 お店の工賃（みんなの合計）', total: (teamTotal != null ? teamTotal : 0), goal: storeGoal, color: '#4A9ECC', pending: (teamTotal == null) });
+  if (teamTotal != null) bars.push({ label: '🏪 お店の工賃（みんなの合計）', total: teamTotal, goal: storeGoal, color: '#4A9ECC', pending: false });
+  else if (storeGoal > 0) bars.push({ label: '🏪 お店の工賃（みんなの合計）', total: 0, goal: storeGoal, color: '#4A9ECC', pending: true });
   if (myGoal > 0) bars.push({ label: '👤 あなたの工賃', total: myTotal, goal: myGoal, color: '#27ae60', pending: false });
   var hasMembers = members && members.length > 0;
   if (bars.length === 0 && !hasMembers) {
@@ -1668,16 +1669,18 @@ async function renderCategoryBudget() {
     '<div class="card-title">💴 今月の工賃 進捗</div>' +
     bars.map(function(c) {
       var rate = c.goal > 0 ? Math.min(Math.round(c.total / c.goal * 100), 100) : 0;
-      var rightTxt = c.pending ? 'グループ未設定' : (Math.round(c.total/10000) + '万 / 目標 ' + Math.round(c.goal/10000) + '万円');
+      var rightTxt = c.pending ? 'グループ未設定' : (c.goal > 0 ? (Math.round(c.total/10000) + '万 / 目標 ' + Math.round(c.goal/10000) + '万円') : ('今月 ' + Math.round(c.total/10000) + '万円'));
       return '<div style="margin-bottom:12px;">' +
         '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">' +
           '<span style="font-size:13px;font-weight:700;">' + c.label + '</span>' +
           '<span style="font-size:12px;color:var(--text-sub);">' + rightTxt + '</span>' +
         '</div>' +
-        '<div style="height:10px;background:var(--border);border-radius:5px;overflow:hidden;">' +
-          '<div style="height:100%;width:' + rate + '%;background:' + c.color + ';border-radius:5px;transition:width .6s;"></div>' +
-        '</div>' +
-        '<div style="text-align:right;font-size:11px;color:' + c.color + ';margin-top:2px;">' + rate + '%' + (rate>=100?' 🎉':'') + '</div>' +
+        (c.goal > 0 ?
+          ('<div style="height:10px;background:var(--border);border-radius:5px;overflow:hidden;">' +
+            '<div style="height:100%;width:' + rate + '%;background:' + c.color + ';border-radius:5px;transition:width .6s;"></div>' +
+          '</div>' +
+          '<div style="text-align:right;font-size:11px;color:' + c.color + ';margin-top:2px;">' + rate + '%' + (rate>=100?' 🎉':'') + '</div>')
+        : '') +
       '</div>';
     }).join('');
   if (hasMembers) {
