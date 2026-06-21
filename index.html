@@ -765,10 +765,6 @@ input, select, textarea { font-family: inherit; }
         </div>
 
         <div class="form-group">
-          <label class="form-label">月間目標（万円）</label>
-          <input type="number" class="form-input" id="set-goal" placeholder="100" min="1" max="500">
-        </div>
-        <div class="form-group">
           <label class="form-label">年度開始月</label>
           <div style="font-size:12px;color:var(--text-sub);margin-bottom:6px;">会社の年度に合わせて設定（例：4月始まりなら4）</div>
           <select class="form-input" id="set-fiscal-start">
@@ -1440,7 +1436,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = '20260621e';
+const APP_VERSION = '20260621f';
 (function() {
   var stored = localStorage.getItem('appVersion');
   if (stored !== APP_VERSION) {
@@ -3023,7 +3019,6 @@ function initSettings() {
   document.getElementById('set-name').value = userData.name || '';
   document.getElementById('set-pref').value = userData.pref || '';
   document.getElementById('set-store').value = userData.store || '';
-  document.getElementById('set-goal').value = userData.goal || 100;
   if (document.getElementById('set-fiscal-start')) document.getElementById('set-fiscal-start').value = userData.fiscalStart || 1;
   document.getElementById('set-group').value = '';
   document.querySelectorAll('#role-btns .role-btn').forEach(function(b){ b.classList.remove('active'); });
@@ -3163,7 +3158,7 @@ function saveProfile() {
   const name = document.getElementById('set-name').value.trim();
   const pref = document.getElementById('set-pref').value;
   const store = document.getElementById('set-store').value.trim();
-  const goal = parseInt(document.getElementById('set-goal').value) || 100;
+  const goal = userData.goal || 100; // 個人工賃目標は🎯目標設定カードで設定
   const role = document.getElementById('set-role') ? document.getElementById('set-role').value : '';
   userData.name = name;
   userData.pref = pref;
