@@ -1411,7 +1411,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = '20260618r';
+const APP_VERSION = '20260618s';
 (function() {
   var stored = localStorage.getItem('appVersion');
   if (stored !== APP_VERSION) {
@@ -2991,12 +2991,16 @@ const ROLE_COLORS = {
 };
 
 function selectRole(role, silent) {
-  var ri = document.getElementById('set-role');
-  if (ri) ri.value = role;
-  document.querySelectorAll('#role-btns .role-btn').forEach(function(btn) {
-    if (btn.dataset.role === role) btn.classList.add('active');
-    else btn.classList.remove('active');
-  });
+  if (!silent) {
+    // 複数選択: クリックでトグル
+    var btn = document.querySelector('#role-btns .role-btn[data-role="' + role + '"]');
+    if (btn) btn.classList.toggle('active');
+    var activeRoles = [];
+    document.querySelectorAll('#role-btns .role-btn.active').forEach(function(b) { activeRoles.push(b.dataset.role); });
+    var ri = document.getElementById('set-role');
+    if (ri) ri.value = activeRoles.join(',');
+  }
+  // 経験年数欄はクリックした職種で表示
   var inlineEl = document.getElementById('role-exp-inline');
   var labelEl = document.getElementById('role-exp-label');
   var yearEl = document.getElementById('role-exp-year');
@@ -3004,7 +3008,6 @@ function selectRole(role, silent) {
     inlineEl.style.display = '';
     if (labelEl) labelEl.textContent = role;
     var expYrs = userData.expYears || {};
-    // 保存値は開始年なので今何年目かに変換して表示
     var startY = expYrs[role];
     if (yearEl) yearEl.value = startY ? calcExpYears(startY) : '';
     updateRoleExpPreview();
@@ -3072,8 +3075,11 @@ function updateExpCalc(input) {
 }
 function getRoleBadge(role) {
   if (!role) return '';
-  var color = ROLE_COLORS[role] || '#888';
-  return '<span style="display:inline-block;padding:1px 6px;border-radius:10px;font-size:10px;font-weight:700;background:' + color + '22;color:' + color + ';border:1px solid ' + color + '44;margin-left:4px;">' + role + '</span>';
+  var roles = Array.isArray(role) ? role : String(role).split(',').filter(Boolean);
+  return roles.map(function(r) {
+    var color = ROLE_COLORS[r] || '#888';
+    return '<span style="display:inline-block;padding:1px 6px;border-radius:10px;font-size:10px;font-weight:700;background:' + color + '22;color:' + color + ';border:1px solid ' + color + '44;margin-left:4px;">' + r + '</span>';
+  }).join('');
 }
 
 function saveProfile() {
