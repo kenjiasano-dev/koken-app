@@ -1436,7 +1436,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = '20260621f';
+const APP_VERSION = '20260622a';
 (function() {
   var stored = localStorage.getItem('appVersion');
   if (stored !== APP_VERSION) {
@@ -2277,6 +2277,33 @@ function buildRankItem(item, myName) {
   </li>`;
 }
 
+// データ量アラート（工賃データが5万/10万件を超えたら管理者に通知）
+function maybeShowDataAlert(rows) {
+  rows = Number(rows) || 0;
+  var level = rows >= 100000 ? 100000 : (rows >= 50000 ? 50000 : 0);
+  if (!level) return;
+  var acked = parseInt(localStorage.getItem('dataAlertAcked') || '0') || 0;
+  if (acked >= level) return;
+  var msg = level >= 100000
+    ? '⚠️ 工賃データが10万件を超えました。動作を軽く保つため、高速化（月別シート分割・月次集計）の実装をおすすめします。'
+    : '📈 工賃データが5万件を超えました。そろそろ高速化（月別シート分割）の検討時期です。';
+  var bar = document.getElementById('data-alert-bar');
+  if (!bar) {
+    bar = document.createElement('div');
+    bar.id = 'data-alert-bar';
+    bar.style.cssText = 'position:fixed;left:0;right:0;top:0;z-index:99999;background:#fff3cd;color:#664d03;border-bottom:1px solid #ffe69c;padding:10px 40px 10px 14px;font-size:13px;line-height:1.6;box-shadow:0 2px 6px rgba(0,0,0,.12);';
+    document.body.appendChild(bar);
+  }
+  bar.innerHTML = '<span>' + msg + '</span>' +
+    '<button onclick="dismissDataAlert(' + level + ')" style="position:absolute;right:8px;top:6px;background:transparent;border:none;font-size:20px;color:#664d03;cursor:pointer;line-height:1;">×</button>';
+  bar.style.display = 'block';
+}
+function dismissDataAlert(level) {
+  localStorage.setItem('dataAlertAcked', String(level));
+  var bar = document.getElementById('data-alert-bar');
+  if (bar) bar.style.display = 'none';
+}
+
 async function fetchStats() {
   try {
     const res = await fetchFromGAS('getStats');
@@ -2286,6 +2313,7 @@ async function fetchStats() {
       if (tu) tu.textContent = res.totalUsers + '人';
       if (au) au.textContent = res.activeThisMonth + '人';
     }
+    if (res && res.totalWageRows !== undefined) maybeShowDataAlert(res.totalWageRows);
   } catch(e) {}
 }
 
