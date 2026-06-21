@@ -74,7 +74,7 @@ input, select, textarea { font-family: inherit; }
 .card-title { font-size: 13px; color: var(--text-sub); margin-bottom: 12px; font-weight: 600; }
 
 /* ===== SUB TABS ===== */
-.sub-tabs { display: flex; background: #111; border-bottom: 1px solid var(--green-light); padding: 0 12px; gap: 4px; position: sticky; top: 0; z-index: 10; }
+.sub-tabs { display: flex; background: var(--card); border-bottom: 1px solid var(--green-light); padding: 0 12px; gap: 4px; position: sticky; top: 0; z-index: 10; }
 .sub-tab { padding: 10px 14px; font-size: 13px; color: var(--text-sub); border-bottom: 3px solid transparent; white-space: nowrap; }
 .sub-tab.active { color: var(--green); border-bottom-color: var(--green); font-weight: 700; }
 
@@ -386,7 +386,7 @@ input, select, textarea { font-family: inherit; }
       </div>
       <!-- 全国・地域・県内は折りたたみ -->
       <div id="rank-more-tabs" style="display:none;">
-        <div class="sub-tabs" style="background:#0d0d0d;border-bottom:1px solid var(--border);">
+        <div class="sub-tabs" style="background:var(--card);border-bottom:1px solid var(--border);">
           <button class="sub-tab" data-rtab="national">🏆 全国</button>
           <button class="sub-tab" data-rtab="region">🗾 地域</button>
           <button class="sub-tab" data-rtab="pref">🏯 県内</button>
@@ -1065,11 +1065,11 @@ input, select, textarea { font-family: inherit; }
 
       <!-- データ復元（常時表示） -->
       <div class="card">
-        <div class="card-title">☁️ データ復元</div>
-        <div style="font-size:12px;color:var(--text-sub);margin-bottom:12px;line-height:1.7;">機種変更・キャッシュ消去後にサーバーからデータを復元できます。<br>※ 忍びモードONのデータは復元できません。</div>
-        <button onclick="restoreFromGAS()" style="width:100%;padding:12px;background:var(--green);color:#fff;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;border:none;">📥 データを復元する</button>
+        <div class="card-title">☁️ データのバックアップ・復元</div>
+        <div style="font-size:12px;color:var(--text-sub);margin-bottom:12px;line-height:1.8;"><b style="color:var(--text);">📥 復元</b>＝サーバーのデータをこの端末に取り込む（機種変更・データ消去のあと）<br><b style="color:var(--text);">📤 バックアップ</b>＝この端末のデータをサーバーへ送る<br>※ 忍びモードONのデータは対象外です。</div>
+        <button onclick="restoreFromGAS()" style="width:100%;padding:12px;background:var(--green);color:#fff;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;border:none;">📥 サーバーから復元する</button>
         <div id="restore-status" style="margin-top:8px;font-size:12px;color:var(--text-sub);text-align:center;"></div>
-        <div style="margin-top:8px;"><button id="force-resync-btn" onclick="forceResync()" style="width:100%;padding:12px;background:#0a0a0a;color:var(--green);border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;border:1px solid var(--green);">工賃データをサーバーへ再同期</button></div>
+        <div style="margin-top:8px;"><button id="force-resync-btn" onclick="forceResync()" style="width:100%;padding:12px;background:var(--card);color:var(--green);border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;border:1px solid var(--green);">📤 サーバーへバックアップする</button></div>
         <div id="resync-status" style="margin-top:6px;font-size:12px;color:var(--text-sub);text-align:center;"></div>
       </div>
 
@@ -1411,7 +1411,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = '20260618q';
+const APP_VERSION = '20260618r';
 (function() {
   var stored = localStorage.getItem('appVersion');
   if (stored !== APP_VERSION) {
@@ -1478,18 +1478,6 @@ function getRank(manyen) {
 // ============================================================
 // DEMO DATA (used when GAS_URL not configured)
 // ============================================================
-const DEMO_NATIONAL = [
-  { rank:1, name:'田中 俊介', store:'カーコン横浜店', pref:'神奈川', amount:1680000, emoji:'⚔️', rankCls:'sb-5', rankName:'将軍' },
-  { rank:2, name:'佐藤 健一', store:'カーコン大阪店', pref:'大阪',   amount:1540000, emoji:'👑', rankCls:'sb-5', rankName:'将軍' },
-  { rank:3, name:'鈴木 誠',   store:'カーコン名古屋店', pref:'愛知', amount:1420000, emoji:'🏯', rankCls:'sb-4', rankName:'大名' },
-  { rank:4, name:'高橋 修',   store:'カーコン福岡店', pref:'福岡',   amount:1350000, emoji:'🏯', rankCls:'sb-4', rankName:'大名' },
-  { rank:5, name:'渡辺 光',   store:'カーコン札幌店', pref:'北海道', amount:1280000, emoji:'🎌', rankCls:'sb-3', rankName:'武将' },
-  { rank:6, name:'伊藤 隆',   store:'カーコン仙台店', pref:'宮城',   amount:1190000, emoji:'🎌', rankCls:'sb-3', rankName:'武将' },
-  { rank:7, name:'山本 浩二', store:'カーコン広島店', pref:'広島',   amount:1080000, emoji:'🎌', rankCls:'sb-3', rankName:'武将' },
-  { rank:8, name:'中村 義人', store:'カーコン京都店', pref:'京都',   amount:980000,  emoji:'⚔️', rankCls:'sb-2', rankName:'侍' },
-  { rank:9, name:'小林 達也', store:'カーコン神戸店', pref:'兵庫',   amount:920000,  emoji:'⚔️', rankCls:'sb-2', rankName:'侍' },
-  { rank:10, name:'加藤 幸雄', store:'カーコン静岡店', pref:'静岡',  amount:870000,  emoji:'⚔️', rankCls:'sb-2', rankName:'侍' },
-];
 
 const DEMO_STORE = [
   { rank:1, name:userData.name||'あなた', store:userData.store||'自店舗', pref:userData.pref||'', amount: getMyMonthlyTotal(), emoji:'⚔️', rankCls:'sb-2', rankName:'侍', isMe: true },
@@ -1586,7 +1574,6 @@ function switchTab(tab) {
 // 店舗状況ページ
 // ============================================================
 let storeStatusTab = 'team-wage';
-let storeRankType2 = 'store';
 let frontRankType2 = 'rate';
 
 function initStoreStatusPage() {
@@ -1603,31 +1590,12 @@ function initStoreStatusPage() {
         var el = document.getElementById('sstab-' + t);
         if (el) el.style.display = t === storeStatusTab ? '' : 'none';
       });
-      if (storeStatusTab === 'team-wage') renderStoreRanking2();
+      if (storeStatusTab === 'team-wage') renderCategoryBudget();
       if (storeStatusTab === 'front-status') initStoreFrontStatus();
       if (storeStatusTab === 'members') renderMemberList();
     });
   }
-  var now = new Date();
-  var ml = document.getElementById('store-rank-month2');
-  if (ml) ml.textContent = now.getMonth()+1 + '月度';
-  renderStoreRanking2();
-}
-
-function setStoreRankType(type) {
-  storeRankType2 = type;
-  ['national','region','pref','store'].forEach(function(t){
-    var btn = document.getElementById('str-' + t.slice(0,3) + (t==='national'?'nat':t==='region'?'reg':t==='pref'?'pref':'store') + '-btn');
-  });
-  var map = {national:'nat', region:'reg', pref:'pref', store:'store'};
-  ['national','region','pref','store'].forEach(function(t){
-    var id = 'str-' + map[t] + '-btn';
-    var btn = document.getElementById(id);
-    if (!btn) return;
-    if (t === type) { btn.style.background='var(--green)'; btn.style.color='#111'; btn.style.border='none'; }
-    else { btn.style.background='var(--card)'; btn.style.color='var(--text-sub)'; btn.style.border='1px solid var(--border)'; }
-  });
-  renderStoreRanking2();
+  renderCategoryBudget();
 }
 
 async function renderCategoryBudget() {
@@ -1668,33 +1636,6 @@ async function renderCategoryBudget() {
       '</div>';
     }).join('') +
   '</div>';
-}
-
-async function renderStoreRanking2() {
-  renderCategoryBudget();
-  var list = document.getElementById('store-rank-list2');
-  if (!list) return;
-  list.innerHTML = '<li style="padding:16px;text-align:center;color:var(--text-sub);font-size:13px;">読み込み中...</li>';
-  try {
-    var params = { type: storeRankType2 };
-    if (storeRankType2 === 'store') {
-      var code = userData.activeGroupCode || userData.groupCode;
-      if (!code) { list.innerHTML = '<li style="padding:16px;text-align:center;color:var(--text-sub);font-size:13px;">グループコードを設定してください</li>'; return; }
-      params.groupCode = code;
-    }
-    var data = await fetchFromGAS('getRanking', params);
-    if (!data || !data.data) { list.innerHTML = '<li style="padding:16px;text-align:center;color:var(--text-sub);font-size:13px;">データなし</li>'; return; }
-    list.innerHTML = data.data.slice(0,20).map(function(r, i){
-      var medal = i===0?'🥇':i===1?'🥈':i===2?'🥉':(i+1)+'';
-      var isMe = r.name === userData.name;
-      return '<li class="rank-item' + (isMe?' rank-me':'') + '">' +
-        '<span class="rank-medal">' + medal + '</span>' +
-        '<div class="rank-info"><div class="rank-name">' + r.name + (r.name===userData.name?getRoleBadge(userData.role):'') + '</div><div class="rank-sub">' + (r.store||'') + '</div></div>' +
-        '<span class="rank-wage">' + (r.amount||0).toLocaleString() + '円</span></li>';
-    }).join('');
-  } catch(e) {
-    list.innerHTML = '<li style="padding:16px;text-align:center;color:var(--text-sub);font-size:13px;">取得できませんでした</li>';
-  }
 }
 
 async function renderMemberList() {
@@ -2298,7 +2239,7 @@ async function _fetchRankingCached() {
 function _rankMergeMe(rawData, myTotal) {
   let data = rawData
     ? rawData.map(d => ({ name: d.name, store: d.store || '', pref: d.pref || '', amount: d.amount }))
-    : [...DEMO_NATIONAL];
+    : [];
   if (userData.name) {
     const idx = data.findIndex(d => d.name === userData.name);
     if (idx >= 0) { if (myTotal >= data[idx].amount) data[idx].amount = myTotal; }
@@ -3354,7 +3295,7 @@ async function forceResync() {
     });
     if (st) st.textContent = (i+1) + '/' + wageData.length + ' 件送信中...';
   }
-  if (btn) { btn.disabled = false; btn.textContent = '工賃データをサーバーへ再同期'; }
+  if (btn) { btn.disabled = false; btn.textContent = '📤 サーバーへバックアップする'; }
   if (st) st.textContent = wageData.length + '件の送信が完了しました';
   showToast(wageData.length + '件をサーバーへ送信しました');
 }
