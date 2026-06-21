@@ -1411,7 +1411,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = '20260618p';
+const APP_VERSION = '20260618q';
 (function() {
   var stored = localStorage.getItem('appVersion');
   if (stored !== APP_VERSION) {
@@ -1725,11 +1725,12 @@ async function renderMemberList() {
         '</div>';
       }).join('');
     }
-    var inviteUrl = 'https://line.me/R/msg/text/?' + encodeURIComponent('工賃管理アプリに招待します！\nグループコード: ' + code + '\nhttps://kenjiasano-dev.github.io/koken-app/');
+    var inviteLink = 'https://kenjiasano-dev.github.io/koken-app/?invite=' + encodeURIComponent(code);
+    var inviteUrl = 'https://line.me/R/msg/text/?' + encodeURIComponent('工賃管理アプリに招待します！\nこのリンクを開くだけで参加できます👇\n' + inviteLink);
     memberHtml += '<div style="margin-top:12px;padding:12px;background:var(--card);border-radius:10px;border:1px solid var(--border);">' +
       '<div style="font-size:12px;font-weight:700;margin-bottom:6px;color:var(--text-sub);">グループコードを共有</div>' +
       '<div style="font-size:20px;font-weight:700;text-align:center;letter-spacing:4px;padding:8px;background:var(--border);border-radius:8px;margin-bottom:8px;">' + code + '</div>' +
-      '<img src="https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=' + encodeURIComponent(code) + '" style="display:block;margin:0 auto 8px;border-radius:8px;" width="100" height="100" alt="QR">' +
+      '<img src="https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=' + encodeURIComponent(inviteLink) + '" style="display:block;margin:0 auto 8px;border-radius:8px;" width="100" height="100" alt="QR">' +
       '<a href="' + inviteUrl + '" target="_blank" style="display:block;width:100%;padding:10px;background:#00b900;color:#fff;border-radius:10px;font-size:13px;font-weight:700;text-align:center;text-decoration:none;box-sizing:border-box;">📲 LINEで招待する</a>' +
     '</div>';
     el.innerHTML = memberHtml;
@@ -3183,6 +3184,34 @@ function generateGroupCode() {
   postToGAS({ action: 'updateProfile', name: userData.name, pref: userData.pref, store: userData.store, goal: userData.goal, role: userData.role || '', groupCode: code });
 }
 
+function handleInviteLink() {
+  var inviteCode = '';
+  try { inviteCode = (new URLSearchParams(location.search).get('invite') || '').trim().toUpperCase(); } catch(e) {}
+  if (!inviteCode) return;
+  // URLからパラメータを除去（再読み込み時の再確認を防ぐ）
+  try { history.replaceState(null, '', location.pathname); } catch(e) {}
+  setTimeout(function() {
+    if (!userData.groupCodes) userData.groupCodes = [];
+    if (userData.groupCodes.find(function(g){ return g.code === inviteCode; })) {
+      showToast('すでに参加済みのグループです: ' + inviteCode, 4000);
+      return;
+    }
+    if (!confirm('グループ「' + inviteCode + '」に参加しますか？')) return;
+    userData.groupCodes.push({ code: inviteCode, name: inviteCode });
+    userData.activeGroupCode = inviteCode;
+    userData.groupCode = inviteCode;
+    saveLocal();
+    if (typeof renderFollowedStores === 'function') renderFollowedStores();
+    if (typeof renderStoreSwitcher === 'function') renderStoreSwitcher();
+    showToast('✅ グループ「' + inviteCode + '」に参加しました', 4000);
+    if (userData.name && !userData.ninjaMode) {
+      postToGAS({ action: 'updateProfile', name: userData.name, pref: userData.pref || '', store: userData.store || '', goal: userData.goal || 100, role: userData.role || '', groupCode: inviteCode });
+    } else if (!userData.name) {
+      setTimeout(function(){ showToast('⚙️ 設定でお名前を登録するとランキングに表示されます', 5000); switchTab('settings'); }, 1500);
+    }
+  }, 800);
+}
+
 function joinGroup() {
   const code = document.getElementById('set-group').value.trim().toUpperCase();
   const name = document.getElementById('set-group-name').value.trim() || code;
@@ -3639,6 +3668,9 @@ function init() {
   applyNinjaMode();
   applyTheme();
   renderRanking();
+
+  // 招待リンク（?invite=コード）処理
+  handleInviteLink();
 
   // Check if first launch
   if (!userData.name) {
