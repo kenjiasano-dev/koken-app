@@ -30,7 +30,7 @@
 /* ===== THEMES ===== */
 [data-theme="light"] {
   --green: #2e9b5b; --green-dark: #24814a; --green-light: #e3f3ea;
-  --bg: #f1f3f6; --card: #ffffff; --text: #1a1a1a; --text-sub: #707883; --border: #e2e6ec;
+  --bg: #f1f3f6; --card: #ffffff; --text: #1a1a1a; --text-sub: #707883; --border: #e2e6ec; --input-bg: #ffffff;
 }
 [data-theme="samurai"] {
   --green: #C9A84C; --green-dark: #a8873a; --green-light: #2a2310;
@@ -111,7 +111,7 @@ input, select, textarea { font-family: inherit; }
 .input-form { padding: 12px; }
 .form-group { margin-bottom: 16px; }
 .form-label { font-size: 13px; font-weight: 600; color: var(--text-sub); margin-bottom: 6px; display: block; }
-.form-input { width: 100%; padding: 12px 14px; border: 2px solid var(--border); border-radius: 10px; font-size: 16px; transition: border-color .2s; background: #222; color: var(--text); }
+.form-input { width: 100%; padding: 12px 14px; border: 2px solid var(--border); border-radius: 10px; font-size: 16px; transition: border-color .2s; background: var(--input-bg, #222); color: var(--text); }
 .form-input:focus { outline: none; border-color: var(--green); }
 .amount-input-wrap { position: relative; }
 .amount-input-wrap .yen { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); font-size: 18px; color: var(--text-sub); pointer-events: none; }
@@ -1436,7 +1436,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = '20260622b';
+const APP_VERSION = '20260622c';
 (function() {
   var stored = localStorage.getItem('appVersion');
   if (stored !== APP_VERSION) {
