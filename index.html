@@ -1436,7 +1436,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = '20260702b';
+const APP_VERSION = '20260702c';
 (function() {
   var stored = localStorage.getItem('appVersion');
   if (stored !== APP_VERSION) {
@@ -1643,17 +1643,19 @@ async function renderCategoryBudget() {
   if (!el) return;
   var now = new Date();
   var ym = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0');
-  // 個人の工賃（自分の今月合計）／月間目標を流用
   var myTotal = (typeof getMyMonthlyTotal === 'function') ? getMyMonthlyTotal() : 0;
   var myGoal = (userData.goal || 0) * 10000;
   var storeGoal = (adminGoals.storeWageGoal || 0) * 10000;
-  // グループ全員の今月工賃を取得
-  var members = null, teamTotal = null;
+  var members = null, teamTotal = null, estMap = {};
   var code = userData.activeGroupCode || userData.groupCode;
   if (code) {
     try {
       var d = await fetchFromGAS('getStoreRanking', { groupCode: code, month: ym });
       if (d && d.data) { members = d.data.slice(); teamTotal = members.reduce(function(s, r){ return s + (Number(r.amount) || 0); }, 0); }
+    } catch(e) {}
+    try {
+      var est = await fetchFromGAS('getEstimateRanking', { groupCode: code, month: ym });
+      if (est && est.data) est.data.forEach(function(m){ if (m.name) estMap[m.name] = m; });
     } catch(e) {}
   }
   var bars = [];
@@ -1685,22 +1687,28 @@ async function renderCategoryBudget() {
     }).join('');
   if (hasMembers) {
     members.sort(function(a, b){ return (Number(b.amount)||0) - (Number(a.amount)||0); });
-    var maxA = Math.max.apply(null, members.map(function(m){ return Number(m.amount)||0; }).concat([1]));
-    var scale = storeGoal > 0 ? storeGoal : maxA;
     html += '<div style="border-top:1px solid var(--border);margin-top:4px;padding-top:10px;">' +
-      '<div style="font-size:12px;font-weight:700;color:var(--text-sub);margin-bottom:8px;">👥 メンバー別 工賃（今月）</div>' +
+      '<div style="font-size:12px;font-weight:700;color:var(--text-sub);margin-bottom:8px;">👥 メンバー別（今月）</div>' +
       members.map(function(m) {
         var amt = Number(m.amount) || 0;
-        var w = scale > 0 ? Math.min(Math.round(amt / scale * 100), 100) : 0;
+        var g = (Number(m.goal) || 0) * 10000;
+        var rate = g > 0 ? Math.min(Math.round(amt / g * 100), 100) : 0;
         var isMe = m.name === userData.name;
-        return '<div style="margin-bottom:10px;">' +
-          '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px;">' +
-            '<span style="font-size:12px;font-weight:700;' + (isMe?'color:var(--green);':'') + '">' + (m.name||'') + (isMe?'（あなた）':'') + '</span>' +
-            '<span style="font-size:11px;color:var(--text-sub);">' + Math.round(amt/10000) + '万円</span>' +
+        var cnt = Number(m.count) || 0;
+        var e = estMap[m.name] || {};
+        var estCount = Number(e.count) || 0;
+        var estRate = Number(e.rate) || 0;
+        var estOrder = Number(e.orderAmount) || 0;
+        var wageLine = g > 0 ? ('💴 ' + Math.round(amt/10000) + '万 / 目標 ' + Math.round(g/10000) + '万（' + rate + '%）') : ('💴 ' + Math.round(amt/10000) + '万');
+        var estLine = estCount > 0 ? ('📋 成約率 ' + estRate + '% ・ ' + estCount + '件 ・ 受注 ' + Math.round(estOrder/10000) + '万') : '📋 受付 なし';
+        return '<div style="padding:10px 12px;background:var(--bg);border-radius:10px;margin-bottom:8px;' + (isMe ? 'border:1px solid var(--green);' : 'border:1px solid var(--border);') + '">' +
+          '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;">' +
+            '<span style="font-size:13px;font-weight:700;' + (isMe?'color:var(--green);':'') + '">' + (m.name||'') + (isMe?'（あなた）':'') + '</span>' +
+            '<span style="font-size:11px;color:var(--text-sub);">🚗 ' + cnt + '台</span>' +
           '</div>' +
-          '<div style="height:8px;background:var(--border);border-radius:4px;overflow:hidden;">' +
-            '<div style="height:100%;width:' + w + '%;background:' + (isMe?'#27ae60':'#4A9ECC') + ';border-radius:4px;transition:width .6s;"></div>' +
-          '</div>' +
+          '<div style="font-size:12px;margin-bottom:4px;">' + wageLine + '</div>' +
+          (g > 0 ? '<div style="height:7px;background:var(--border);border-radius:4px;overflow:hidden;margin-bottom:6px;"><div style="height:100%;width:' + rate + '%;background:' + (isMe?'#27ae60':'#4A9ECC') + ';border-radius:4px;"></div></div>' : '') +
+          '<div style="font-size:11px;color:var(--text-sub);">' + estLine + '</div>' +
         '</div>';
       }).join('') +
     '</div>';
