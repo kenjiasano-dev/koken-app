@@ -992,12 +992,12 @@ input, select, textarea { font-family: inherit; }
         <ul class="settings-list" style="margin:0;box-shadow:none;">
           <li class="setting-item">
             <div class="setting-icon" style="background:#2c2c2c;">🥷</div>
-            <div><div class="setting-label">閲覧専用（忍びモード）</div><div class="setting-sub">ランキングに表示されず工賃入力も非表示</div></div>
+            <div><div class="setting-label">監視役モード（忍び）</div><div class="setting-sub">フォロー中の店舗を閲覧専用で見る。ランキング・メンバーに自分は出ません</div></div>
             <label class="toggle"><input type="checkbox" id="ninja-mode-toggle" onchange="toggleNinjaMode(this.checked)"><span class="toggle-slider"></span></label>
           </li>
         </ul>
         <div id="ninja-warn" style="display:none;margin-top:10px;padding:10px 12px;background:#3a1a00;border:1px solid #e67e22;border-radius:8px;font-size:12px;color:#e67e22;line-height:1.6;">
-          ⚠️ <b>忍びモードON中</b>：データはこの端末にしか保存されません。<br>機種変更時にデータが<b>復元できなくなります</b>。
+          🥷 <b>監視役モードON中</b>：フォロー中の店舗を閲覧できます。あなたは<b>ランキング・メンバー一覧に表示されません</b>。<br>※ 自分の工賃データはこの端末にのみ保存され、サーバーには同期されません。
         </div>
       </div>
       <!-- Notifications -->
@@ -1053,7 +1053,7 @@ input, select, textarea { font-family: inherit; }
             <div style="color:var(--text-sub);margin-bottom:12px;font-size:12px;">複数の店舗コードを追加すると、社内タブで店舗を切り替えて確認できる</div>
 
             <div style="font-weight:700;color:var(--green);margin-bottom:4px;">⑦ 忍びモード</div>
-            <div style="color:var(--text-sub);font-size:12px;">ランキングに表示されず閲覧だけしたい場合はONに。管理者・担当エリアの方向け</div>
+            <div style="color:var(--text-sub);font-size:12px;">監視役（管理者・担当エリア）向け。ONにするとフォロー中の店舗を閲覧でき、自分はランキング・メンバーに表示されません</div>
           </div>
         </div>
       </div>
@@ -1436,7 +1436,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = '20260622c';
+const APP_VERSION = '20260702a';
 (function() {
   var stored = localStorage.getItem('appVersion');
   if (stored !== APP_VERSION) {
@@ -3212,7 +3212,12 @@ function saveProfile() {
   renderGoalRing();
 
   // Update GAS
-  postToGAS({ action: 'updateProfile', name, pref, store, goal, role, expYears: userData.expYears || {}, fiscalStart: userData.fiscalStart || 1, groupCode: userData.activeGroupCode || userData.groupCode || '' });
+  if (userData.ninjaMode) {
+    // 監視役：サーバーに登録せず、メンバー一覧から自分を外す
+    postToGAS({ action: 'removeMemberFromGroups', name: name, uuid: userData.uuid || '' });
+  } else {
+    postToGAS({ action: 'updateProfile', name, pref, store, goal, role, expYears: userData.expYears || {}, fiscalStart: userData.fiscalStart || 1, groupCode: userData.activeGroupCode || userData.groupCode || '' });
+  }
 }
 
 function generateGroupCode() {
@@ -3231,7 +3236,7 @@ function generateGroupCode() {
   renderStoreSwitcher();
   showToast('🔑 グループコードを発行しました');
   // GASに自分をこのグループコードで登録
-  postToGAS({ action: 'updateProfile', name: userData.name, pref: userData.pref, store: userData.store, goal: userData.goal, role: userData.role || '', groupCode: code });
+  if (!userData.ninjaMode) postToGAS({ action: 'updateProfile', name: userData.name, pref: userData.pref, store: userData.store, goal: userData.goal, role: userData.role || '', groupCode: code });
 }
 
 function handleInviteLink() {
@@ -3280,7 +3285,7 @@ function joinGroup() {
   renderStoreSwitcher();
   showToast(`✅ 「${name}」を追加しました`);
   // GASにグループコードを登録
-  postToGAS({ action: 'updateProfile', name: userData.name, pref: userData.pref, store: userData.store, goal: userData.goal, role: userData.role || '', groupCode: code });
+  if (!userData.ninjaMode) postToGAS({ action: 'updateProfile', name: userData.name, pref: userData.pref, store: userData.store, goal: userData.goal, role: userData.role || '', groupCode: code });
 }
 
 function toggleGuide() {
@@ -3324,14 +3329,17 @@ function toggleNinjaMode(on) {
   userData.ninjaMode = on;
   saveLocal();
   applyNinjaMode();
+  var warn = document.getElementById('ninja-warn');
   if (on) {
-    showToast('🥷 忍びモード ON — ランキング非表示・データはこの端末のみ保存');
-    var warn = document.getElementById('ninja-warn');
+    showToast('🥷 監視役モード ON — フォロー中の店舗を閲覧。あなたはランキング・メンバーに出ません');
     if (warn) warn.style.display = '';
+    // サーバーのメンバー一覧から自分を外す
+    if (userData.name || userData.uuid) postToGAS({ action: 'removeMemberFromGroups', name: userData.name || '', uuid: userData.uuid || '' });
   } else {
-    showToast('🥷 忍びモード OFF — データがサーバーに同期されます');
-    var warn = document.getElementById('ninja-warn');
+    showToast('🥷 監視役モード OFF — データがサーバーに同期されます');
     if (warn) warn.style.display = 'none';
+    // メンバーとして再登録
+    if (userData.name) postToGAS({ action: 'updateProfile', name: userData.name, pref: userData.pref, store: userData.store, goal: userData.goal, role: userData.role || '', expYears: userData.expYears || {}, fiscalStart: userData.fiscalStart || 1, groupCode: userData.activeGroupCode || userData.groupCode || '' });
   }
 }
 
