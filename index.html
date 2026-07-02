@@ -1436,7 +1436,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = '20260702a';
+const APP_VERSION = '20260702b';
 (function() {
   var stored = localStorage.getItem('appVersion');
   if (stored !== APP_VERSION) {
@@ -1722,32 +1722,60 @@ async function renderMemberList() {
     var month = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0');
     var data = await fetchFromGAS('getStoreRanking', { groupCode: code, month: month });
     var members = (data && data.data) ? data.data : [];
-    var memberHtml = '';
+    var isOwner = !!userData.groupCode && String(userData.groupCode) === String(code);
+    var blankCount = members.filter(function(m){ return !m.name || String(m.name).trim() === ''; }).length;
+    var html = '';
+    if (isOwner && blankCount > 0) {
+      html += '<div style="margin-bottom:10px;padding:10px 12px;background:#3a2600;border:1px solid #b8860b;border-radius:10px;">' +
+        '<div style="font-size:12px;color:#f0c040;margin-bottom:6px;">🧹 名前が未設定のメンバーが ' + blankCount + ' 件あります</div>' +
+        '<button onclick="cleanupBlankMembers()" style="width:100%;padding:8px;background:#b8860b;color:#111;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;">名無しを掃除する</button>' +
+      '</div>';
+    }
     if (!members.length) {
-      memberHtml = '<div style="text-align:center;padding:32px;color:var(--text-sub);font-size:13px;">メンバーがいません<br><span style="font-size:11px;">下のボタンからLINEで招待しましょう</span></div>';
+      html += '<div style="text-align:center;padding:32px;color:var(--text-sub);font-size:13px;">メンバーがいません<br><span style="font-size:11px;">下のボタンからLINEで招待しましょう</span></div>';
     } else {
-      memberHtml = members.map(function(m) {
+      html += members.map(function(m) {
         var isMe = m.name === userData.name;
+        var blank = !m.name || String(m.name).trim() === '';
+        var disp = blank ? '<span style="color:var(--text-sub);">（名前未設定）</span>' : (m.name + (isMe ? ' <span style="font-size:11px;color:var(--green);">（あなた）</span>' : ''));
+        var delBtn = (isOwner && !isMe && !blank) ? '<button onclick="removeMemberUI(\'' + encodeURIComponent(m.name) + '\')" style="flex:0 0 auto;padding:6px 10px;background:transparent;border:1px solid #c0392b;color:#e74c3c;border-radius:8px;font-size:12px;cursor:pointer;">外す</button>' : '';
         return '<div style="display:flex;align-items:center;gap:10px;padding:12px;background:var(--card);border-radius:12px;margin-bottom:8px;' + (isMe ? 'border:2px solid var(--green);' : 'border:1px solid var(--border);') + '">' +
           '<div style="width:36px;height:36px;border-radius:50%;background:' + (isMe ? 'var(--green)' : 'var(--border)') + '33;display:flex;align-items:center;justify-content:center;font-size:18px;">👤</div>' +
           '<div style="flex:1;min-width:0;">' +
-            '<div style="font-size:14px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + m.name + (isMe ? ' <span style="font-size:11px;color:var(--green);">（あなた）</span>' : '') + '</div>' +
-          '</div>' +
+            '<div style="font-size:14px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + disp + '</div>' +
+          '</div>' + delBtn +
         '</div>';
       }).join('');
     }
     var inviteLink = 'https://kenjiasano-dev.github.io/koken-app/?invite=' + encodeURIComponent(code);
     var inviteUrl = 'https://line.me/R/msg/text/?' + encodeURIComponent('工賃管理アプリに招待します！\nこのリンクを開くだけで参加できます👇\n' + inviteLink);
-    memberHtml += '<div style="margin-top:12px;padding:12px;background:var(--card);border-radius:10px;border:1px solid var(--border);">' +
+    html += '<div style="margin-top:12px;padding:12px;background:var(--card);border-radius:10px;border:1px solid var(--border);">' +
       '<div style="font-size:12px;font-weight:700;margin-bottom:6px;color:var(--text-sub);">グループコードを共有</div>' +
       '<div style="font-size:20px;font-weight:700;text-align:center;letter-spacing:4px;padding:8px;background:var(--border);border-radius:8px;margin-bottom:8px;">' + code + '</div>' +
       '<img src="https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=' + encodeURIComponent(inviteLink) + '" style="display:block;margin:0 auto 8px;border-radius:8px;" width="100" height="100" alt="QR">' +
       '<a href="' + inviteUrl + '" target="_blank" style="display:block;width:100%;padding:10px;background:#00b900;color:#fff;border-radius:10px;font-size:13px;font-weight:700;text-align:center;text-decoration:none;box-sizing:border-box;">📲 LINEで招待する</a>' +
     '</div>';
-    el.innerHTML = memberHtml;
+    el.innerHTML = html;
   } catch(e) {
     el.innerHTML = '<div style="text-align:center;padding:32px;color:var(--text-sub);font-size:13px;">取得できませんでした</div>';
   }
+}
+
+function removeMemberUI(nameEnc) {
+  var name = decodeURIComponent(nameEnc);
+  var code = userData.activeGroupCode || userData.groupCode;
+  if (!confirm(name + ' さんをこのグループのメンバーから外しますか？\n（本人がアプリを使い続けると再び表示される場合があります）')) return;
+  postToGAS({ action: 'removeMemberFromGroups', name: name, groupCode: code });
+  showToast('🗑️ ' + name + ' さんを外しました（反映まで少しかかります）');
+  setTimeout(renderMemberList, 2000);
+}
+
+function cleanupBlankMembers() {
+  var code = userData.activeGroupCode || userData.groupCode;
+  if (!confirm('名前が未設定（名無し）のメンバーを削除しますか？')) return;
+  postToGAS({ action: 'removeBlankMembers', groupCode: code });
+  showToast('🧹 名無しを掃除しました（反映まで少しかかります）');
+  setTimeout(renderMemberList, 2000);
 }
 
 async function initStoreFrontStatus() {
