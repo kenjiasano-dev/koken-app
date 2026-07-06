@@ -1080,6 +1080,7 @@ input, select, textarea { font-family: inherit; }
           <label class="form-label">店舗の工賃目標（万円）</label>
           <input type="number" class="form-input" id="goal-store-wage" inputmode="numeric" min="0" step="1" placeholder="例: 800">
         </div>
+        <div style="font-size:11px;color:var(--text-sub);margin:-4px 0 8px;line-height:1.6;">※ どなたか1人が入力すれば店舗の全メンバーに共有されます。</div>
         <div style="font-size:12px;font-weight:700;color:var(--text);margin:14px 0 6px;">👤 個人（あなた）</div>
         <div class="form-group">
           <label class="form-label">あなたの工賃目標（万円）</label>
@@ -1436,7 +1437,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = '20260706a';
+const APP_VERSION = '20260706b';
 (function() {
   var stored = localStorage.getItem('appVersion');
   if (stored !== APP_VERSION) {
@@ -1640,6 +1641,8 @@ function saveStoreGoals() {
   var _pg = gi('goal-personal-wage');
   if (_pg > 0) userData.goal = _pg;
   saveLocal();
+  var _goalCode = userData.activeGroupCode || userData.groupCode;
+  if (_goalCode) postToGAS({ action: 'setGroupGoal', groupCode: _goalCode, storeWageGoal: adminGoals.storeWageGoal });
   showToast('🎯 目標を保存しました');
   var _sg = document.getElementById('set-goal'); if (_sg) _sg.value = userData.goal || 100;
   if (typeof renderCategoryBudget === 'function') renderCategoryBudget();
@@ -1665,6 +1668,10 @@ async function renderCategoryBudget() {
     try {
       var est = await fetchFromGAS('getEstimateRanking', { groupCode: code, month: ym });
       if (est && est.data) est.data.forEach(function(m){ if (m.name) estMap[m.name] = m; });
+    } catch(e) {}
+    try {
+      var gg = await fetchFromGAS('getGroupGoal', { groupCode: code });
+      if (gg && gg.storeWageGoal > 0) storeGoal = gg.storeWageGoal * 10000;
     } catch(e) {}
   }
   var bars = [];
