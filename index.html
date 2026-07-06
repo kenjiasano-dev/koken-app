@@ -1436,7 +1436,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = '20260702c';
+const APP_VERSION = '20260706a';
 (function() {
   var stored = localStorage.getItem('appVersion');
   if (stored !== APP_VERSION) {
@@ -1533,6 +1533,15 @@ function showToast(msg, duration = 2500) {
 
 function formatYen(n) {
   return (n / 10000).toFixed(1).replace(/\.0$/, '');
+}
+
+function escapeHtml(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }
 
 function getMyMonthlyTotal() {
@@ -1831,7 +1840,7 @@ async function initStoreFrontStatus() {
         var ap = m.amount?Math.min(Math.round((act.orderAmount/10000)/m.amount*100),100):0;
         var isMe = m.name===userData.name;
         return '<div style="margin-bottom:10px;padding:10px;background:'+(isMe?'var(--green-light)':'var(--card)')+';border-radius:8px;border:1px solid '+(isMe?'var(--green)':'var(--border)')+';">' +
-          '<div style="font-size:13px;font-weight:700;color:'+(isMe?'var(--green)':'var(--text)')+';margin-bottom:6px;">'+m.name+(isMe?' (あなた)':'')+'</div>' +
+          '<div style="font-size:13px;font-weight:700;color:'+(isMe?'var(--green)':'var(--text)')+';margin-bottom:6px;">'+escapeHtml(m.name)+(isMe?' (あなた)':'')+'</div>' +
           (m.count?'<div style="margin-bottom:4px;"><div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:2px;"><span style="color:var(--text-sub);">🚗 台数</span><span style="font-weight:700;">'+act.contracted+' / '+m.count+'台</span></div><div style="height:7px;background:var(--border);border-radius:4px;overflow:hidden;"><div style="height:100%;width:'+cp+'%;background:'+(cp>=100?'#FFD700':'var(--green)')+';border-radius:4px;transition:width .6s;"></div></div></div>':'') +
           (m.amount?'<div><div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:2px;"><span style="color:var(--text-sub);">💰 金額</span><span style="font-weight:700;">'+(act.orderAmount/10000).toFixed(1)+' / '+m.amount+'万円</span></div><div style="height:7px;background:var(--border);border-radius:4px;overflow:hidden;"><div style="height:100%;width:'+ap+'%;background:'+(ap>=100?'#FFD700':'var(--green)')+';border-radius:4px;transition:width .6s;"></div></div></div>':'') +
         '</div>';
@@ -1877,7 +1886,7 @@ async function renderFrontRanking2() {
     var val = frontRankType2==='rate'?(r.rate||0)+'%':frontRankType2==='count'?(r.contracted||0)+'件':Math.round((r.orderAmount||0)/10000*10)/10+'万';
     return '<li class="rank-item'+(isMe?' rank-me':'')+'">' +
       '<span class="rank-medal">'+medal+'</span>' +
-      '<div class="rank-info"><div class="rank-name">'+r.name+'</div></div>' +
+      '<div class="rank-info"><div class="rank-name">'+escapeHtml(r.name)+'</div></div>' +
       '<span class="rank-wage" style="color:var(--green);">'+val+'</span></li>';
   }).join('');
 }
@@ -1963,8 +1972,8 @@ function renderMyStatus() {
       '<div style="display:flex;align-items:center;gap:12px;">' +
         '<div style="width:48px;height:48px;border-radius:50%;background:var(--primary)22;display:flex;align-items:center;justify-content:center;font-size:22px;">👤</div>' +
         '<div style="flex:1;">' +
-          '<div style="font-size:16px;font-weight:700;">'+(userData.name||'名前未設定')+getRoleBadge(userData.role)+'</div>' +
-          '<div style="font-size:12px;color:var(--text-sub);margin-top:2px;">'+(userData.store||'')+'</div>' +
+          '<div style="font-size:16px;font-weight:700;">'+escapeHtml(userData.name||'名前未設定')+getRoleBadge(userData.role)+'</div>' +
+          '<div style="font-size:12px;color:var(--text-sub);margin-top:2px;">'+escapeHtml(userData.store||'')+'</div>' +
           (expHtml?'<div style="margin-top:6px;">'+expHtml+'</div>':'') +
         '</div>' +
       '</div>' +
@@ -2070,7 +2079,7 @@ async function renderMyRanking() {
       var isMe = r.name===userData.name;
       return '<li class="rank-item'+(isMe?' is-me':'')+'">' +
         '<span class="rank-num'+(i===0?' gold':i===1?' silver':i===2?' bronze':'')+'">'+medal+'</span>' +
-        '<div class="rank-info"><div class="rank-name">'+r.name+'</div><div class="rank-sub">'+(r.store||'')+'</div></div>' +
+        '<div class="rank-info"><div class="rank-name">'+escapeHtml(r.name)+'</div><div class="rank-sub">'+escapeHtml(r.store||'')+'</div></div>' +
         '<div class="rank-score"><div class="amount" style="color:'+catColor+';">¥'+(r.amount||0).toLocaleString()+'</div><div class="unit">円</div></div>' +
         '</li>';
     }).join('') +
@@ -2286,12 +2295,12 @@ function nameToColor(name) {
 function buildAvatarHtml(item, myName) {
   const isMe = item.isMe || (myName && item.name === myName);
   if (isMe && userData.avatar) {
-    return `<img src="${userData.avatar}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`;
+    return `<img src="${escapeHtml(userData.avatar)}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`;
   }
   if (item.avatarUrl) {
-    return `<img src="${item.avatarUrl}" style="width:100%;height:100%;object-fit:cover;">`;
+    return `<img src="${escapeHtml(item.avatarUrl)}" style="width:100%;height:100%;object-fit:cover;">`;
   }
-  const initial = (item.name || '?').charAt(0);
+  const initial = escapeHtml((item.name || '?').charAt(0));
   const bg = nameToColor(item.name || '?');
   return `<div style="width:100%;height:100%;background:${bg};display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:16px;border-radius:50%;">${initial}</div>`;
 }
@@ -2305,8 +2314,8 @@ function buildRankItem(item, myName) {
     <span class="rank-num ${numCls}">${rankNumEmoji(item.rank)}</span>
     <div class="rank-avatar">${buildAvatarHtml(item, myName)}</div>
     <div class="rank-info">
-      <div class="rank-name">${item.name}${isMe ? ' <span style="color:var(--green);font-size:11px;font-weight:700;">▶ あなた</span>' : ''}</div>
-      <div class="rank-sub">${item.store || ''} ${item.pref ? '/ '+item.pref : ''}</div>
+      <div class="rank-name">${escapeHtml(item.name)}${isMe ? ' <span style="color:var(--green);font-size:11px;font-weight:700;">▶ あなた</span>' : ''}</div>
+      <div class="rank-sub">${escapeHtml(item.store || '')} ${item.pref ? '/ '+escapeHtml(item.pref) : ''}</div>
       <span class="rank-badge-title">${rank.emoji} ${rank.name}</span>
     </div>
     <div class="rank-score">
@@ -2497,7 +2506,7 @@ function renderStoreTrend(data, goal) {
     const achieved = m.amount >= goal;
     return `<div style="margin-bottom:14px;">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;">
-        <span style="font-size:13px;font-weight:${isMe?'700':'500'};color:${isMe?'var(--green)':'var(--text)'};">${achieved?'🎉 ':''}${m.name}${isMe?' (あなた)':''}</span>
+        <span style="font-size:13px;font-weight:${isMe?'700':'500'};color:${isMe?'var(--green)':'var(--text)'};">${achieved?'🎉 ':''}${escapeHtml(m.name)}${isMe?' (あなた)':''}</span>
         <span style="font-size:12px;color:var(--text-sub);">${formatYen(m.amount)}万 / ${Math.round(pct)}%</span>
       </div>
       <div style="height:10px;background:var(--border);border-radius:5px;overflow:hidden;">
@@ -2514,7 +2523,7 @@ function renderStoreTrend(data, goal) {
     achEl.style.display = '';
     achList.innerHTML = achieved.map(m => `<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);">
       <span style="font-size:20px;">🏅</span>
-      <span style="font-weight:700;">${m.name}</span>
+      <span style="font-weight:700;">${escapeHtml(m.name)}</span>
       <span style="font-size:12px;color:var(--text-sub);">${formatYen(m.amount)}万円達成！</span>
     </div>`).join('');
   }
@@ -2687,11 +2696,11 @@ function renderDayModalBody() {
       const globalIdx = wageData.findIndex((w, wi) => w.date === currentDayDate && wageData.filter(x => x.date === currentDayDate).indexOf(w) === i);
       return `<div style="display:flex;align-items:center;padding:10px 0;border-bottom:1px solid var(--border);gap:8px;">
         <div style="flex:1;">
-          ${e.cartype ? `<div style="font-size:12px;color:var(--text-sub);">🚗 ${e.cartype}</div>` : ''}
+          ${e.cartype ? `<div style="font-size:12px;color:var(--text-sub);">🚗 ${escapeHtml(e.cartype)}</div>` : ''}
           <div style="font-weight:700;">¥${e.amount.toLocaleString()}</div>
           <div style="display:flex;gap:4px;margin-top:2px;">
-            ${e.number ? `<span class="chip chip-green">${e.number}</span>` : ''}
-            ${e.category ? `<span class="chip" style="background:var(--card);border:1px solid var(--border);color:var(--text-sub);border-radius:10px;padding:1px 6px;font-size:10px;">${e.category}</span>` : ''}
+            ${e.number ? `<span class="chip chip-green">${escapeHtml(e.number)}</span>` : ''}
+            ${e.category ? `<span class="chip" style="background:var(--card);border:1px solid var(--border);color:var(--text-sub);border-radius:10px;padding:1px 6px;font-size:10px;">${escapeHtml(e.category)}</span>` : ''}
           </div>
         </div>
         <button onclick="editDayEntry(${i})" style="color:var(--green);font-size:12px;padding:5px 10px;background:var(--green-light);border-radius:6px;white-space:nowrap;">編集</button>
@@ -2938,8 +2947,8 @@ function renderInputHistory() {
   el.innerHTML = entries.map(e => `
     <div style="display:flex;align-items:center;padding:10px 12px;background:#fff;border-radius:10px;margin-bottom:8px;box-shadow:0 1px 4px rgba(0,0,0,.06);gap:8px;">
       <span style="font-size:12px;color:var(--text-sub);width:80px;">${e.date.slice(5).replace('-','月')+'日'}</span>
-      ${e.number ? `<span class="chip chip-green">${e.number}</span>` : '<span style="width:52px;"></span>'}
-      ${e.cartype ? `<span class="chip" style="background:#e8f0fe;color:#1a73e8;font-size:10px;">${e.cartype}</span>` : ''}
+      ${e.number ? `<span class="chip chip-green">${escapeHtml(e.number)}</span>` : '<span style="width:52px;"></span>'}
+      ${e.cartype ? `<span class="chip" style="background:#e8f0fe;color:#1a73e8;font-size:10px;">${escapeHtml(e.cartype)}</span>` : ''}
       <span style="flex:1;text-align:right;font-weight:700;font-size:15px;">¥${e.amount.toLocaleString()}</span>
     </div>`).join('');
 }
@@ -2980,7 +2989,7 @@ function renderSummary() {
     ? entries.sort((a,b)=>b.date.localeCompare(a.date)).map(e => `
         <div style="display:flex;align-items:center;padding:8px 0;border-bottom:1px solid var(--border);gap:8px;">
           <span style="font-size:13px;color:var(--text-sub);width:70px;">${e.date.slice(5).replace('-','月')+'日'}</span>
-          ${e.number ? `<span class="chip chip-green" style="font-size:10px;">${e.number}</span>` : '<span style="width:44px;"></span>'}
+          ${e.number ? `<span class="chip chip-green" style="font-size:10px;">${escapeHtml(e.number)}</span>` : '<span style="width:44px;"></span>'}
           <span style="flex:1;text-align:right;font-weight:700;">¥${e.amount.toLocaleString()}</span>
         </div>`).join('')
     : '<div class="empty-state"><div class="empty-icon">📊</div><p>データがありません</p></div>';
@@ -3489,7 +3498,7 @@ function renderFollowedStores() {
     <div style="display:flex;align-items:center;gap:8px;padding:10px 0;border-bottom:1px solid var(--border);">
       <span style="font-size:18px;">🏪</span>
       <div style="flex:1;">
-        <div style="font-weight:700;font-size:14px;">${g.name}</div>
+        <div style="font-weight:700;font-size:14px;">${escapeHtml(g.name)}</div>
         <div style="font-size:11px;color:var(--text-sub);letter-spacing:2px;">${g.code}</div>
       </div>
       <button onclick="leaveGroup('${g.code}')" style="color:#e74c3c;font-size:12px;padding:4px 8px;background:#fff0f0;border-radius:6px;">削除</button>
@@ -3517,7 +3526,7 @@ function renderStoreSwitcher() {
         border:2px solid ${isActive ? 'var(--green)' : 'var(--border)'};
         background:${isActive ? 'var(--green-light)' : 'var(--card)'};
         width:100%;">
-        <div style="font-size:11px;font-weight:700;color:${isActive ? 'var(--green)' : 'var(--text)'};margin-bottom:2px;">🏪 ${g.name}</div>
+        <div style="font-size:11px;font-weight:700;color:${isActive ? 'var(--green)' : 'var(--text)'};margin-bottom:2px;">🏪 ${escapeHtml(g.name)}</div>
         <div style="font-size:10px;color:var(--text-sub);">${g.code}</div>
         ${isActive ? '<div style="font-size:10px;color:var(--green);margin-top:3px;">▶ 表示中</div>' : ''}
       </button>`;
@@ -3529,7 +3538,7 @@ function renderStoreSwitcher() {
   // 切り替えボタンも維持
   el.innerHTML = userData.groupCodes.map(g => {
     const isActive = g.code === userData.activeGroupCode;
-    return `<button onclick="switchActiveGroup('${g.code}')" style="display:inline-flex;align-items:center;gap:4px;padding:6px 14px;border-radius:20px;font-size:12px;font-weight:700;border:2px solid ${isActive?'var(--green)':'var(--border)'};background:${isActive?'var(--green)':'#222'};color:${isActive?'#111':'var(--text-sub)'};white-space:nowrap;">🏪 ${g.name}</button>`;
+    return `<button onclick="switchActiveGroup('${g.code}')" style="display:inline-flex;align-items:center;gap:4px;padding:6px 14px;border-radius:20px;font-size:12px;font-weight:700;border:2px solid ${isActive?'var(--green)':'var(--border)'};background:${isActive?'var(--green)':'#222'};color:${isActive?'#111':'var(--text-sub)'};white-space:nowrap;">🏪 ${escapeHtml(g.name)}</button>`;
   }).join('');
 }
 
@@ -3984,7 +3993,7 @@ function searchByNumber() {
     return `<div style="background:var(--card);border-radius:12px;padding:14px;margin-bottom:8px;border:1px solid var(--border);">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
         <div>
-          <div style="font-weight:700;">${d.date} 【${d.number}】 ${d.cartype||''}</div>
+          <div style="font-weight:700;">${d.date} 【${escapeHtml(d.number)}】 ${escapeHtml(d.cartype||'')}</div>
           <div style="font-size:12px;color:var(--text-sub);margin-top:2px;">見積:¥${(d.amount||0).toLocaleString()}</div>
         </div>
         <span style="padding:3px 8px;border-radius:10px;font-size:11px;font-weight:700;${badgeStyle}">${badge}</span>
@@ -4197,10 +4206,10 @@ function renderFrontDayModalBody() {
                   '<span style="color:#e74c3c;font-size:11px;">❌未成約</span>';
       return '<div style="display:flex;align-items:center;padding:10px 0;border-bottom:1px solid var(--border);gap:8px;">' +
         '<div style="flex:1;">' +
-          (e.cartype ? '<div style="font-size:12px;color:var(--text-sub);">🚗 '+e.cartype+'</div>' : '') +
+          (e.cartype ? '<div style="font-size:12px;color:var(--text-sub);">🚗 '+escapeHtml(e.cartype)+'</div>' : '') +
           '<div style="font-weight:700;">¥'+(e.amount||0).toLocaleString()+'</div>' +
           '<div style="display:flex;gap:4px;margin-top:2px;">' +
-            (e.number ? '<span class="chip chip-green">'+e.number+'</span>' : '') +
+            (e.number ? '<span class="chip chip-green">'+escapeHtml(e.number)+'</span>' : '') +
             badge +
           '</div>' +
           (e.orderAmount ? '<div style="font-size:11px;color:var(--green);">受注: ¥'+e.orderAmount.toLocaleString()+'</div>' : '') +
@@ -4344,7 +4353,7 @@ function renderFrontSummary() {
         return `<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border);font-size:13px;">
           <div>
             <span style="font-weight:700;">${d.date}</span>
-            <span style="color:var(--text-sub);margin-left:6px;">${d.cartype||''} ${d.number?'['+d.number+']':''}</span>
+            <span style="color:var(--text-sub);margin-left:6px;">${escapeHtml(d.cartype||'')} ${d.number?'['+escapeHtml(d.number)+']':''}</span>
           </div>
           <div style="display:flex;align-items:center;gap:8px;">
             <span style="color:var(--text-sub);">¥${(d.amount||0).toLocaleString()}</span>
@@ -4369,7 +4378,7 @@ function renderFrontHistory() {
     const badgeStyle = d.immediate ? 'background:#1a2a3a;color:#4A9ECC;' : d.later ? 'background:#1a3a1a;color:#4ACC7A;' : 'background:#3a1a1a;color:#e74c3c;';
     return `<div class="front-history-item">
       <div>
-        <div style="font-weight:700;">${d.date} ${d.number ? '【'+d.number+'】' : ''} ${d.cartype || ''}</div>
+        <div style="font-weight:700;">${d.date} ${d.number ? '【'+escapeHtml(d.number)+'】' : ''} ${escapeHtml(d.cartype || '')}</div>
         <div style="font-size:12px;color:var(--text-sub);">見積:¥${(d.amount||0).toLocaleString()}${d.orderAmount ? ' → 受注:¥'+d.orderAmount.toLocaleString() : ''}</div>
       </div>
       <span style="padding:3px 8px;border-radius:10px;font-size:11px;font-weight:700;${badgeStyle}">${badge}</span>
@@ -4422,10 +4431,10 @@ async function renderFrontRanking() {
     const label = frontRankType === 'rate' ? `${d.rate}%` : frontRankType === 'count' ? `${d.contracted}件` : `${formatYen(d.amount)}万`;
     return `<li class="rank-item${d.isMe ? ' is-me' : ''}">
       <span class="rank-num ${numCls}">${rankNumEmoji(i+1)}</span>
-      <div class="rank-avatar"><div style="width:100%;height:100%;background:${nameToColor(d.name||'?')};display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:16px;border-radius:50%;">${(d.name||'?').charAt(0)}</div></div>
+      <div class="rank-avatar"><div style="width:100%;height:100%;background:${nameToColor(d.name||'?')};display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:16px;border-radius:50%;">${escapeHtml((d.name||'?').charAt(0))}</div></div>
       <div class="rank-info">
-        <div class="rank-name">${d.name}${d.isMe ? ' <span style="color:var(--green);font-size:11px;">▶ あなた</span>' : ''}</div>
-        <div class="rank-sub">${d.store || ''} | 見積${d.count}件 受注${d.contracted}件</div>
+        <div class="rank-name">${escapeHtml(d.name)}${d.isMe ? ' <span style="color:var(--green);font-size:11px;">▶ あなた</span>' : ''}</div>
+        <div class="rank-sub">${escapeHtml(d.store || '')} | 見積${d.count}件 受注${d.contracted}件</div>
       </div>
       <div class="rank-score">
         <div class="amount">${label}</div>
@@ -4602,7 +4611,7 @@ async function renderMemberGoalProgress() {
     const ap = m.amount ? Math.min(Math.round((actual.orderAmount/10000) / m.amount * 100), 100) : 0;
     const isMe = m.name === userData.name;
     var row = '<div style="margin-bottom:14px;padding:12px;background:' + (isMe?'var(--green-light)':'var(--card)') + ';border-radius:10px;border:1px solid ' + (isMe?'var(--green)':'var(--border)') + ';">' +
-      '<div style="font-size:14px;font-weight:700;color:' + (isMe?'var(--green)':'var(--text)') + ';margin-bottom:8px;">' + m.name + (isMe?' (あなた)':'') + '</div>';
+      '<div style="font-size:14px;font-weight:700;color:' + (isMe?'var(--green)':'var(--text)') + ';margin-bottom:8px;">' + escapeHtml(m.name) + (isMe?' (あなた)':'') + '</div>';
     if (m.count) {
       row += '<div style="margin-bottom:6px;">' +
         '<div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px;">' +
