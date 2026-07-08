@@ -287,6 +287,7 @@ input, select, textarea { font-family: inherit; }
 .rate-big { font-size: 34px; font-weight: 900; color: var(--green); }
 .front-history-item { display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
 </style>
+<script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 </head>
 <body>
 <div id="app">
@@ -1435,7 +1436,9 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = '20260708f';
+const APP_VERSION = '20260708g';
+// LINEログイン(LIFF) — LINEコンソールで作成したLIFFアプリのIDを入れる
+const LIFF_ID = '2010638896-vJtjkUOr';
 (function() {
   var stored = localStorage.getItem('appVersion');
   if (stored !== APP_VERSION) {
@@ -4712,19 +4715,54 @@ function initGoalTab() {
 
 
 
-// LINE登録ボタン処理
+// LINE登録（LIFF＝LINEログイン）処理
+// ボタン→liff.login()でLINE認証→戻ってきたらhandleLiffReturnがuserIdを保存
 function registerWithLINE() {
   if (!userData || !userData.uuid) {
-    showToast('ユーザー情報が未設定です', 3000);
+    showToast('先にお名前を入力して保存してください', 3000);
     return;
   }
-  const message = `[LINE登録]\nUUID: ${userData.uuid}\n名前: ${userData.name || '未設定'}\n店舗: ${userData.store || '未設定'}`;
-  const lineUrl = 'https://line.me/R/msg/text/?' + encodeURIComponent(message);
-  window.open(lineUrl, '_blank');
-  showToast('LINEでメッセージを送信してください', 3000);
+  if (typeof liff === 'undefined' || LIFF_ID === 'PASTE_LIFF_ID_HERE') {
+    showToast('LINE登録の準備中です（設定未完了）', 3000);
+    return;
+  }
+  showToast('LINEを開いています…', 2000);
+  liff.init({ liffId: LIFF_ID }).then(function() {
+    if (liff.isLoggedIn()) {
+      return saveLiffProfile();
+    } else {
+      liff.login({ redirectUri: location.href }); // LINE認証へ→戻ってきて再処理
+    }
+  }).catch(function(e) {
+    showToast('LINE登録に失敗しました: ' + (e && e.message ? e.message : e), 4000);
+  });
+}
+
+// LIFFプロフィールからuserIdを取得してサーバーへ保存
+function saveLiffProfile() {
+  return liff.getProfile().then(function(profile) {
+    var lineUserId = profile && profile.userId;
+    if (!lineUserId) { showToast('LINE IDを取得できませんでした', 3000); return; }
+    if (!userData || !userData.uuid) { showToast('ユーザー情報が未設定です', 3000); return; }
+    userData.lineUserId = lineUserId;
+    saveLocal();
+    postToGAS({ action: 'saveLineUserId', uuid: userData.uuid, lineUserId: lineUserId, name: userData.name || '', store: userData.store || '' });
+    showToast('✅ LINE登録が完了しました！', 3500);
+  });
+}
+
+// ページ読込時: LIFFログインから戻ってきた場合に自動でuserIdを保存
+function handleLiffReturn() {
+  if (typeof liff === 'undefined' || LIFF_ID === 'PASTE_LIFF_ID_HERE') return;
+  liff.init({ liffId: LIFF_ID }).then(function() {
+    if (liff.isLoggedIn() && userData && userData.uuid && !userData.lineUserId) {
+      return saveLiffProfile();
+    }
+  }).catch(function() { /* LIFF未設定・非対応環境は無視 */ });
 }
 
 init();
+handleLiffReturn();
 </script>
 </body>
 </html>
