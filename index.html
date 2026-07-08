@@ -1437,7 +1437,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = '20260706b';
+const APP_VERSION = '20260708a';
 (function() {
   var stored = localStorage.getItem('appVersion');
   if (stored !== APP_VERSION) {
@@ -1611,7 +1611,7 @@ function switchTab(tab) {
 let storeStatusTab = 'team-wage';
 let frontRankType2 = 'rate';
 
-function initStoreStatusPage() {
+async function initStoreStatusPage() {
   const subTabs = document.getElementById('store-status-sub-tabs');
   if (subTabs && !subTabs._init) {
     subTabs._init = true;
@@ -1630,7 +1630,29 @@ function initStoreStatusPage() {
       if (storeStatusTab === 'members') renderMemberList();
     });
   }
+  await syncGroupGoalFromServer();
   renderCategoryBudget();
+}
+
+// サーバー（グループ設定）に保存された店舗目標（工賃・受注台数・受注金額）を
+// adminGoalsに取り込む。これで設定した本人以外・別端末でも同じ店舗目標が見える。
+async function syncGroupGoalFromServer() {
+  var code = userData.activeGroupCode || userData.groupCode;
+  if (!code) return;
+  try {
+    var gg = await fetchFromGAS('getGroupGoal', { groupCode: code });
+    if (gg) {
+      if (typeof gg.storeWageGoal === 'number') adminGoals.storeWageGoal = gg.storeWageGoal;
+      if (typeof gg.storeCount === 'number')    adminGoals.storeCount    = gg.storeCount;
+      if (typeof gg.storeAmount === 'number')   adminGoals.storeAmount   = gg.storeAmount;
+      saveLocal();
+      // 設定画面の目標入力欄が表示中なら最新値に更新
+      var _sv = function(id, val){ var e=document.getElementById(id); if(e) e.value = (val ? val : ''); };
+      _sv('goal-store-count', adminGoals.storeCount);
+      _sv('goal-store-amount', adminGoals.storeAmount);
+      _sv('goal-store-wage', adminGoals.storeWageGoal);
+    }
+  } catch(e) {}
 }
 
 function saveStoreGoals() {
@@ -1642,8 +1664,14 @@ function saveStoreGoals() {
   if (_pg > 0) userData.goal = _pg;
   saveLocal();
   var _goalCode = userData.activeGroupCode || userData.groupCode;
-  if (_goalCode) postToGAS({ action: 'setGroupGoal', groupCode: _goalCode, storeWageGoal: adminGoals.storeWageGoal });
-  showToast('🎯 目標を保存しました');
+  if (_goalCode) {
+    postToGAS({ action: 'setGroupGoal', groupCode: _goalCode, storeWageGoal: adminGoals.storeWageGoal, storeCount: adminGoals.storeCount, storeAmount: adminGoals.storeAmount });
+    var _g = (userData.groupCodes || []).find(function(x){ return x.code === _goalCode; });
+    var _storeName = (_g && _g.name) || userData.store || _goalCode;
+    showToast('🎯 「' + _storeName + '」の目標を保存しました');
+  } else {
+    showToast('🎯 目標を保存しました');
+  }
   var _sg = document.getElementById('set-goal'); if (_sg) _sg.value = userData.goal || 100;
   if (typeof renderCategoryBudget === 'function') renderCategoryBudget();
   if (typeof initStoreFrontStatus === 'function') initStoreFrontStatus();
@@ -1668,10 +1696,6 @@ async function renderCategoryBudget() {
     try {
       var est = await fetchFromGAS('getEstimateRanking', { groupCode: code, month: ym });
       if (est && est.data) est.data.forEach(function(m){ if (m.name) estMap[m.name] = m; });
-    } catch(e) {}
-    try {
-      var gg = await fetchFromGAS('getGroupGoal', { groupCode: code });
-      if (gg && gg.storeWageGoal > 0) storeGoal = gg.storeWageGoal * 10000;
     } catch(e) {}
   }
   var bars = [];
@@ -3835,6 +3859,9 @@ function init() {
 
   // 招待リンク（?invite=コード）処理
   handleInviteLink();
+
+  // 店舗目標（工賃・受注台数・受注金額）をサーバーから取り込む
+  syncGroupGoalFromServer();
 
   // Check if first launch
   if (!userData.name) {
