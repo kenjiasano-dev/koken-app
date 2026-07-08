@@ -1437,7 +1437,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = '20260708a';
+const APP_VERSION = '20260708b';
 (function() {
   var stored = localStorage.getItem('appVersion');
   if (stored !== APP_VERSION) {
@@ -3335,6 +3335,7 @@ function handleInviteLink() {
     if (typeof renderFollowedStores === 'function') renderFollowedStores();
     if (typeof renderStoreSwitcher === 'function') renderStoreSwitcher();
     showToast('✅ グループ「' + inviteCode + '」に参加しました', 4000);
+    refreshGroupNames();
     if (userData.name && !userData.ninjaMode) {
       postToGAS({ action: 'updateProfile', name: userData.name, pref: userData.pref || '', store: userData.store || '', goal: userData.goal || 100, role: userData.role || '', groupCode: inviteCode });
     } else if (!userData.name) {
@@ -3362,6 +3363,41 @@ function joinGroup() {
   showToast(`✅ 「${name}」を追加しました`);
   // GASにグループコードを登録
   if (!userData.ninjaMode) postToGAS({ action: 'updateProfile', name: userData.name, pref: userData.pref, store: userData.store, goal: userData.goal, role: userData.role || '', groupCode: code });
+  // 名前をコードのままにした場合はサーバーから実店舗名を補完
+  if (name === code) refreshGroupNames();
+}
+
+// グループコードからサーバー上の実店舗名を引く（メンバーの店舗名の最頻値）
+async function resolveGroupName(code) {
+  try {
+    var d = await fetchFromGAS('getStoreRanking', { groupCode: code });
+    if (d && d.data && d.data.length) {
+      var counts = {};
+      d.data.forEach(function(r){ var s = (r.store || '').trim(); if (s) counts[s] = (counts[s] || 0) + 1; });
+      var best = '', bestN = 0;
+      Object.keys(counts).forEach(function(s){ if (counts[s] > bestN) { best = s; bestN = counts[s]; } });
+      return best;
+    }
+  } catch(e) {}
+  return '';
+}
+
+// フォロー中店舗のうち、表示名がコードのまま（未解決）のものを実店舗名で埋める
+async function refreshGroupNames() {
+  if (!userData.groupCodes || !userData.groupCodes.length) return;
+  var changed = false;
+  for (var i = 0; i < userData.groupCodes.length; i++) {
+    var g = userData.groupCodes[i];
+    if (!g.name || g.name === g.code) {
+      var nm = await resolveGroupName(g.code);
+      if (nm && nm !== g.name) { g.name = nm; changed = true; }
+    }
+  }
+  if (changed) {
+    saveLocal();
+    if (typeof renderFollowedStores === 'function') renderFollowedStores();
+    if (typeof renderStoreSwitcher === 'function') renderStoreSwitcher();
+  }
 }
 
 function toggleGuide() {
@@ -3862,6 +3898,9 @@ function init() {
 
   // 店舗目標（工賃・受注台数・受注金額）をサーバーから取り込む
   syncGroupGoalFromServer();
+
+  // フォロー中店舗の表示名がコードのままなら実店舗名で補完
+  refreshGroupNames();
 
   // Check if first launch
   if (!userData.name) {
