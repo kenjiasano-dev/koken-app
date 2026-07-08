@@ -1435,7 +1435,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = '20260708e';
+const APP_VERSION = '20260708f';
 (function() {
   var stored = localStorage.getItem('appVersion');
   if (stored !== APP_VERSION) {
@@ -4712,20 +4712,19 @@ function initGoalTab() {
 
 
 
-init();
-</script>
-
 // LINE登録ボタン処理
 function registerWithLINE() {
   if (!userData || !userData.uuid) {
     showToast('ユーザー情報が未設定です', 3000);
     return;
   }
-  
   const message = `[LINE登録]\nUUID: ${userData.uuid}\n名前: ${userData.name || '未設定'}\n店舗: ${userData.store || '未設定'}`;
   const lineUrl = 'https://line.me/R/msg/text/?' + encodeURIComponent(message);
   window.open(lineUrl, '_blank');
   showToast('LINEでメッセージを送信してください', 3000);
 }
+
+init();
+</script>
 </body>
 </html>
