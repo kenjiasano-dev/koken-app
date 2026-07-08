@@ -787,9 +787,7 @@ input, select, textarea { font-family: inherit; }
           <div style="font-size:12px;color:var(--text-sub);margin-bottom:6px;">📱 端末ID（機種変更時にメモしてください）</div>
           <div style="display:flex;gap:8px;align-items:center;">
             <div id="uuid-display" style="flex:1;font-size:11px;color:var(--text-sub);background:var(--border);padding:8px 10px;border-radius:8px;word-break:break-all;font-family:monospace;"></div>
-            <button onclick="copyUUID()" style="padding:8px 12px;background:var(--card);border:1px solid var(--border);border-radius:8px;font-size:12px;cursor:pointer;white-space:nowrap;">📋 コピー</button>
-          </div>
-        </div>
+            <button onclick="copyUUID()" style="padding:8px 12px;background:var(--card);border:1px solid var(--border);border-radius:8px;font-size:12px;cursor:pointer;white-space:nowrap;">📋 コピー</button></div><button onclick="registerWithLINE()" style="width:100%;margin-top:8px;padding:10px;background:#00b900;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;">📲 LINEで登録</button></div>
       </div>
       <!-- Group -->
       <div class="card">
@@ -1437,7 +1435,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = '20260708c';
+const APP_VERSION = '20260708d';
 (function() {
   var stored = localStorage.getItem('appVersion');
   if (stored !== APP_VERSION) {
