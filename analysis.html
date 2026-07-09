@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>経験年数×工賃 分析（インストラクター用）</title>
+<style>
+  :root{
+    --bg:#0f1115; --card:#1a1d24; --border:#2a2f3a; --text:#e6e8ec; --sub:#9aa2b1;
+    --accent:#00b900; --accent2:#3d8bff; --warn:#e0a800; --dot:#3d8bff; --dot2:#00b900;
+  }
+  @media (prefers-color-scheme: light){
+    :root{ --bg:#f4f6f9; --card:#ffffff; --border:#e2e6ec; --text:#1b2330; --sub:#5b6472; }
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Hiragino Sans","Noto Sans JP",sans-serif;font-size:14px;line-height:1.5;padding:16px;max-width:1000px;margin:0 auto;}
+  h1{font-size:18px;margin:0 0 4px;}
+  .muted{color:var(--sub);font-size:12px;}
+  .bar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:14px 0;}
+  .bar select,.bar button{background:var(--card);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:8px 12px;font-size:13px;cursor:pointer;}
+  .bar button.primary{background:var(--accent);color:#fff;border:none;font-weight:700;}
+  .chk{display:inline-flex;align-items:center;gap:6px;cursor:pointer;user-select:none;}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:16px;}
+  .card h2{font-size:14px;margin:0 0 10px;color:var(--sub);font-weight:700;}
+  .summary{display:flex;flex-wrap:wrap;gap:16px;font-size:13px;}
+  .summary b{font-size:18px;}
+  .scroll{overflow-x:auto;}
+  table{border-collapse:collapse;width:100%;font-size:13px;min-width:640px;}
+  th,td{padding:8px 10px;text-align:right;border-bottom:1px solid var(--border);white-space:nowrap;}
+  th:nth-child(-n+3),td:nth-child(-n+3){text-align:left;}
+  th{cursor:pointer;color:var(--sub);font-weight:700;user-select:none;position:sticky;top:0;background:var(--card);}
+  th.sorted::after{content:" ▼";font-size:10px;}
+  th.asc.sorted::after{content:" ▲";}
+  tr.noexp{opacity:.45;}
+  .badge{display:inline-block;background:var(--border);border-radius:6px;padding:1px 7px;font-size:11px;}
+  svg{width:100%;height:auto;display:block;}
+  .dot{fill:var(--dot2);}
+  .axis{stroke:var(--border);stroke-width:1;}
+  .grid{stroke:var(--border);stroke-width:.5;opacity:.5;}
+  .lbl{fill:var(--sub);font-size:10px;}
+  .plabel{fill:var(--text);font-size:10px;}
+  .err{color:#e05252;}
+</style>
+</head>
+<body>
+  <h1>📊 経験年数 × 工賃 分析</h1>
+  <div class="muted">インストラクター用。経験年数を入力済みの人だけが分析対象になります。</div>
+
+  <div class="bar">
+    <label>対象月
+      <select id="month"></select>
+    </label>
+    <label class="chk"><input type="checkbox" id="onlyExp" checked> 経験年数 入力済みのみ</label>
+    <label>縦軸
+      <select id="yaxis">
+        <option value="wageMonth">今月の工賃</option>
+        <option value="wageTotal">累計の工賃</option>
+      </select>
+    </label>
+    <button class="primary" id="reload">🔄 更新</button>
+  </div>
+
+  <div class="card">
+    <div class="summary" id="summary">読み込み中…</div>
+  </div>
+
+  <div class="card">
+    <h2>散布図：横=経験年数 / 縦=工賃（点＝1人）</h2>
+    <div id="scatter"></div>
+    <div class="muted" id="scatterNote"></div>
+  </div>
+
+  <div class="card">
+    <h2>一覧（列見出しをタップで並べ替え）</h2>
+    <div class="scroll"><table id="tbl"></table></div>
+  </div>
+
+<script>
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbxyh_WByXmc8qeKmz0H9q0Kf2y4xKl-4C2cK6F2Ul3OkFGQZhFPvQArnlIwlo701WifwQ/exec';
+const TOKEN = 'carcon-kotin-2025';
+
+let rawUsers = [];
+let sortKey = 'wageMonth', sortAsc = false;
+
+function yen(n){ return (n||0).toLocaleString('ja-JP'); }
+function manyen(n){ return Math.round((n||0)/10000); }
+
+function fillMonths(){
+  const sel = document.getElementById('month');
+  const now = new Date();
+  let html = '';
+  for(let i=0;i<12;i++){
+    const d = new Date(now.getFullYear(), now.getMonth()-i, 1);
+    const ym = d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
+    html += '<option value="'+ym+'">'+ym+'</option>';
+  }
+  sel.innerHTML = html;
+}
+
+async function load(){
+  const month = document.getElementById('month').value;
+  document.getElementById('summary').textContent = '読み込み中…';
+  try{
+    const res = await fetch(GAS_URL+'?action=getExpAnalysis&token='+TOKEN+'&month='+month);
+    const data = await res.json();
+    if(data.error){ document.getElementById('summary').innerHTML = '<span class="err">エラー: '+data.error+'</span>'; return; }
+    rawUsers = data.users || [];
+    render();
+  }catch(e){
+    document.getElementById('summary').innerHTML = '<span class="err">通信エラー: '+e.message+'</span>';
+  }
+}
+
+function currentRows(){
+  const onlyExp = document.getElementById('onlyExp').checked;
+  let rows = rawUsers.slice();
+  if(onlyExp) rows = rows.filter(u => u.maxExp !== null && u.maxExp !== undefined);
+  rows.sort((a,b)=>{
+    let av=a[sortKey], bv=b[sortKey];
+    if(sortKey==='name'||sortKey==='store'||sortKey==='pref'){ av=String(av||''); bv=String(bv||''); return sortAsc? av.localeCompare(bv): bv.localeCompare(av); }
+    av = av===null||av===undefined? -1 : av; bv = bv===null||bv===undefined? -1 : bv;
+    return sortAsc? av-bv : bv-av;
+  });
+  return rows;
+}
+
+function render(){
+  const onlyExp = document.getElementById('onlyExp').checked;
+  const withExp = rawUsers.filter(u=>u.maxExp!==null&&u.maxExp!==undefined);
+  const active = rawUsers.filter(u=>u.wageCount>0);
+  document.getElementById('summary').innerHTML =
+    '<div>全メンバー <b>'+rawUsers.length+'</b> 人</div>'+
+    '<div>経験年数 入力済み <b>'+withExp.length+'</b> 人</div>'+
+    '<div>工賃を入力している人 <b>'+active.length+'</b> 人</div>';
+  renderScatter();
+  renderTable();
+}
+
+function renderScatter(){
+  const yaxis = document.getElementById('yaxis').value;
+  const pts = rawUsers.filter(u=>u.maxExp!==null&&u.maxExp!==undefined);
+  const note = document.getElementById('scatterNote');
+  if(pts.length===0){ document.getElementById('scatter').innerHTML=''; note.textContent='経験年数が入力された人がいないため、散布図は表示できません。'; return; }
+  note.textContent = '点は経験年数を入力済みの '+pts.length+' 人。工賃0円の人も含みます。';
+  const W=920,H=380,pad=52;
+  const maxX = Math.max(5, ...pts.map(p=>p.maxExp));
+  const maxY = Math.max(1, ...pts.map(p=>p[yaxis]));
+  const x = v => pad + (W-pad*2)*(v/maxX);
+  const y = v => H-pad - (H-pad*2)*(v/maxY);
+  let g='';
+  // grid + y labels (万円)
+  for(let i=0;i<=4;i++){
+    const yv = maxY*i/4, py=y(yv);
+    g+='<line class="grid" x1="'+pad+'" y1="'+py+'" x2="'+(W-pad)+'" y2="'+py+'"/>';
+    g+='<text class="lbl" x="'+(pad-8)+'" y="'+(py+3)+'" text-anchor="end">'+manyen(yv)+'万</text>';
+  }
+  // x labels (年)
+  for(let i=0;i<=5;i++){
+    const xv = Math.round(maxX*i/5), px=x(xv);
+    g+='<line class="grid" x1="'+px+'" y1="'+pad+'" x2="'+px+'" y2="'+(H-pad)+'"/>';
+    g+='<text class="lbl" x="'+px+'" y="'+(H-pad+16)+'" text-anchor="middle">'+xv+'年</text>';
+  }
+  g+='<line class="axis" x1="'+pad+'" y1="'+(H-pad)+'" x2="'+(W-pad)+'" y2="'+(H-pad)+'"/>';
+  g+='<line class="axis" x1="'+pad+'" y1="'+pad+'" x2="'+pad+'" y2="'+(H-pad)+'"/>';
+  g+='<text class="lbl" x="'+(W/2)+'" y="'+(H-8)+'" text-anchor="middle">経験年数</text>';
+  pts.forEach(p=>{
+    const px=x(p.maxExp), py=y(p[yaxis]);
+    g+='<circle class="dot" cx="'+px+'" cy="'+py+'" r="6"/>';
+    g+='<text class="plabel" x="'+(px+9)+'" y="'+(py+3)+'">'+escapeHtml(p.name)+'</text>';
+  });
+  document.getElementById('scatter').innerHTML = '<svg viewBox="0 0 '+W+' '+H+'" preserveAspectRatio="xMidYMid meet">'+g+'</svg>';
+}
+
+function renderTable(){
+  const rows = currentRows();
+  const cols = [
+    {k:'name',label:'名前'},{k:'store',label:'店舗'},{k:'pref',label:'県'},
+    {k:'maxExp',label:'経験年数'},{k:'wageMonth',label:'今月工賃'},{k:'wageTotal',label:'累計工賃'},
+    {k:'wageCount',label:'件数'},{k:'perYear',label:'今月/経験年'}
+  ];
+  let head='<tr>';
+  cols.forEach(c=>{ head+='<th data-k="'+c.k+'" class="'+(sortKey===c.k?'sorted '+(sortAsc?'asc':''):'')+'">'+c.label+'</th>'; });
+  head+='</tr>';
+  let body='';
+  rows.forEach(u=>{
+    const noexp = (u.maxExp===null||u.maxExp===undefined);
+    const perYear = (!noexp && u.maxExp>0) ? Math.round(u.wageMonth/u.maxExp) : null;
+    body+='<tr class="'+(noexp?'noexp':'')+'">'+
+      '<td>'+escapeHtml(u.name)+'</td>'+
+      '<td>'+escapeHtml(u.store||'')+'</td>'+
+      '<td>'+escapeHtml(u.pref||'')+'</td>'+
+      '<td>'+(noexp?'<span class="badge">未入力</span>':u.maxExp+'年')+'</td>'+
+      '<td>'+yen(u.wageMonth)+'</td>'+
+      '<td>'+yen(u.wageTotal)+'</td>'+
+      '<td>'+u.wageCount+'</td>'+
+      '<td>'+(perYear!==null?yen(perYear):'—')+'</td>'+
+      '</tr>';
+  });
+  const tbl=document.getElementById('tbl');
+  tbl.innerHTML = head+body;
+  tbl.querySelectorAll('th').forEach(th=>{
+    th.onclick=()=>{ const k=th.dataset.k; if(sortKey===k) sortAsc=!sortAsc; else {sortKey=k; sortAsc=false;} renderTable(); };
+  });
+}
+
+function escapeHtml(s){ return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];}); }
+
+document.getElementById('reload').onclick=load;
+document.getElementById('onlyExp').onchange=render;
+document.getElementById('yaxis').onchange=renderScatter;
+document.getElementById('month').onchange=load;
+
+fillMonths();
+load();
+</script>
+</body>
+</html>
