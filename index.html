@@ -788,7 +788,7 @@ input, select, textarea { font-family: inherit; }
           <div style="font-size:12px;color:var(--text-sub);margin-bottom:6px;">📱 端末ID（機種変更時にメモしてください）</div>
           <div style="display:flex;gap:8px;align-items:center;">
             <div id="uuid-display" style="flex:1;font-size:11px;color:var(--text-sub);background:var(--border);padding:8px 10px;border-radius:8px;word-break:break-all;font-family:monospace;"></div>
-            <button onclick="copyUUID()" style="padding:8px 12px;background:var(--card);border:1px solid var(--border);border-radius:8px;font-size:12px;cursor:pointer;white-space:nowrap;">📋 コピー</button></div><button onclick="registerWithLINE()" style="width:100%;margin-top:8px;padding:10px;background:#00b900;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;">📲 LINEで登録</button></div>
+            <button onclick="copyUUID()" style="padding:8px 12px;background:var(--card);border:1px solid var(--border);border-radius:8px;font-size:12px;cursor:pointer;white-space:nowrap;">📋 コピー</button></div><button onclick="registerWithLINE()" style="width:100%;margin-top:8px;padding:10px;background:#00b900;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;">📲 LINEで登録</button><div id="line-register-status" style="margin-top:6px;font-size:12px;text-align:center;"></div></div>
       </div>
       <!-- Group -->
       <div class="card">
@@ -1436,7 +1436,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = '20260709l';
+const APP_VERSION = '20260709m';
 // LINEログイン(LIFF) — LINEコンソールで作成したLIFFアプリのIDを入れる
 const LIFF_ID = '2010638896-vJtjkUOr';
 (function() {
@@ -3094,7 +3094,20 @@ function renderTrend() {
 // ============================================================
 // SETTINGS
 // ============================================================
+function renderLineRegisterStatus() {
+  var el = document.getElementById('line-register-status');
+  if (!el) return;
+  if (userData.lineUserId) {
+    el.textContent = '✅ LINE連携済み';
+    el.style.color = '#00b900';
+  } else {
+    el.textContent = '未連携（上のボタンから登録できます）';
+    el.style.color = 'var(--text-sub)';
+  }
+}
+
 function initSettings() {
+  renderLineRegisterStatus();
   // Prefecture dropdown
   const sel = document.getElementById('set-pref');
   sel.innerHTML = '<option value="">都道府県を選択</option>' + PREFS.map(p => `<option value="${p}">${p}</option>`).join('');
@@ -4765,6 +4778,7 @@ function saveLiffProfile() {
     saveLocal();
     postToGAS({ action: 'saveLineUserId', uuid: userData.uuid, lineUserId: lineUserId, name: userData.name || '', store: userData.store || '' });
     showToast('✅ LINE登録が完了しました！', 3500);
+    renderLineRegisterStatus();
   });
 }
 
