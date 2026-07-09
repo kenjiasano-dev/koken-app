@@ -1436,7 +1436,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = '20260709k';
+const APP_VERSION = '20260709l';
 // LINEログイン(LIFF) — LINEコンソールで作成したLIFFアプリのIDを入れる
 const LIFF_ID = '2010638896-vJtjkUOr';
 (function() {
@@ -4704,11 +4704,55 @@ function registerWithLINE() {
     if (liff.isLoggedIn()) {
       return saveLiffProfile();
     } else {
-      liff.login({ redirectUri: location.href }); // LINE認証へ→戻ってきて再処理
+      // ホーム画面追加アプリだとLINE認証後に別ブラウザ扱いになり新規状態で戻ることがあるため、
+      // 元のUUIDをredirectUriに埋め込み、戻り先でreclaimFromLineRedirectが本人データを復元する
+      var rejoinUrl = location.origin + location.pathname + '?rejoinUuid=' + encodeURIComponent(userData.uuid);
+      liff.login({ redirectUri: rejoinUrl });
     }
   }).catch(function(e) {
     showToast('LINE登録に失敗しました: ' + (e && e.message ? e.message : e), 4000);
   });
+}
+
+// LINEログイン後に別ブラウザ(別の保存領域)に戻ってきて新規状態になっている場合、
+// redirectUriに埋め込んだ元のUUIDでサーバーから本人プロフィール＋データを復元する
+async function reclaimFromLineRedirect() {
+  var params = new URLSearchParams(location.search);
+  var rejoinUuid = params.get('rejoinUuid');
+  if (!rejoinUuid) return false;
+  history.replaceState(null, '', location.pathname);
+  if (userData.name) return false; // このブラウザに既に本人らしきデータがあるなら何もしない
+  try {
+    var profile = await fetchFromGAS('getUserProfileByUuid', { uuid: rejoinUuid });
+    if (!profile || !profile.success) return false;
+    userData.uuid = rejoinUuid;
+    userData.name = profile.name || '';
+    userData.store = profile.store || '';
+    userData.pref = profile.pref || '';
+    userData.goal = profile.goal || 100;
+    userData.role = profile.role || '';
+    userData.groupCode = profile.groupCode || '';
+    userData.activeGroupCode = profile.groupCode || '';
+    if (profile.groupCode && userData.groupCodes.indexOf(profile.groupCode) === -1) userData.groupCodes.push(profile.groupCode);
+    var res = await fetchFromGAS('restoreUserData', { uuid: rejoinUuid });
+    if (res && res.wageData) {
+      res.wageData.forEach(function(r) {
+        var exists = wageData.some(function(w){ return w.date === r.date && w.amount === r.amount; });
+        if (!exists) { r.entryId = (Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,8)); wageData.push(r); }
+      });
+    }
+    if (res && res.frontData) {
+      res.frontData.forEach(function(r) {
+        var exists = frontData.some(function(f){ return f.date === r.date && f.amount === r.amount; });
+        if (!exists) { r.entryId = (Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,8)); frontData.push(r); }
+      });
+    }
+    localStorage.setItem('wageData', JSON.stringify(wageData));
+    localStorage.setItem('frontData', JSON.stringify(frontData));
+    saveLocal();
+    showToast('✅ 既存アカウントを復元しました', 3000);
+    return true;
+  } catch(e) { console.error('reclaim failed', e); return false; }
 }
 
 // LIFFプロフィールからuserIdを取得してサーバーへ保存
@@ -4734,8 +4778,11 @@ function handleLiffReturn() {
   }).catch(function() { /* LIFF未設定・非対応環境は無視 */ });
 }
 
-init();
-handleLiffReturn();
+reclaimFromLineRedirect().then(function(reclaimed) {
+  if (reclaimed) { location.reload(); return; }
+  init();
+  handleLiffReturn();
+});
 </script>
 </body>
 </html>
