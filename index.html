@@ -1436,7 +1436,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = '20260708j';
+const APP_VERSION = '20260709k';
 // LINEログイン(LIFF) — LINEコンソールで作成したLIFFアプリのIDを入れる
 const LIFF_ID = '2010638896-vJtjkUOr';
 (function() {
@@ -1550,11 +1550,6 @@ function getMyMonthlyTotal() {
   const now = new Date();
   const ym = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
   return wageData.filter(w => w.date && w.date.startsWith(ym)).reduce((s, w) => s + w.amount, 0);
-}
-
-function getWageByMonth(year, month) {
-  const ym = `${year}-${String(month).padStart(2,'0')}`;
-  return wageData.filter(w => w.date && w.date.startsWith(ym));
 }
 
 // Prefecture list
@@ -2276,17 +2271,6 @@ document.addEventListener('click', function(e) {
   renderRankingTab(currentRankTab);
 });
 
-function toggleRankMore() {
-  var panel = document.getElementById('rank-more-tabs');
-  var btn = document.getElementById('rank-more-btn');
-  if (!panel) return;
-  var open = panel.style.display !== 'none';
-  panel.style.display = open ? 'none' : '';
-  btn.style.background = open ? 'var(--card)' : 'var(--green-light)';
-  btn.style.color = open ? 'var(--text-sub)' : 'var(--green)';
-  btn.style.borderColor = open ? 'var(--border)' : 'var(--green)';
-}
-
 // ============================================================
 // RANKING RENDER
 // ============================================================
@@ -2913,7 +2897,6 @@ function saveDayEntry() {
   checkGoalAndRank();
 }
 
-function deleteEntry(idx) { deleteDayEntry(idx); }
 function deleteDayEntry(idx) {
   const entries = wageData.filter(w => w.date === currentDayDate);
   const entry = entries[idx];
@@ -2939,11 +2922,6 @@ function initInputPage() {
   const dateInput = document.getElementById('input-date');
   dateInput.value = now.toISOString().split('T')[0];
   dateInput.max = now.toISOString().split('T')[0];
-}
-
-function addAmount(n) {
-  const el = document.getElementById('input-amount');
-  el.value = (parseAmount(el.value) + n).toLocaleString('en-US');
 }
 
 function submitWage() {
@@ -3982,11 +3960,6 @@ function initFrontPage() {
   }
 
   renderFrontHistory();
-}
-
-function addFrontAmount(val) {
-  const el = document.getElementById('front-amount');
-  el.value = (parseAmount(el.value) + val).toLocaleString('en-US');
 }
 
 function setContract(val) {
