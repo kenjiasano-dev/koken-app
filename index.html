@@ -1436,9 +1436,11 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = '20260709m';
+const APP_VERSION = '20260709n';
 // LINEログイン(LIFF) — LINEコンソールで作成したLIFFアプリのIDを入れる
 const LIFF_ID = '2010638896-vJtjkUOr';
+// 公式アカウント「カーコン工賃通知」友だち追加URL（ここに飛ばすとLINEアプリの友だち追加画面が直接開く）
+const LINE_OA_ADD_URL = 'https://line.me/R/ti/p/@599mbpcq';
 (function() {
   var stored = localStorage.getItem('appVersion');
   if (stored !== APP_VERSION) {
@@ -3097,9 +3099,12 @@ function renderTrend() {
 function renderLineRegisterStatus() {
   var el = document.getElementById('line-register-status');
   if (!el) return;
-  if (userData.lineUserId) {
-    el.textContent = '✅ LINE連携済み';
+  if (userData.lineUserId && userData.lineFriend) {
+    el.textContent = '✅ LINE連携＆友だち追加ずみ';
     el.style.color = '#00b900';
+  } else if (userData.lineUserId) {
+    el.innerHTML = '連携OK・あと少し → <a href="' + LINE_OA_ADD_URL + '" style="color:#00b900;font-weight:700;text-decoration:underline;">友だち追加する</a>';
+    el.style.color = 'var(--text-sub)';
   } else {
     el.textContent = '未連携（上のボタンから登録できます）';
     el.style.color = 'var(--text-sub)';
@@ -4777,17 +4782,59 @@ function saveLiffProfile() {
     userData.lineUserId = lineUserId;
     saveLocal();
     postToGAS({ action: 'saveLineUserId', uuid: userData.uuid, lineUserId: lineUserId, name: userData.name || '', store: userData.store || '' });
-    showToast('✅ LINE登録が完了しました！', 3500);
     renderLineRegisterStatus();
+    // 連携できたら、そのまま友だち追加まで自動で誘導するのがこのアプリの肝
+    return ensureFriendAdded();
   });
+}
+
+// 友だち状態を判定し、未追加なら自動で友だち追加画面へ飛ばす
+// （OAをLINEログインチャネルにリンク済みのため liff.getFriendship() が使える）
+function ensureFriendAdded() {
+  if (typeof liff === 'undefined' || typeof liff.getFriendship !== 'function') {
+    promptFriendAdd();
+    return;
+  }
+  return liff.getFriendship().then(function(fs) {
+    if (fs && fs.friendFlag) {
+      // すでに友だち → 完了
+      userData.lineFriend = true;
+      saveLocal();
+      renderLineRegisterStatus();
+      showToast('✅ LINE連携＆友だち追加が完了しました！', 3500);
+    } else {
+      // 未追加 → 友だち追加画面へ自動で飛ばす
+      promptFriendAdd();
+    }
+  }).catch(function() {
+    // 判定できない環境でも、念のため友だち追加へ誘導
+    promptFriendAdd();
+  });
+}
+
+// 友だち追加画面（LINEアプリ）を開く
+function promptFriendAdd() {
+  showToast('友だち追加の画面を開きます…', 2500);
+  setTimeout(function() { location.href = LINE_OA_ADD_URL; }, 900);
 }
 
 // ページ読込時: LIFFログインから戻ってきた場合に自動でuserIdを保存
 function handleLiffReturn() {
   if (typeof liff === 'undefined' || LIFF_ID === 'PASTE_LIFF_ID_HERE') return;
   liff.init({ liffId: LIFF_ID }).then(function() {
-    if (liff.isLoggedIn() && userData && userData.uuid && !userData.lineUserId) {
+    if (!liff.isLoggedIn() || !userData || !userData.uuid) return;
+    if (!userData.lineUserId) {
       return saveLiffProfile();
+    }
+    // 連携済みだが友だち未確定 → 友だち追加から戻ってきた場合などに状態を静かに再判定（自動リダイレクトはしない）
+    if (!userData.lineFriend && typeof liff.getFriendship === 'function') {
+      return liff.getFriendship().then(function(fs) {
+        if (fs && fs.friendFlag) {
+          userData.lineFriend = true;
+          saveLocal();
+          renderLineRegisterStatus();
+        }
+      }).catch(function(){});
     }
   }).catch(function() { /* LIFF未設定・非対応環境は無視 */ });
 }
