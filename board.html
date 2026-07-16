@@ -103,7 +103,7 @@ button{font-family:inherit; cursor:pointer;}
 .hbar{height:10px; border-radius:4px; background:var(--line2); margin-bottom:5px;}
 .hname{font-size:10px; line-height:1.25; color:var(--muted2); word-break:break-all;
   display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; min-height:25px;}
-.htime{font-size:9px; line-height:1.3; color:var(--muted2); min-height:12px;}
+.htime{font-size:13px; font-weight:600; line-height:1.3; color:var(--muted2); min-height:17px;}
 .hstep.done .hbar{background:var(--green);}
 .hstep.done .hname{color:var(--muted);}
 .hstep.cur .hbar{background:var(--accent);}
@@ -134,10 +134,10 @@ button{font-family:inherit; cursor:pointer;}
 /* ごみ箱（削除）を見やすく */
 .delbtn{border:0.5px solid var(--line2); background:var(--card2); color:var(--muted); font-size:14px; padding:9px 16px; border-radius:9px;}
 .delbtn:active{transform:scale(.97);}
-.iconbtn{border:none; background:none; padding:5px; color:var(--muted2); font-size:20px; line-height:1;}
+.iconbtn{border:none; background:none; padding:5px; color:var(--muted2); font-size:27px; line-height:1;}
 .iconbtn.on{color:var(--red);}
 /* 部品待ちの旗を大きく */
-.flagbtn{border:none; background:none; padding:4px 6px; font-size:28px; line-height:1;}
+.flagbtn{border:none; background:none; padding:4px 6px; font-size:36px; line-height:1;}
 .flagbtn.on{filter:none;}
 .row-actions{display:flex; align-items:center; gap:10px;}
 .times{font-size:11px; color:var(--muted2); margin-top:5px;}
@@ -363,7 +363,7 @@ button{font-family:inherit; cursor:pointer;}
      同じスプレッドシートに「進捗/入庫/完成履歴」シートとして相乗りできる。
    - いまは persist() が localStorage に書くだけ＝バックエンド不要で即使える。
    =================================================================== */
-const APP_VERSION = '20260716b';
+const APP_VERSION = '20260716c';
 const STORE_KEY   = 'board_state_v1';
 const DEFAULT_STAGES = ['パネル修正','パテ','サフ','調色','マスキング','塗装','乾燥','磨き','組み付け'];
 /* 工程は店舗ごとに設定で変更可。state.store.stages に保存、無ければ標準9工程 */
@@ -1147,7 +1147,7 @@ function photoBtn(c){
   const n=(c.photos&&c.photos.length)||0;
   const act = n ? `openGallery('${c.id}')` : `addPhoto('${c.id}')`;
   const hi = n ? 'color:var(--accent);border-color:var(--accent);' : '';
-  return `<button class="iconbtn" title="工程写真" style="${hi}" onclick="event.stopPropagation();${act}">📷${n?'<span style=\"font-size:12px;margin-left:1px;\">'+n+'</span>':''}</button>`;
+  return `<button class="iconbtn" title="工程写真" style="${hi}" onclick="event.stopPropagation();${act}">📷${n?'<span style=\"font-size:15px;margin-left:2px;font-weight:600;\">'+n+'</span>':''}</button>`;
 }
 
 /* 写真ギャラリー（工程別に表示・拡大・削除・追加・ZIP） */
