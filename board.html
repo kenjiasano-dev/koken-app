@@ -363,7 +363,7 @@ button{font-family:inherit; cursor:pointer;}
      同じスプレッドシートに「進捗/入庫/完成履歴」シートとして相乗りできる。
    - いまは persist() が localStorage に書くだけ＝バックエンド不要で即使える。
    =================================================================== */
-const APP_VERSION = '20260716a';
+const APP_VERSION = '20260716b';
 const STORE_KEY   = 'board_state_v1';
 const DEFAULT_STAGES = ['パネル修正','パテ','サフ','調色','マスキング','塗装','乾燥','磨き','組み付け'];
 /* 工程は店舗ごとに設定で変更可。state.store.stages に保存、無ければ標準9工程 */
@@ -972,6 +972,29 @@ function assignPick(id,i){
   c.assignee = (i<0) ? '' : (getMembers()[i]||'');
   persist(); closeSheet(); render();
 }
+/* 工程ごとの担当を選ぶ（ゲージの各工程タップ）。過去工程の訂正も可。
+   今の工程を変えたら「今の担当」も更新し、以降の工程に自動で引き継ぐ。 */
+function openStageAssign(carId, i){
+  const c=findCar(carId); if(!c) return;
+  const S=getStages(c.kind); if(!S.length) return;
+  const mem=getMembers();
+  const cur=(c.stageBy&&c.stageBy[i]) || (i===c.stage ? (c.assignee||'') : '');
+  let list = mem.map((m,idx)=>`<button class="btn ghost" style="text-align:left;margin-bottom:7px;${cur===m?'border-color:var(--accent);color:var(--accent);':''}" onclick="stageAssignPick('${carId}',${i},${idx})">👤 ${esc(m)}</button>`).join('');
+  if(!mem.length) list=`<p style="color:var(--muted);font-size:13px;margin:0 0 12px;">作業者が未登録です。⚙設定→担当者（メンバー）で追加してください。</p>`;
+  showSheet(`
+    <h2>${mark(i)} ${esc(S[i])}｜担当</h2>
+    <p style="color:var(--muted);font-size:12px;margin:0 0 12px;">この工程をやった人を選びます（${esc(c.cartype)} ・${esc(c.number)}）</p>
+    <div style="max-height:40vh;overflow:auto;margin-bottom:8px;">${list}</div>
+    <button class="btn ghost" onclick="stageAssignPick('${carId}',${i},-1)">未割り当てにする</button>`);
+}
+function stageAssignPick(carId,i,idx){
+  const c=findCar(carId); if(!c) return;
+  c.stageBy=c.stageBy||[];
+  const name=(idx<0)?'':(getMembers()[idx]||'');
+  c.stageBy[i]=name;
+  if(i===c.stage && name){ c.assignee=name; }   // 今の工程を変えたら「今の担当」も更新→以降に引き継ぐ
+  persist(); closeSheet(); render(); toast('工程の担当を記録しました');
+}
 let editMembers=[];
 function openMembers(){
   if(!state.store) return;
@@ -1334,7 +1357,14 @@ function renderWork(work){
           if(c.waitingParts){ cls='hstep curw'; t='停止'; }
           else { cls='hstep cur'; const m=curStageMinutes(c); if(m>0) t=Math.round(m)+'分'; }
         }
-        return `<div class="${cls}"><div class="hbar"></div><div class="hname">${esc(name)}</div><div class="htime">${t}</div></div>`;
+        // 工程ごとの担当名。済んだ工程は記録値、今の工程はまだ未記録なら今の担当を薄く表示
+        const recorded=(c.stageBy&&c.stageBy[i])||'';
+        let who=recorded, whoStyle='color:var(--accent);';
+        if(!who && i===c.stage && !c.waitingParts){ who=c.assignee||''; whoStyle='color:var(--muted2);'; }
+        const whoHtml = who
+          ? `<div class="hwho" style="font-size:11px;line-height:1.15;margin-top:1px;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;${whoStyle}">${esc(who)}</div>`
+          : (i<=c.stage ? `<div class="hwho" style="font-size:11px;line-height:1.15;margin-top:1px;text-align:center;color:var(--muted2);opacity:.45;">＋</div>` : '');
+        return `<div class="${cls}" style="cursor:pointer;" title="この工程の担当を選ぶ" onclick="openStageAssign('${c.id}',${i})"><div class="hbar"></div><div class="hname">${esc(name)}</div><div class="htime">${t}</div>${whoHtml}</div>`;
       }).join('');
       const isLast = c.stage===S.length-1;
       const curName = `${mark(c.stage)} ${esc(S[c.stage])}`;
