@@ -1,0 +1,1491 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#111214">
+<title>作業ボード</title>
+<style>
+:root{
+  --bg:#111214; --card:#1c1d21; --card2:#242529; --line:#33343a;
+  --line2:#44454c; --text:#f2f3f5; --muted:#9b9da5; --muted2:#6d6f77;
+  --accent:#3d8bff; --accent-bg:#16233a;
+  --green:#2ecc8f; --green-bg:#123028;
+  --amber:#f0a020; --amber-bg:#33280e;
+  --red:#ef5350; --red-bg:#3a1717;
+  --nav-bg:#151619; --toast-bg:#2a2b30;
+  --radius:12px;
+}
+:root[data-theme="light"]{
+  --bg:#f3f4f6; --card:#ffffff; --card2:#eef0f3; --line:#e3e5ea;
+  --line2:#d3d6dc; --text:#1b1c1f; --muted:#6a6d75; --muted2:#9aa0a8;
+  --accent:#2f7ae0; --accent-bg:#e7f0fd;
+  --green:#159169; --green-bg:#e2f5ee;
+  --amber:#c07d0c; --amber-bg:#fbf0d9;
+  --red:#dc4640; --red-bg:#fdeceb;
+  --nav-bg:#ffffff; --toast-bg:#2a2b30;
+}
+*{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+html,body{margin:0; padding:0;}
+body{
+  background:var(--bg); color:var(--text);
+  font-family:-apple-system,BlinkMacSystemFont,"Hiragino Kaku Gothic ProN","Yu Gothic",Meiryo,sans-serif;
+  font-size:16px; line-height:1.5;
+  padding-bottom:76px;
+  -webkit-font-smoothing:antialiased;
+}
+button{font-family:inherit; cursor:pointer;}
+.hidden{display:none !important;}
+
+/* header */
+.appbar{
+  position:sticky; top:0; z-index:20; background:var(--bg);
+  padding:14px 16px 10px; border-bottom:0.5px solid var(--line);
+  display:flex; align-items:center; justify-content:space-between;
+}
+.appbar h1{font-size:21px; font-weight:600; margin:0; letter-spacing:.02em;}
+.appbar .store{font-size:12px; color:var(--muted); margin-top:2px;}
+.appbar .sync{font-size:11px; color:var(--muted2); display:flex; align-items:center; gap:4px;}
+.dot{width:7px; height:7px; border-radius:50%; background:var(--green);}
+
+/* 検索バー */
+.searchbar{display:flex; align-items:center; gap:8px; padding:10px 14px; border-bottom:0.5px solid var(--line); position:sticky; top:0; z-index:15; background:var(--bg);}
+.searchbar .si{color:var(--muted2); font-size:15px;}
+.searchbar input{flex:1; background:var(--card); border:0.5px solid var(--line2); color:var(--text); font-size:16px; padding:10px 12px; border-radius:10px; font-family:inherit;}
+.searchbar button{border:none; background:var(--card2); color:var(--muted); font-size:15px; width:36px; height:36px; border-radius:8px;}
+.search-hint{padding:8px 14px; font-size:12px; color:var(--muted); border-bottom:0.5px solid var(--line); display:flex; gap:6px; align-items:center; flex-wrap:wrap;}
+.shchip{background:var(--card2); border:0.5px solid var(--line2); border-radius:14px; padding:4px 11px; color:var(--text);}
+.shchip.on{border-color:var(--accent); color:var(--accent);}
+
+/* page */
+.page{padding:14px 14px 20px; max-width:520px; margin:0 auto;}
+.sectlabel{display:flex; align-items:center; gap:7px; margin:2px 2px 10px; font-size:13px; color:var(--muted);}
+.sectlabel .n{color:var(--muted2);}
+.addbtn{
+  margin-left:auto; font-size:15px; font-weight:500; color:var(--accent);
+  background:var(--accent-bg); border:0.5px solid var(--accent); padding:10px 18px; border-radius:11px;
+  display:flex; align-items:center; gap:4px;
+}
+.addbtn:active{transform:scale(.97);}
+/* 0台のときの大きな追加ボタン */
+.bigadd{
+  display:inline-flex; align-items:center; gap:6px; margin-top:16px;
+  background:var(--accent); color:#fff; border:none; font-size:17px; font-weight:600;
+  padding:16px 28px; border-radius:12px;
+}
+.bigadd:active{transform:scale(.98);}
+
+/* car card */
+.car{
+  background:var(--card); border:0.5px solid var(--line); border-radius:var(--radius);
+  padding:11px 13px; margin-bottom:9px;
+}
+.car .top{display:flex; align-items:center; justify-content:space-between; gap:8px;}
+.car .name{font-size:17px; font-weight:600;}
+.car .num{font-size:13px; color:var(--muted); font-family:ui-monospace,Menlo,Consolas,monospace; margin-left:5px;}
+.car .sub{font-size:11px; color:var(--muted); margin-top:3px;}
+.car .sub.warn{color:var(--amber);}
+.car .sub.danger{color:var(--red);}
+
+/* gauge */
+.gauge{display:flex; gap:3px; margin:9px 0 6px;}
+.seg{flex:1; height:10px; border-radius:4px; background:var(--line2);}
+.seg.done{background:var(--green);}
+.seg.cur{background:var(--accent);}
+.seg.wait{background:var(--red);}
+.gaugefoot{display:flex; align-items:center; justify-content:space-between; font-size:12px; color:var(--muted);}
+.crew{font-size:11px; color:var(--muted2); margin-top:6px; line-height:1.5;}
+.crew b{color:var(--muted); font-weight:400;}
+/* 横ステップ（マスの下に工程名を横書き、長ければ2行折返し、タイムも表示） */
+.hsteps{display:flex; gap:4px; margin:10px 0 4px;}
+.hstep{flex:1; min-width:0; text-align:center;}
+.hbar{height:10px; border-radius:4px; background:var(--line2); margin-bottom:5px;}
+.hname{font-size:10px; line-height:1.25; color:var(--muted2); word-break:break-all;
+  display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; min-height:25px;}
+.htime{font-size:9px; line-height:1.3; color:var(--muted2); min-height:12px;}
+.hstep.done .hbar{background:var(--green);}
+.hstep.done .hname{color:var(--muted);}
+.hstep.cur .hbar{background:var(--accent);}
+.hstep.cur .hname{color:var(--accent); font-weight:600;}
+.hstep.cur .htime{color:var(--accent);}
+.hstep.curw .hbar{background:var(--red);}
+.hstep.curw .hname{color:var(--red); font-weight:600;}
+.hstep.curw .htime{color:var(--red);}
+/* 現在工程を大きく見せる */
+.nowline{display:flex; align-items:baseline; justify-content:space-between; gap:8px; margin:10px 0 7px;}
+.nowstage{font-size:20px; font-weight:600; color:var(--accent); line-height:1.2;}
+.nowlabel{font-size:12px; color:var(--muted); margin-right:4px; font-weight:400;}
+.nowline.waiting .nowstage{color:var(--red);}
+.stepcount{font-size:14px; color:var(--muted); white-space:nowrap;}
+.nextline{display:flex; align-items:center; justify-content:space-between; gap:8px; font-size:13px; color:var(--muted); margin-top:7px;}
+.nextline .rem{color:var(--muted2); white-space:nowrap;}
+
+/* buttons on card */
+.pill{
+  border:0.5px solid var(--line2); background:var(--card2); color:var(--accent);
+  font-size:14px; padding:9px 14px; border-radius:10px; display:inline-flex; align-items:center; gap:4px; white-space:nowrap;
+}
+.pill.green{color:var(--green); border-color:#2c5648;}
+.pill:active{transform:scale(.96);}
+/* 戻る/次へ を下に大きく横並び */
+.stepnav{display:flex; gap:8px; margin-top:11px;}
+.stepnav .pill{flex:1; justify-content:center; text-align:center; font-size:16px; font-weight:500; padding:14px 10px;}
+/* ごみ箱（削除）を見やすく */
+.delbtn{border:0.5px solid var(--line2); background:var(--card2); color:var(--muted); font-size:14px; padding:9px 16px; border-radius:9px;}
+.delbtn:active{transform:scale(.97);}
+.iconbtn{border:none; background:none; padding:5px; color:var(--muted2); font-size:20px; line-height:1;}
+.iconbtn.on{color:var(--red);}
+/* 部品待ちの旗を大きく */
+.flagbtn{border:none; background:none; padding:4px 6px; font-size:28px; line-height:1;}
+.flagbtn.on{filter:none;}
+.row-actions{display:flex; align-items:center; gap:10px;}
+.times{font-size:11px; color:var(--muted2); margin-top:5px;}
+.dv-chips{display:flex; flex-wrap:wrap; gap:9px;}
+.dv-chip{border:0.5px solid var(--line2); background:var(--card2); color:var(--text); font-size:16px; font-weight:500; padding:14px 20px; border-radius:11px;}
+.dv-chip:active{transform:scale(.97);}
+.dv-cal-head{display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; font-size:19px; font-weight:600;}
+.dv-nav{border:none; background:var(--card2); color:var(--text); font-size:24px; width:48px; height:48px; border-radius:10px;}
+.dv-nav:active{transform:scale(.95);}
+.dv-dow{display:grid; grid-template-columns:repeat(7,1fr); text-align:center; font-size:13px; color:var(--muted); margin-bottom:6px;}
+.dv-dow .sun{color:var(--red);}
+.dv-dow .sat{color:var(--accent);}
+.dv-grid{display:grid; grid-template-columns:repeat(7,1fr); gap:4px;}
+.dv-cell{border:none; background:var(--card2); color:var(--text); font-size:19px; padding:15px 0; border-radius:10px;}
+.dv-cell.empty{visibility:hidden; background:none;}
+.dv-cell.today{border:2px solid var(--accent);}
+.dv-cell.sel{background:var(--accent); color:#fff; font-weight:600;}
+.dv-cell:active{opacity:.7;}
+/* 種別（板金/整備）色分け */
+.kind{font-size:11px; border-radius:6px; padding:2px 7px; margin-right:6px; font-weight:500; white-space:nowrap;}
+.kind-bankin{background:var(--accent-bg); color:var(--accent);}
+.kind-seibi{background:var(--green-bg); color:var(--green);}
+.car.k-bankin{border-left:3px solid var(--accent);}
+.car.k-seibi{border-left:3px solid var(--green);}
+.kbtn{flex:1; border:0.5px solid var(--line2); background:var(--bg); color:var(--muted); font-size:16px; padding:12px; border-radius:10px;}
+.kbtn.sel{border-color:var(--accent); background:var(--accent-bg); color:var(--accent); font-weight:600;}
+.kbtn.sel.seibi{border-color:var(--green); background:var(--green-bg); color:var(--green);}
+.deliv{font-size:13px; color:var(--muted); margin-top:6px; display:inline-block; cursor:pointer;}
+.deliv.amber{color:var(--amber); font-weight:600;}
+.deliv.red{color:var(--red); font-weight:600;}
+.deliv-set{color:var(--accent); font-size:12px;}
+.assign{display:inline-flex; align-items:center; gap:3px; border:0.5px solid var(--line2); background:var(--card2); color:var(--muted); font-size:14px; padding:6px 12px; border-radius:20px; margin-left:8px; line-height:1.4; vertical-align:middle;}
+.assign.has{color:var(--accent); border-color:#2c4a72; background:var(--accent-bg);}
+.assign:active{transform:scale(.96);}
+
+/* card state: part waiting */
+.car.waiting{background:var(--red-bg); border-color:#5a2626;}
+.car.done-card{background:var(--green-bg); border-color:#2c5648;}
+
+/* chips (入庫 quick) */
+.emptybox{text-align:center; color:var(--muted2); font-size:13px; padding:26px 0;}
+
+/* summary card */
+.summary{
+  background:var(--card); border:0.5px solid var(--line); border-radius:var(--radius);
+  padding:13px 14px; display:flex; align-items:center; justify-content:space-between; margin-bottom:9px;
+}
+.summary .lab{font-size:12px; color:var(--muted); display:flex; align-items:center; gap:6px;}
+.summary .val{font-size:18px; font-weight:600;}
+.summary .val small{font-size:12px; color:var(--muted); font-weight:400;}
+
+.metrics{display:grid; grid-template-columns:1fr 1fr; gap:9px; margin-bottom:12px;}
+.metric{background:var(--card); border:0.5px solid var(--line); border-radius:var(--radius); padding:12px 13px;}
+.metric .m-lab{font-size:11px; color:var(--muted);}
+.metric .m-val{font-size:22px; font-weight:600; margin-top:3px;}
+.metric .m-val small{font-size:12px; color:var(--muted); font-weight:400;}
+
+/* 完成タブの期間フィルタ */
+.segbar{display:flex; gap:5px; background:var(--card); border:0.5px solid var(--line); border-radius:10px; padding:4px; margin-bottom:12px;}
+.seg-btn{flex:1; background:none; border:none; color:var(--muted); font-size:14px; padding:9px 0; border-radius:7px;}
+.seg-btn.active{background:var(--card2); color:var(--text); font-weight:600;}
+.seg-btn:active{transform:scale(.98);}
+
+/* bottom tabbar */
+.tabbar{
+  position:fixed; left:0; right:0; bottom:0; z-index:30;
+  background:var(--nav-bg); border-top:0.5px solid var(--line);
+  display:flex; padding:6px 0 max(6px, env(safe-area-inset-bottom));
+}
+.tab{
+  flex:1; background:none; border:none; color:var(--muted2);
+  display:flex; flex-direction:column; align-items:center; gap:2px; padding:6px 0; font-size:11px;
+}
+.tab .ic{font-size:20px; line-height:1;}
+.tab.active{color:var(--accent);}
+.tab .badge{
+  position:absolute; transform:translate(14px,-6px); background:var(--red); color:#fff;
+  font-size:10px; min-width:16px; height:16px; border-radius:8px; padding:0 4px;
+  display:flex; align-items:center; justify-content:center; font-weight:600;
+}
+.tab .badge.blue{background:var(--accent);}
+.tab .badge.green{background:var(--green); color:#0b2b20;}
+.tabwrap{flex:1; position:relative; display:flex;}
+
+/* modal */
+.overlay{
+  position:fixed; inset:0; z-index:50; background:rgba(0,0,0,.6);
+  display:flex; align-items:flex-end; justify-content:center;
+}
+.sheet{
+  width:100%; max-width:520px; background:var(--card); border-radius:16px 16px 0 0;
+  padding:18px 16px calc(18px + env(safe-area-inset-bottom)); border-top:0.5px solid var(--line2);
+  max-height:90vh; overflow-y:auto;
+}
+.sheet h2{font-size:21px; font-weight:600; margin:0 0 18px;}
+.field{margin-bottom:20px;}
+.field label{display:block; font-size:16px; font-weight:600; color:var(--text); margin-bottom:9px;}
+.field label .req{color:var(--accent); font-size:13px; font-weight:500; margin-left:6px;}
+.field input, .field select{
+  width:100%; background:var(--bg); border:0.5px solid var(--line2); color:var(--text);
+  font-size:17px; padding:14px 14px; border-radius:10px; font-family:inherit;
+}
+.field input::placeholder{color:var(--muted2);}
+.btn{
+  width:100%; border:none; border-radius:11px; padding:15px; font-size:17px; font-weight:600;
+  background:var(--accent); color:#fff;
+}
+.btn:active{transform:scale(.99);}
+.btn.ghost{background:var(--card2); color:var(--text); border:0.5px solid var(--line2); font-weight:500;}
+.sheet-actions{display:flex; gap:9px; margin-top:6px;}
+.sheet-actions .btn{flex:1;}
+.danger-text{color:var(--red);}
+
+/* stage picker in sheet */
+.stagegrid{display:grid; grid-template-columns:1fr 1fr 1fr; gap:7px; margin-bottom:12px;}
+.stagegrid button{
+  background:var(--bg); border:0.5px solid var(--line2); color:var(--muted);
+  border-radius:9px; padding:9px 4px; font-size:12px; text-align:center;
+}
+.stagegrid button.sel{background:var(--accent-bg); border-color:var(--accent); color:var(--accent);}
+
+/* toast */
+.toast{
+  position:fixed; left:50%; bottom:90px; transform:translateX(-50%);
+  background:var(--toast-bg); border:0.5px solid var(--line2); color:#f2f3f5;
+  font-size:13px; padding:10px 16px; border-radius:22px; z-index:60;
+  opacity:0; transition:opacity .25s, transform .25s; pointer-events:none; white-space:nowrap;
+}
+.toast.show{opacity:1; transform:translateX(-50%) translateY(-4px);}
+</style>
+</head>
+<body>
+
+<div class="appbar">
+  <div>
+    <h1>作業ボード</h1>
+    <div class="store" id="store-label">—</div>
+  </div>
+  <div style="display:flex; align-items:center; gap:14px;">
+    <div class="sync"><span class="dot"></span><span id="sync-label">この端末に保存</span></div>
+    <button class="iconbtn" id="theme-btn" style="font-size:19px; color:var(--muted);" title="明るさ切替" onclick="toggleTheme()">🌙</button>
+    <button class="iconbtn" style="font-size:21px; color:var(--muted);" title="設定" onclick="openSettings()">⚙</button>
+  </div>
+</div>
+
+<div class="searchbar">
+  <span class="si">🔍</span>
+  <input id="board-search" inputmode="numeric" placeholder="下4桁で検索（例 6610）" oninput="onSearch(this.value)">
+  <button id="search-clear" class="hidden" onclick="clearSearch()">✕</button>
+</div>
+<div id="search-hint" class="search-hint hidden"></div>
+
+<!-- 作業中 -->
+<div class="page" id="page-work">
+  <div class="sectlabel">
+    <span class="ic">🔧</span><span style="font-weight:600;color:var(--text)">作業中</span>
+    <span class="n" id="work-count">0台</span>
+  </div>
+  <div id="work-list"></div>
+  <div class="emptybox hidden" id="work-empty">作業中の車はありません。<br>「入庫」から作業開始で追加します。</div>
+</div>
+
+<!-- 入庫 -->
+<div class="page hidden" id="page-nyuko">
+  <div class="sectlabel">
+    <span class="ic">📥</span><span style="font-weight:600;color:var(--text)">入庫中</span>
+    <span class="n" id="nyuko-count">0台</span>
+    <button class="addbtn" onclick="openAddCar()">＋ 入庫を追加</button>
+  </div>
+  <div id="nyuko-list"></div>
+  <div class="emptybox hidden" id="nyuko-empty">入庫中の車はありません。<br><button class="bigadd" onclick="openAddCar()">＋ 入庫を追加</button></div>
+</div>
+
+<!-- 完成 -->
+<div class="page hidden" id="page-done">
+  <div class="metrics">
+    <div class="metric"><div class="m-lab">本日の完成</div><div class="m-val" id="done-today">0<small> 台</small></div></div>
+    <div class="metric"><div class="m-lab">今月の完成</div><div class="m-val" id="done-month">0<small> 台</small></div></div>
+  </div>
+  <div class="segbar" id="done-filter">
+    <button class="seg-btn active" data-f="today" onclick="setDoneFilter('today')">今日</button>
+    <button class="seg-btn" data-f="month" onclick="setDoneFilter('month')">今月</button>
+    <button class="seg-btn" data-f="all" onclick="setDoneFilter('all')">すべて</button>
+  </div>
+  <div class="sectlabel"><span class="ic">🏁</span><span style="font-weight:600;color:var(--text)">完成した車</span><span class="n" id="done-count">0台</span></div>
+  <div id="done-list"></div>
+  <div class="emptybox hidden" id="done-empty">まだ完成した車はありません。</div>
+</div>
+
+<!-- tabbar -->
+<div class="tabbar">
+  <div class="tabwrap">
+    <button class="tab" data-tab="nyuko" onclick="switchTab('nyuko')">
+      <span class="badge hidden" id="badge-nyuko">0</span>
+      <span class="ic">📥</span>入庫
+    </button>
+  </div>
+  <div class="tabwrap">
+    <button class="tab active" data-tab="work" onclick="switchTab('work')">
+      <span class="badge blue hidden" id="badge-work">0</span>
+      <span class="ic">🔧</span>作業中
+    </button>
+  </div>
+  <div class="tabwrap">
+    <button class="tab" data-tab="done" onclick="switchTab('done')">
+      <span class="badge green hidden" id="badge-done">0</span>
+      <span class="ic">🏁</span>完成
+    </button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ===================================================================
+   作業進捗ボード v1  (単体 / localStorage保存)
+   -------------------------------------------------------------------
+   ★統合の継ぎ目★
+   - データキーは工賃アプリ wageData と同じ「車種(cartype)＋番号(number 下4桁)」。
+     後で完成車とその日の工賃を number で自動紐付けできる。
+   - 端末ID(uuid)・グループコード(groupCode)は工賃アプリと共通概念。
+     将来 saveState()/loadState() を postToGAS('board', ...) に差し替えれば
+     同じスプレッドシートに「進捗/入庫/完成履歴」シートとして相乗りできる。
+   - いまは persist() が localStorage に書くだけ＝バックエンド不要で即使える。
+   =================================================================== */
+const APP_VERSION = '20260716a';
+const STORE_KEY   = 'board_state_v1';
+const DEFAULT_STAGES = ['パネル修正','パテ','サフ','調色','マスキング','塗装','乾燥','磨き','組み付け'];
+/* 工程は店舗ごとに設定で変更可。state.store.stages に保存、無ければ標準9工程 */
+function getStages(kind){
+  // 整備は工程ゼロ（＝シンプル表示）が既定。店がカスタムで工程を足せばゲージが出る。
+  if(kind==='整備'){
+    return (state.store && Array.isArray(state.store.seibiStages)) ? state.store.seibiStages : [];
+  }
+  return (state.store && Array.isArray(state.store.stages) && state.store.stages.length)
+    ? state.store.stages : DEFAULT_STAGES;
+}
+/* 丸数字 ①..⑳、それ以上は「21.」形式 */
+function mark(i){
+  const c='①②③④⑤⑥⑦⑧⑨⑩⑪⑫⑬⑭⑮⑯⑰⑱⑲⑳';
+  return i<20 ? c[i] : (i+1)+'.';
+}
+
+/* ---------- 時間計測（手間ゼロ：次へを押した時刻から自動算出） ---------- */
+const OPEN_HOUR = 8, CLOSE_HOUR = 19;   // 営業時間（この外＝夜間放置は数えない）
+/* 2時刻の間の「営業時間内」の分数だけを合計（夜間・翌朝までの放置を除外） */
+function businessMinutes(a, b){
+  if(!a || !b || b<=a) return 0;
+  let total=0;
+  let cur=new Date(a);
+  const end=new Date(b).getTime();
+  let guard=0;
+  while(cur.getTime()<end && guard++<400){
+    const open=new Date(cur);  open.setHours(OPEN_HOUR,0,0,0);
+    const close=new Date(cur); close.setHours(CLOSE_HOUR,0,0,0);
+    const s=Math.max(cur.getTime(), open.getTime());
+    const e=Math.min(end, close.getTime());
+    if(e>s) total += (e-s)/60000;
+    const next=new Date(cur); next.setDate(next.getDate()+1); next.setHours(0,0,0,0);
+    cur=next;
+  }
+  return total;
+}
+/* 今動いている工程に、現在時刻までの分を足し込む（stageStartは動かさない） */
+function accStageMinutes(c){
+  if(!c.stageStart) return;
+  c.stageDur = c.stageDur || [];
+  c.stageDur[c.stage] = (c.stageDur[c.stage]||0) + businessMinutes(c.stageStart, Date.now());
+  c.stageStart = Date.now();
+}
+/* 今の工程の経過（確定分＋計測中の分） */
+function curStageMinutes(c){
+  const fixed = (c.stageDur && c.stageDur[c.stage]) || 0;
+  const live  = c.stageStart ? businessMinutes(c.stageStart, Date.now()) : 0;
+  return fixed + live;
+}
+function totalMinutes(c){ return (c.stageDur||[]).reduce((s,v)=>s+(v||0),0) + (c.stageStart?businessMinutes(c.stageStart,Date.now()):0); }
+function fmtMin(m){
+  m=Math.round(m);
+  if(m<=0) return '0分';
+  if(m<60) return m+'分';
+  const h=Math.floor(m/60), r=m%60;
+  return r ? (h+'時間'+r+'分') : (h+'時間');
+}
+
+let state = { store:null, cars:[] };   // store:{name,group,uuid,myName}
+let currentTab = 'work';
+let doneFilter = 'today';   // 完成タブの期間フィルタ: today | month | all
+let searchQ = '';           // 下4桁検索
+let editingId = null;
+
+/* ---------- 検索（下4桁 / 車種） ---------- */
+function onSearch(v){
+  searchQ = (v||'').trim();
+  document.getElementById('search-clear').classList.toggle('hidden', searchQ==='');
+  render();
+}
+function clearSearch(){
+  searchQ='';
+  const inp=document.getElementById('board-search'); if(inp) inp.value='';
+  document.getElementById('search-clear').classList.add('hidden');
+  render();
+}
+function matchQ(c){
+  if(!searchQ) return true;
+  return (String(c.number||'').indexOf(searchQ)>=0) || (String(c.cartype||'').indexOf(searchQ)>=0);
+}
+
+/* ---------- テーマ（ダーク / ライト） ---------- */
+function applyTheme(){
+  const t=(state.store && state.store.theme==='light') ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', t);
+  const btn=document.getElementById('theme-btn');
+  if(btn) btn.textContent = (t==='light') ? '☀️' : '🌙';
+}
+function toggleTheme(){
+  if(!state.store){ openSetup(); return; }
+  state.store.theme = (state.store.theme==='light') ? 'dark' : 'light';
+  persist(); applyTheme();
+}
+
+/* ---------- persistence (ここをGAS呼び出しに差し替えれば統合) ---------- */
+function persist(){
+  try{ localStorage.setItem(STORE_KEY, JSON.stringify(state)); }catch(e){}
+  // 将来: postToGAS('saveBoard', {group:state.store.group, cars:state.cars})
+}
+function loadState(){
+  try{
+    const raw = localStorage.getItem(STORE_KEY);
+    if(raw) state = JSON.parse(raw);
+  }catch(e){ state = {store:null, cars:[]}; }
+  if(!state.cars) state.cars = [];
+}
+function uuid(){
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g,c=>{
+    const r=Math.random()*16|0, v=c==='x'?r:(r&0x3|0x8); return v.toString(16);
+  });
+}
+
+/* ---------- helpers ---------- */
+function todayStr(){ const d=new Date(); return d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate(); }
+function nowISO(){ return new Date().toISOString(); }
+function daysBetween(a,b){ // 日数(切り捨て)
+  const d = Math.floor((new Date(b) - new Date(a)) / 86400000);
+  return d<0?0:d;
+}
+function fmtDate(iso){ const d=new Date(iso); return (d.getMonth()+1)+'/'+d.getDate(); }
+function fmtTime(iso){ if(!iso) return ''; const d=new Date(iso); return d.getHours()+':'+String(d.getMinutes()).padStart(2,'0'); }
+function fmtDateTime(iso){ if(!iso) return ''; return fmtDate(iso)+' '+fmtTime(iso); }
+function timesLine(c){
+  const p=[];
+  if(c.nyukoAt) p.push('入庫 '+fmtDateTime(c.nyukoAt));
+  if(c.startAt) p.push('開始 '+fmtDateTime(c.startAt));
+  if(c.doneAt)  p.push('完成 '+fmtDateTime(c.doneAt));
+  return p.join('　/　');
+}
+function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function toast(msg){
+  const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show');
+  clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove('show'),2200);
+}
+
+/* ---------- tab ---------- */
+function switchTab(tab){
+  currentTab = tab;
+  ['nyuko','work','done'].forEach(t=>{
+    document.getElementById('page-'+t).classList.toggle('hidden', t!==tab);
+  });
+  document.querySelectorAll('.tab').forEach(b=>b.classList.toggle('active', b.dataset.tab===tab));
+  render();
+}
+
+/* ---------- setup gate ---------- */
+function ensureStore(){
+  if(state.store && state.store.name) return true;
+  openSetup();
+  return false;
+}
+function openSetup(){
+  const html = `
+    <h2>お店の設定</h2>
+    <div class="field">
+      <label>店舗名</label>
+      <input id="su-name" placeholder="カーコン○○店" value="${esc(state.store?state.store.name:'')}">
+    </div>
+    <div class="field">
+      <label>グループコード（工賃アプリと同じものを推奨・任意）</label>
+      <input id="su-group" placeholder="例）CARCON123" value="${esc(state.store?state.store.group:'')}">
+    </div>
+    <div class="field">
+      <label>あなたの名前（任意）</label>
+      <input id="su-myname" placeholder="山田" value="${esc(state.store?state.store.myName:'')}">
+    </div>
+    <button class="btn" onclick="saveSetup()">はじめる</button>`;
+  showSheet(html, false);
+}
+function saveSetup(){
+  const name = document.getElementById('su-name').value.trim();
+  if(!name){ toast('店舗名を入れてください'); return; }
+  const myName = document.getElementById('su-myname').value.trim();
+  const prev = state.store || {};
+  state.store = Object.assign({}, prev, {
+    name,
+    group: document.getElementById('su-group').value.trim(),
+    myName,
+    uuid: prev.uuid || uuid()
+  });
+  // 初回は自分をメンバーに入れておく（stages/membersは保持）
+  if(!Array.isArray(state.store.members) || !state.store.members.length){
+    state.store.members = myName ? [myName] : [];
+  }
+  persist(); closeSheet(); renderStoreLabel(); render();
+}
+function renderStoreLabel(){
+  document.getElementById('store-label').textContent =
+    state.store ? (state.store.name + (state.store.group ? (' ・ ' + state.store.group) : '')) : '—';
+}
+
+/* ---------- add / edit car ---------- */
+let newCarKind='板金';
+let newCarCategory='点検整備';
+function pickKind(k){
+  newCarKind=k;
+  document.querySelectorAll('#kind-pick .kbtn').forEach(function(b){
+    const on=b.dataset.k===k;
+    b.classList.toggle('sel', on);
+    b.classList.toggle('seibi', on && k==='整備');
+  });
+  const cat=document.getElementById('cat-field');
+  if(cat) cat.style.display = (k==='整備') ? '' : 'none';
+}
+function pickCat(cat){
+  newCarCategory=cat;
+  document.querySelectorAll('#cat-pick .kbtn').forEach(function(b){
+    b.classList.toggle('sel', b.dataset.c===cat);
+    b.classList.toggle('seibi', b.dataset.c===cat);
+  });
+}
+function openAddCar(){
+  editingId = null;
+  newCarKind='板金';
+  newCarCategory='点検整備';
+  const html = `
+    <h2>入庫を追加</h2>
+    <div class="field">
+      <label>種別</label>
+      <div id="kind-pick" style="display:flex; gap:8px;">
+        <button type="button" class="kbtn sel" data-k="板金" onclick="pickKind('板金')">🔧 板金</button>
+        <button type="button" class="kbtn" data-k="整備" onclick="pickKind('整備')">🛠 整備</button>
+      </div>
+    </div>
+    <div class="field" id="cat-field" style="display:none;">
+      <label>整備カテゴリー</label>
+      <div id="cat-pick" style="display:flex; gap:8px;">
+        <button type="button" class="kbtn sel seibi" data-c="点検整備" onclick="pickCat('点検整備')">点検整備</button>
+        <button type="button" class="kbtn" data-c="一般整備" onclick="pickCat('一般整備')">一般整備</button>
+      </div>
+    </div>
+    <div class="field">
+      <label>車種名 <span class="req">必須</span></label>
+      <input id="c-type" placeholder="例）ノア" autocomplete="off">
+    </div>
+    <div class="field">
+      <label>ナンバー（下4桁）</label>
+      <input id="c-num" placeholder="例）4821" inputmode="numeric" maxlength="4" autocomplete="off" oninput="this.value=this.value.replace(/[^0-9]/g,''); if(this.value.length>=4) this.blur();">
+    </div>
+    <div class="field">
+      <label>納車予定日（任意・後から入れられます）</label>
+      <div id="nc-deliv-disp" style="font-size:15px; margin-bottom:9px; color:var(--muted);">未設定（任意）</div>
+      <div class="dv-chips" style="margin-bottom:12px;">
+        <button type="button" class="dv-chip" onclick="ncQuick(0)">今日</button>
+        <button type="button" class="dv-chip" onclick="ncQuick(1)">明日</button>
+        <button type="button" class="dv-chip" onclick="ncQuick(2)">明後日</button>
+        <button type="button" class="dv-chip" onclick="ncQuick(3)">3日後</button>
+        <button type="button" class="dv-chip" onclick="ncQuick(7)">1週間後</button>
+      </div>
+      <div id="nc-cal"></div>
+    </div>
+    <div class="sheet-actions">
+      <button class="btn ghost" onclick="closeSheet()">キャンセル</button>
+      <button class="btn" onclick="saveCar()">入庫に追加</button>
+    </div>`;
+  showSheet(html);
+  ncInit();
+  setTimeout(()=>document.getElementById('c-type').focus(),50);
+}
+function ncToggleCal(){
+  const el=document.getElementById('nc-cal'); if(!el) return;
+  if(el.style.display==='none'){ el.style.display=''; renderNcCal(); }
+  else { el.style.display='none'; }
+}
+function saveCar(){
+  const cartype = document.getElementById('c-type').value.trim();
+  const number  = document.getElementById('c-num').value.trim();
+  const deliv   = newCarDeliv || '';
+  if(!cartype){ toast('車種名を入れてください'); return; }
+  state.cars.push({
+    id: uuid(),
+    cartype, number,
+    kind: newCarKind,      // 板金 / 整備
+    category: newCarKind==='整備' ? newCarCategory : '',   // 点検整備 / 一般整備
+    deliveryDate: deliv,   // 納車予定日 'YYYY-MM-DD'
+    status:'nyuko',   // nyuko → work → done
+    stage:0,
+    waitingParts:false,
+    partSince:null,
+    assignee:'',
+    stageBy:[],        // 工程ごとの担当者（次へ/完成で自動記録）
+    stageDur:[],       // 工程ごとの経過分（次へ/完成で自動記録）
+    stageStart:null,   // 今の工程の計測開始時刻(ms)
+    nyukoAt: nowISO(),
+    startAt:null,
+    doneAt:null
+  });
+  persist(); closeSheet(); toast('入庫に追加しました'); render();
+}
+function findCar(id){ return state.cars.find(c=>c.id===id); }
+
+/* 種別（板金/整備）の色分け */
+function isSeibi(c){ return c.kind==='整備'; }
+function kindClass(c){ return isSeibi(c) ? 'k-seibi' : 'k-bankin'; }
+function kindBadge(c){
+  if(isSeibi(c)){
+    const label = c.category ? c.category : '整備';
+    return `<span class="kind kind-seibi">🛠 ${esc(label)}</span>`;
+  }
+  return '<span class="kind kind-bankin">🔧 板金</span>';
+}
+
+/* ---------- 納車予定日 ---------- */
+function daysUntil(dateStr){
+  if(!dateStr) return null;
+  const t=new Date(); t.setHours(0,0,0,0);
+  const d=new Date(dateStr+'T00:00:00');
+  return Math.round((d - t)/86400000);
+}
+function deliveryLine(c){
+  if(!c.deliveryDate){
+    return `<div class="deliv" onclick="event.stopPropagation();openDelivery('${c.id}')"><span class="deliv-set">＋ 納車予定日</span></div>`;
+  }
+  const n=daysUntil(c.deliveryDate);
+  const dt=new Date(c.deliveryDate+'T00:00:00');
+  const label=(dt.getMonth()+1)+'/'+dt.getDate();
+  let cls='', extra;
+  if(n<0){ cls='red'; extra=(-n)+'日超過'; }
+  else if(n===0){ cls='red'; extra='本日納車'; }
+  else if(n<=2){ cls='amber'; extra='あと'+n+'日'; }
+  else { extra='あと'+n+'日'; }
+  return `<div class="deliv ${cls}" onclick="event.stopPropagation();openDelivery('${c.id}')">🚚 納車 ${label}・${extra}</div>`;
+}
+/* カレンダーHTMLの共通部品（カード用・入庫フォーム用で使い回す） */
+function buildCalendarHTML(y, m, selected, pickFn, moveFn){
+  const pad2=function(n){return String(n).padStart(2,'0');};
+  const startDow=new Date(y,m,1).getDay();
+  const daysIn=new Date(y,m+1,0).getDate();
+  const today=new Date(); today.setHours(0,0,0,0);
+  let cells='';
+  for(let i=0;i<startDow;i++) cells+=`<span class="dv-cell empty"></span>`;
+  for(let d=1;d<=daysIn;d++){
+    const ds=`${y}-${pad2(m+1)}-${pad2(d)}`;
+    let cls='dv-cell';
+    if(ds===selected) cls+=' sel';
+    if(new Date(y,m,d).getTime()===today.getTime()) cls+=' today';
+    cells+=`<button type="button" class="${cls}" onclick="${pickFn}('${ds}')">${d}</button>`;
+  }
+  return `
+    <div class="dv-cal-head">
+      <button type="button" class="dv-nav" onclick="${moveFn}(-1)">‹</button>
+      <span>${y}年 ${m+1}月</span>
+      <button type="button" class="dv-nav" onclick="${moveFn}(1)">›</button>
+    </div>
+    <div class="dv-dow"><span class="sun">日</span><span>月</span><span>火</span><span>水</span><span>木</span><span>金</span><span class="sat">土</span></div>
+    <div class="dv-grid">${cells}</div>`;
+}
+
+let dvCal = null;   // {id, y, m} 開いているカレンダーの年月
+function openDelivery(id){
+  const c=findCar(id); if(!c) return;
+  const base = c.deliveryDate ? new Date(c.deliveryDate+'T00:00:00') : new Date();
+  dvCal = { id:id, y:base.getFullYear(), m:base.getMonth() };
+  const chips=[['今日',0],['明日',1],['明後日',2],['3日後',3],['1週間後',7]]
+    .map(function(x){ return `<button class="dv-chip" onclick="setDeliveryIn('${id}',${x[1]})">${x[0]}</button>`; }).join('');
+  const html=`
+    <h2>納車予定日</h2>
+    <p style="color:var(--muted); font-size:13px; margin:0 0 14px;">${esc(c.cartype)} ・${esc(c.number)}</p>
+    <div class="dv-chips">${chips}</div>
+    <div id="dv-cal" style="margin-top:16px;"></div>
+    ${c.deliveryDate?`<button class="btn ghost" style="margin-top:14px;" onclick="setDelivery('${id}','')">納車予定日をクリア</button>`:''}`;
+  showSheet(html);
+  renderCalendar();
+}
+function setDeliveryIn(id,days){
+  const t=new Date(); t.setDate(t.getDate()+days);
+  const pad2=function(n){return String(n).padStart(2,'0');};
+  setDelivery(id, t.getFullYear()+'-'+pad2(t.getMonth()+1)+'-'+pad2(t.getDate()));   // 保存して閉じる
+}
+function dvMove(delta){
+  if(!dvCal) return;
+  dvCal.m += delta;
+  if(dvCal.m<0){ dvCal.m=11; dvCal.y--; }
+  else if(dvCal.m>11){ dvCal.m=0; dvCal.y++; }
+  renderCalendar();
+}
+function renderCalendar(){
+  const el=document.getElementById('dv-cal'); if(!el||!dvCal) return;
+  const c=findCar(dvCal.id); const sel = (c&&c.deliveryDate) || '';
+  el.innerHTML = buildCalendarHTML(dvCal.y, dvCal.m, sel, 'dvPick', 'dvMove');
+}
+function dvPick(ds){ if(dvCal) setDelivery(dvCal.id, ds); }
+
+/* ---------- 入庫フォーム用のインライン・カレンダー ---------- */
+let newCarDeliv='';
+let ncCal=null;
+function ncInit(){
+  newCarDeliv='';
+  const n=new Date(); ncCal={y:n.getFullYear(), m:n.getMonth()};
+  updateNcDisp(); renderNcCal();
+}
+function ncQuick(days){
+  const t=new Date(); t.setDate(t.getDate()+days);
+  const pad2=function(n){return String(n).padStart(2,'0');};
+  newCarDeliv = t.getFullYear()+'-'+pad2(t.getMonth()+1)+'-'+pad2(t.getDate());
+  ncCal={y:t.getFullYear(), m:t.getMonth()};
+  updateNcDisp(); renderNcCal();
+}
+function ncPick(ds){
+  newCarDeliv=ds;
+  const d=new Date(ds+'T00:00:00'); ncCal={y:d.getFullYear(), m:d.getMonth()};
+  updateNcDisp(); renderNcCal();
+}
+function ncMove(delta){
+  if(!ncCal){ const n=new Date(); ncCal={y:n.getFullYear(), m:n.getMonth()}; }
+  ncCal.m+=delta;
+  if(ncCal.m<0){ncCal.m=11;ncCal.y--;} else if(ncCal.m>11){ncCal.m=0;ncCal.y++;}
+  renderNcCal();
+}
+function renderNcCal(){
+  const el=document.getElementById('nc-cal'); if(!el) return;
+  if(!ncCal){ const n=new Date(); ncCal={y:n.getFullYear(), m:n.getMonth()}; }
+  el.innerHTML = buildCalendarHTML(ncCal.y, ncCal.m, newCarDeliv, 'ncPick', 'ncMove');
+}
+function updateNcDisp(){
+  const el=document.getElementById('nc-deliv-disp'); if(!el) return;
+  if(newCarDeliv){
+    const d=new Date(newCarDeliv+'T00:00:00');
+    el.textContent = '選択中: '+(d.getMonth()+1)+'/'+d.getDate();
+    el.style.color='var(--accent)';
+  }else{
+    el.textContent='未設定（任意）';
+    el.style.color='var(--muted)';
+  }
+}
+function setDelivery(id,val){
+  const c=findCar(id); if(!c) return;
+  c.deliveryDate = val||'';
+  persist(); closeSheet(); render();
+}
+
+/* 入庫 → 作業開始 */
+function startCar(id){
+  const c=findCar(id); if(!c) return;
+  c.status='work'; c.stage=0; c.startAt=nowISO();
+  c.stageDur = c.stageDur || [];
+  c.stageStart = Date.now();          // 最初の工程の計測開始
+  persist(); toast(c.cartype+' を作業中へ'); render();
+}
+/* 次へ（工程を進める）＝いま終えた工程に現在の担当を刻む */
+function nextStage(id){
+  const c=findCar(id); if(!c||c.waitingParts) return;
+  if(c.stage < getStages(c.kind).length-1){
+    accStageMinutes(c);                       // 終えた工程の時間を確定
+    c.stageBy = c.stageBy || [];
+    c.stageBy[c.stage] = c.assignee || '';   // 終えた工程を担当者で記録
+    c.stage++;
+    c.stageStart = Date.now();                // 次の工程の計測開始
+    persist(); render();
+  }
+}
+/* 戻る（工程を一つ戻す）＝戻った工程はやり直しなので担当をクリア */
+function prevStage(id){
+  const c=findCar(id); if(!c||c.waitingParts) return;
+  if(c.stage > 0){
+    accStageMinutes(c);                       // 今の工程分を確定してから
+    c.stage--;
+    if(c.stageBy) c.stageBy[c.stage] = '';
+    if(c.stageDur) c.stageDur[c.stage] = 0;   // 戻った工程はやり直し＝時間もリセット
+    c.stageStart = Date.now();
+    persist(); render();
+  }
+}
+/* 完成＝最終工程も担当者で記録 */
+function finishCar(id){
+  const c=findCar(id); if(!c) return;
+  accStageMinutes(c);                         // 最終工程の時間を確定
+  c.stageStart = null;                        // 計測停止
+  c.stageBy = c.stageBy || [];
+  c.stageBy[c.stage] = c.assignee || '';
+  c.status='done'; c.waitingParts=false; c.doneAt=nowISO();
+  persist(); toast(c.cartype+' を完成に記録'); render();
+}
+/* 工程担当を「①–③浅野 / ④⑤山田」形式にまとめる */
+function crewLine(c){
+  const by = c.stageBy || [];
+  const groups=[];
+  for(let i=0;i<by.length;i++){
+    const name = by[i];
+    if(!name) continue;
+    const last = groups[groups.length-1];
+    if(last && last.name===name && last.end===i-1){ last.end=i; }
+    else groups.push({name, start:i, end:i});
+  }
+  if(!groups.length) return '';
+  return groups.map(g=>{
+    const range = g.start===g.end ? mark(g.start) : (mark(g.start)+'–'+mark(g.end));
+    return range+esc(g.name);
+  }).join('　/　');
+}
+/* 部品待ちトグル */
+function toggleParts(id){
+  const c=findCar(id); if(!c) return;
+  c.waitingParts=!c.waitingParts;
+  if(c.waitingParts){
+    c.partSince = nowISO();
+    accStageMinutes(c);        // それまでの分を確定して
+    c.stageStart = null;       // 計測を止める（部品待ち中は数えない）
+  }else{
+    c.partSince = null;
+    c.stageStart = Date.now(); // 再開
+  }
+  persist(); render();
+}
+/* 削除（打ち間違い等） */
+function askDelete(id){
+  const c=findCar(id); if(!c) return;
+  const html = `
+    <h2>${esc(c.cartype)} ${esc(c.number)} を削除しますか？</h2>
+    <p style="color:var(--muted);font-size:13px;margin:0 0 16px;">この操作は元に戻せません。</p>
+    <div class="sheet-actions">
+      <button class="btn ghost" onclick="closeSheet()">やめる</button>
+      <button class="btn" style="background:var(--red)" onclick="doDelete('${c.id}')">削除する</button>
+    </div>`;
+  showSheet(html);
+}
+function doDelete(id){
+  const c=findCar(id);
+  if(c&&c.photos&&c.photos.length){ c.photos.forEach(p=>{ pdbDel(p.id).catch(()=>{}); }); }
+  state.cars = state.cars.filter(c=>c.id!==id);
+  persist(); closeSheet(); toast('削除しました'); render();
+}
+/* 完成 → 作業中へ戻す（取り消し） */
+/* 作業中 → 入庫に戻す（開始前に戻す・進捗と時間はリセット） */
+function backToNyuko(id){
+  const c=findCar(id); if(!c) return;
+  c.status='nyuko';
+  c.stage=0; c.stageStart=null; c.stageDur=[]; c.stageBy=[];
+  c.waitingParts=false; c.partSince=null; c.startAt=null;
+  persist(); toast(c.cartype+' を入庫に戻しました'); render();
+}
+function reopenCar(id){
+  const c=findCar(id); if(!c) return;
+  c.status='work'; c.doneAt=null;
+  c.stageStart = Date.now();   // 最終工程の計測を再開
+  persist(); toast('作業中に戻しました'); render();
+}
+
+/* ---------- 設定：工程の編集 ---------- */
+let editStages = [];
+let editStagesKind = '板金';   // 板金 / 整備 どちらの部門の工程を編集中か
+function openSettings(){
+  if(!state.store){ openSetup(); return; }
+  editStagesKind = '板金';
+  editStages = getStages('板金').slice();
+  showSheet(settingsHTML());
+}
+function switchStageKind(kind){
+  editStagesKind = kind;
+  editStages = getStages(kind).slice();
+  rebuildSettings();
+}
+function settingsHTML(){
+  const rows = editStages.map((s,i)=>`
+    <div style="display:flex; gap:6px; align-items:center; margin-bottom:7px;">
+      <span style="width:24px; text-align:center; color:var(--muted2); font-size:14px;">${mark(i)}</span>
+      <input value="${esc(s)}" oninput="editStages[${i}]=this.value" style="flex:1; padding:9px 10px; font-size:15px;">
+      <button class="iconbtn" title="上へ" onclick="moveStage(${i},-1)" ${i===0?'style="opacity:.25"':''}>↑</button>
+      <button class="iconbtn" title="下へ" onclick="moveStage(${i},1)" ${i===editStages.length-1?'style="opacity:.25"':''}>↓</button>
+      <button class="iconbtn danger-text" title="削除" onclick="removeStage(${i})">✕</button>
+    </div>`).join('');
+  const emptyNote = editStages.length===0
+    ? '<p style="color:var(--muted); font-size:13px; margin:2px 0 10px;">工程なし＝シンプル表示（作業中／部品待ち／完成だけ）。工程を足すとゲージが出ます。</p>' : '';
+  const resetLabel = editStagesKind==='整備' ? '工程なし（シンプル）に戻す' : '標準9工程に戻す';
+  return `
+    <h2>工程の設定</h2>
+    <div style="display:flex; gap:8px; margin-bottom:12px;">
+      <button class="kbtn ${editStagesKind==='板金'?'sel':''}" onclick="switchStageKind('板金')">🔧 板金塗装</button>
+      <button class="kbtn ${editStagesKind==='整備'?'sel seibi':''}" onclick="switchStageKind('整備')">🛠 整備</button>
+    </div>
+    <p style="color:var(--muted); font-size:12px; margin:0 0 12px;">${editStagesKind==='整備'?'整備部門':'板金塗装部門'}の工程（上から順が作業の流れ・${editStages.length}工程）</p>
+    ${emptyNote}
+    <div style="max-height:36vh; overflow:auto; margin-bottom:10px; padding-right:2px;">${rows}</div>
+    <button class="btn ghost" onclick="addStage()" style="margin-bottom:10px;">＋ 工程を追加</button>
+    <div class="sheet-actions">
+      <button class="btn ghost" onclick="resetStages()">${resetLabel}</button>
+      <button class="btn" onclick="saveStages()">保存</button>
+    </div>
+    <button class="btn ghost" style="margin-top:9px;" onclick="openMembers()">担当者（メンバー）の編集</button>
+    <button class="btn ghost" style="margin-top:9px;" onclick="exportAllZip()">📷 全部の工程写真をまとめてZIPで書き出す</button>
+    <button class="btn ghost" style="margin-top:9px;" onclick="openSetup()">店舗名・グループを変更</button>`;
+}
+
+/* ---------- 担当者（メンバー） ---------- */
+function getMembers(){ return (state.store && Array.isArray(state.store.members)) ? state.store.members : []; }
+function assignChip(c){
+  const has = c.assignee && c.assignee.length;
+  return `<button class="assign ${has?'has':''}" title="担当者" onclick="event.stopPropagation();openAssign('${c.id}')">${has?('👤 '+esc(c.assignee)):'＋ 担当'}</button>`;
+}
+function openAssign(id){
+  const c=findCar(id); if(!c) return;
+  const mem=getMembers();
+  let list = mem.map((m,i)=>`<button class="btn ghost" style="text-align:left; margin-bottom:7px; ${c.assignee===m?'border-color:var(--accent); color:var(--accent);':''}" onclick="assignPick('${id}',${i})">👤 ${esc(m)}</button>`).join('');
+  if(!mem.length) list = `<p style="color:var(--muted); font-size:13px; margin:0 0 12px;">作業者がまだ登録されていません。下の「メンバーを編集」から追加してください。</p>`;
+  const html = `
+    <h2>担当者を選ぶ</h2>
+    <p style="color:var(--muted); font-size:12px; margin:0 0 12px;">${esc(c.cartype)} ・${esc(c.number)}</p>
+    <div style="max-height:40vh; overflow:auto; margin-bottom:8px;">${list}</div>
+    <button class="btn ghost" style="margin-bottom:10px;" onclick="assignPick('${id}',-1)">未割り当てにする</button>
+    <button class="btn ghost" onclick="openMembers()">メンバーを編集</button>`;
+  showSheet(html);
+}
+function assignPick(id,i){
+  const c=findCar(id); if(!c) return;
+  c.assignee = (i<0) ? '' : (getMembers()[i]||'');
+  persist(); closeSheet(); render();
+}
+let editMembers=[];
+function openMembers(){
+  if(!state.store) return;
+  editMembers = getMembers().slice();
+  showSheet(membersHTML());
+}
+function membersHTML(){
+  const rows = editMembers.map((m,i)=>`
+    <div style="display:flex; gap:6px; align-items:center; margin-bottom:7px;">
+      <span style="width:24px; text-align:center;">👤</span>
+      <input value="${esc(m)}" oninput="editMembers[${i}]=this.value" placeholder="名前" style="flex:1; padding:9px 10px; font-size:15px;">
+      <button class="iconbtn danger-text" title="削除" onclick="removeMember(${i})">✕</button>
+    </div>`).join('');
+  return `
+    <h2>担当者（メンバー）</h2>
+    <p style="color:var(--muted); font-size:12px; margin:0 0 12px;">お店の作業者を登録します。各車のカードで担当を選べます。</p>
+    <div style="max-height:44vh; overflow:auto; margin-bottom:10px;">${rows || '<p style="color:var(--muted); font-size:13px;">まだ登録がありません。</p>'}</div>
+    <button class="btn ghost" onclick="addMember()" style="margin-bottom:10px;">＋ メンバーを追加</button>
+    <div class="sheet-actions">
+      <button class="btn ghost" onclick="openSettings()">戻る</button>
+      <button class="btn" onclick="saveMembers()">保存</button>
+    </div>`;
+}
+function rebuildMembers(){ const s=document.querySelector('#overlay .sheet'); if(s) s.innerHTML=membersHTML(); }
+function addMember(){ editMembers.push(''); rebuildMembers(); }
+function removeMember(i){ editMembers.splice(i,1); rebuildMembers(); }
+function saveMembers(){
+  state.store.members = editMembers.map(m=>String(m).trim()).filter(Boolean);
+  persist(); closeSheet(); render(); toast('メンバーを保存しました');
+}
+function rebuildSettings(){
+  const s=document.querySelector('#overlay .sheet');
+  if(s) s.innerHTML=settingsHTML();
+}
+function moveStage(i,dir){
+  const j=i+dir; if(j<0||j>=editStages.length) return;
+  const t=editStages[i]; editStages[i]=editStages[j]; editStages[j]=t;
+  rebuildSettings();
+}
+function removeStage(i){
+  editStages.splice(i,1); rebuildSettings();   // 0工程まで許可（整備のシンプルに）
+}
+function addStage(){ editStages.push('新しい工程'); rebuildSettings(); }
+function resetStages(){
+  editStages = (editStagesKind==='整備') ? [] : DEFAULT_STAGES.slice();
+  rebuildSettings();
+}
+function saveStages(){
+  const cleaned = editStages.map(s=>String(s).trim()).filter(s=>s.length>0);
+  if(editStagesKind==='整備'){
+    state.store.seibiStages = cleaned;
+  }else{
+    state.store.stages = cleaned;
+  }
+  // その部門の車のstageを、新しい工程数に丸める
+  state.cars.forEach(c=>{
+    const len = getStages(c.kind).length;
+    c.stage = (len>0) ? Math.min(c.stage, len-1) : 0;
+  });
+  persist(); closeSheet(); render(); toast(editStagesKind+'の工程を保存しました');
+}
+
+/* ========== 工程写真（IndexedDB保存＋依存なしZIP書き出し） ========== */
+/* 写真の実体(blob)はIndexedDBに保存。car.photos には軽いメタ[{id,stageIndex,stageLabel,ts}]だけ持たせる
+   ＝localStorageは肥大化しない。入庫/各工程/完成の文脈で自動的にタグ付けし、車ごとフォルダのZIPで書き出す。 */
+const PHOTO_DB='board_photos_v1', PHOTO_STORE='photos';
+let _pdb=null;
+function photoDB(){
+  return new Promise((res,rej)=>{
+    if(_pdb) return res(_pdb);
+    let rq;
+    try{ rq=indexedDB.open(PHOTO_DB,1); }catch(e){ return rej(e); }
+    rq.onupgradeneeded=e=>{ const db=e.target.result; if(!db.objectStoreNames.contains(PHOTO_STORE)){ const st=db.createObjectStore(PHOTO_STORE,{keyPath:'id'}); st.createIndex('byCar','carId',{unique:false}); } };
+    rq.onsuccess=e=>{ _pdb=e.target.result; res(_pdb); };
+    rq.onerror=e=>rej(e.target.error);
+  });
+}
+function pdbPut(rec){ return photoDB().then(db=>new Promise((res,rej)=>{ const tx=db.transaction(PHOTO_STORE,'readwrite'); tx.objectStore(PHOTO_STORE).put(rec); tx.oncomplete=()=>res(); tx.onerror=e=>rej(e.target.error); })); }
+function pdbGet(id){ return photoDB().then(db=>new Promise((res,rej)=>{ const tx=db.transaction(PHOTO_STORE,'readonly'); const r=tx.objectStore(PHOTO_STORE).get(id); r.onsuccess=()=>res(r.result); r.onerror=e=>rej(e.target.error); })); }
+function pdbDel(id){ return photoDB().then(db=>new Promise((res,rej)=>{ const tx=db.transaction(PHOTO_STORE,'readwrite'); tx.objectStore(PHOTO_STORE).delete(id); tx.oncomplete=()=>res(); tx.onerror=e=>rej(e.target.error); })); }
+
+/* 撮影・保存 */
+let _photoTargetCar=null;
+function ensurePhotoInput(){
+  let inp=document.getElementById('photo-input');
+  if(!inp){
+    inp=document.createElement('input');
+    inp.type='file'; inp.accept='image/*'; inp.setAttribute('capture','environment'); inp.multiple=true;
+    inp.id='photo-input'; inp.style.display='none';
+    inp.addEventListener('change',onPhotoPicked);
+    document.body.appendChild(inp);
+  }
+  return inp;
+}
+function stageContext(c){
+  if(c.status==='nyuko') return {idx:-1,label:'入庫'};
+  if(c.status==='done')  return {idx:99,label:'完成'};
+  const S=getStages(c.kind);
+  if(!S.length) return {idx:0,label:'作業中'};
+  const i=Math.min(c.stage||0,S.length-1);
+  return {idx:i,label:S[i]||('工程'+(i+1))};
+}
+function addPhoto(carId){
+  const c=findCar(carId); if(!c) return;
+  _photoTargetCar=carId;
+  const inp=ensurePhotoInput(); inp.value=''; inp.click();
+}
+function onPhotoPicked(e){
+  const files=Array.from(e.target.files||[]); if(!files.length) return;
+  const c=findCar(_photoTargetCar); if(!c) return;
+  const ctx=stageContext(c);
+  toast(files.length+'枚を保存中…');
+  let done=0;
+  files.forEach(f=>{
+    shrinkImage(f).catch(()=>f).then(blob=>{
+      const id='p_'+Date.now().toString(36)+Math.random().toString(36).slice(2,7);
+      const rec={id, carId:c.id, stageIndex:ctx.idx, stageLabel:ctx.label, ts:Date.now(), blob};
+      return pdbPut(rec).then(()=>{
+        c.photos=c.photos||[];
+        c.photos.push({id, stageIndex:ctx.idx, stageLabel:ctx.label, ts:rec.ts});
+        persist();
+      });
+    }).catch(()=>{}).then(()=>{
+      if(++done===files.length){ toast('写真を保存しました'); render(); if(document.getElementById('gallery-body')) refreshGallery(c.id); }
+    });
+  });
+}
+/* 端末容量とZIPサイズを抑えるため長辺1600pxのJPEGに縮小（失敗時は元画像を保存） */
+function shrinkImage(file, max=1600, q=0.82){
+  return new Promise((res,rej)=>{
+    if(!/^image\//.test(file.type||'')) return rej(new Error('not image'));
+    const url=URL.createObjectURL(file);
+    const img=new Image();
+    img.onload=()=>{
+      let w=img.naturalWidth, h=img.naturalHeight;
+      if(!w||!h){ URL.revokeObjectURL(url); return rej(new Error('no size')); }
+      if(Math.max(w,h)>max){ const r=max/Math.max(w,h); w=Math.round(w*r); h=Math.round(h*r); }
+      const cv=document.createElement('canvas'); cv.width=w; cv.height=h;
+      cv.getContext('2d').drawImage(img,0,0,w,h);
+      URL.revokeObjectURL(url);
+      cv.toBlob(b=> b?res(b):rej(new Error('toBlob')), 'image/jpeg', q);
+    };
+    img.onerror=()=>{ URL.revokeObjectURL(url); rej(new Error('load')); };
+    img.src=url;
+  });
+}
+
+/* 各カードの写真ボタン（0枚なら即カメラ・1枚以上ならギャラリー） */
+function photoBtn(c){
+  const n=(c.photos&&c.photos.length)||0;
+  const act = n ? `openGallery('${c.id}')` : `addPhoto('${c.id}')`;
+  const hi = n ? 'color:var(--accent);border-color:var(--accent);' : '';
+  return `<button class="iconbtn" title="工程写真" style="${hi}" onclick="event.stopPropagation();${act}">📷${n?'<span style=\"font-size:12px;margin-left:1px;\">'+n+'</span>':''}</button>`;
+}
+
+/* 写真ギャラリー（工程別に表示・拡大・削除・追加・ZIP） */
+let _gUrls=[];
+function openGallery(carId){
+  const c=findCar(carId); if(!c) return;
+  showSheet(`<div id="gallery-body">${galleryHTML(c)}</div>`);
+  loadGalleryThumbs(carId);
+}
+function galleryHTML(c){
+  const photos=(c.photos||[]).slice().sort((a,b)=>(a.stageIndex-b.stageIndex)||(a.ts-b.ts));
+  let inner;
+  if(!photos.length){
+    inner='<p style="color:var(--muted);font-size:14px;margin:6px 0 14px;">まだ写真がありません。下の「撮る／追加」から入庫や各工程の写真を残せます。</p>';
+  }else{
+    const groups=[], map={};
+    photos.forEach(p=>{ const k=p.stageIndex+'|'+p.stageLabel; if(!map[k]){ map[k]={label:p.stageLabel,items:[]}; groups.push(map[k]); } map[k].items.push(p); });
+    inner=groups.map(g=>`
+      <div style="margin-bottom:14px;">
+        <div style="font-size:13px;color:var(--muted);margin-bottom:6px;">${esc(g.label)}・${g.items.length}枚</div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;">
+          ${g.items.map(p=>`
+            <div style="position:relative;padding-top:100%;">
+              <img data-pid="${p.id}" onclick="viewPhoto('${p.id}')" alt="工程写真" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:8px;background:#222;cursor:pointer;">
+              <button onclick="event.stopPropagation();delPhoto('${c.id}','${p.id}')" title="削除" style="position:absolute;top:3px;right:3px;background:rgba(0,0,0,.6);color:#fff;border:none;border-radius:50%;width:22px;height:22px;font-size:13px;line-height:1;cursor:pointer;">✕</button>
+            </div>`).join('')}
+        </div>
+      </div>`).join('');
+  }
+  return `
+    <h2>${esc(c.cartype)} ${esc(c.number)} の写真</h2>
+    <p style="color:var(--muted);font-size:12px;margin:0 0 12px;">工程ごとに残した写真・${photos.length}枚</p>
+    <div style="max-height:52vh;overflow:auto;margin-bottom:12px;">${inner}</div>
+    <button class="btn ghost" style="margin-bottom:9px;" onclick="addPhoto('${c.id}')">📷 撮る / 追加</button>
+    <button class="btn" ${photos.length?'':'disabled style=\"opacity:.4\"'} onclick="exportCarZip('${c.id}')">⬇ この車の写真をZIPで保存</button>`;
+}
+function loadGalleryThumbs(){
+  _gUrls.forEach(u=>{ try{URL.revokeObjectURL(u);}catch(e){} }); _gUrls=[];
+  document.querySelectorAll('#gallery-body img[data-pid]').forEach(im=>{
+    pdbGet(im.getAttribute('data-pid')).then(rec=>{ if(rec&&rec.blob){ const u=URL.createObjectURL(rec.blob); _gUrls.push(u); im.src=u; } }).catch(()=>{});
+  });
+}
+function refreshGallery(carId){ const c=findCar(carId); if(!c) return; const b=document.getElementById('gallery-body'); if(b){ b.innerHTML=galleryHTML(c); loadGalleryThumbs(); } }
+function viewPhoto(pid){
+  pdbGet(pid).then(rec=>{
+    if(!rec||!rec.blob) return;
+    const u=URL.createObjectURL(rec.blob); _gUrls.push(u);
+    showSheet(`<div style="text-align:center;">
+      <img src="${u}" alt="工程写真" style="max-width:100%;max-height:64vh;border-radius:8px;">
+      <div style="margin-top:10px;color:var(--muted);font-size:13px;">${esc(rec.stageLabel)}・${fmtDateTime(new Date(rec.ts).toISOString())}</div>
+      <button class="btn ghost" style="margin-top:12px;" onclick="closeSheet()">閉じる</button></div>`);
+  }).catch(()=>{});
+}
+function delPhoto(carId,pid){
+  if(!confirm('この写真を削除しますか？')) return;
+  const c=findCar(carId); if(!c) return;
+  c.photos=(c.photos||[]).filter(p=>p.id!==pid);
+  persist();
+  pdbDel(pid).then(()=>{ refreshGallery(carId); render(); toast('写真を削除しました'); }).catch(()=>{ refreshGallery(carId); render(); });
+}
+
+/* ---- 依存なしZIP（無圧縮=store・UTF-8ファイル名） ---- */
+const _crcTable=(function(){ const t=new Uint32Array(256); for(let n=0;n<256;n++){ let c=n; for(let k=0;k<8;k++) c=(c&1)?(0xEDB88320^(c>>>1)):(c>>>1); t[n]=c>>>0; } return t; })();
+function crc32(buf){ let c=0xFFFFFFFF; for(let i=0;i<buf.length;i++) c=_crcTable[(c^buf[i])&0xFF]^(c>>>8); return (c^0xFFFFFFFF)>>>0; }
+function _u16(n){ return [n&0xFF,(n>>>8)&0xFF]; }
+function _u32(n){ return [n&0xFF,(n>>>8)&0xFF,(n>>>16)&0xFF,(n>>>24)&0xFF]; }
+function buildZip(files){
+  const enc=new TextEncoder();
+  const parts=[]; const central=[]; let offset=0;
+  const d=new Date();
+  const dosTime=((d.getHours()<<11)|(d.getMinutes()<<5)|(d.getSeconds()>>1))&0xFFFF;
+  const dosDate=(((d.getFullYear()-1980)<<9)|((d.getMonth()+1)<<5)|d.getDate())&0xFFFF;
+  files.forEach(f=>{
+    const name=enc.encode(f.name), data=f.data, crc=crc32(data), flag=0x0800, here=offset;
+    const lh=new Uint8Array([].concat(_u32(0x04034b50),_u16(20),_u16(flag),_u16(0),_u16(dosTime),_u16(dosDate),_u32(crc),_u32(data.length),_u32(data.length),_u16(name.length),_u16(0)));
+    parts.push(lh,name,data);
+    offset += lh.length+name.length+data.length;
+    const ch=new Uint8Array([].concat(_u32(0x02014b50),_u16(20),_u16(20),_u16(flag),_u16(0),_u16(dosTime),_u16(dosDate),_u32(crc),_u32(data.length),_u32(data.length),_u16(name.length),_u16(0),_u16(0),_u16(0),_u16(0),_u32(0),_u32(here)));
+    central.push(ch,name);
+  });
+  let cdSize=0; central.forEach(c=>cdSize+=c.length);
+  const eocd=new Uint8Array([].concat(_u32(0x06054b50),_u16(0),_u16(0),_u16(files.length),_u16(files.length),_u32(cdSize),_u32(offset),_u16(0)));
+  return new Blob(parts.concat(central,[eocd]),{type:'application/zip'});
+}
+function sanitizeName(s){ return String(s==null?'':s).replace(/[\/\\:*?"<>|]/g,'_').replace(/\s+/g,'').slice(0,40) || '無題'; }
+function carFolder(c){ return sanitizeName(c.cartype)+'_'+sanitizeName(c.number||'ナンバーなし'); }
+function photoFileName(p,seq){
+  const d=new Date(p.ts);
+  const stamp=(d.getMonth()+1)+('0'+d.getDate()).slice(-2)+'-'+('0'+d.getHours()).slice(-2)+('0'+d.getMinutes()).slice(-2);
+  const head = p.stageIndex<0 ? '00_入庫' : (p.stageIndex>=99 ? '99_完成' : (('0'+(p.stageIndex+1)).slice(-2)+'_'+sanitizeName(p.stageLabel)));
+  return head+'_'+stamp+'_'+seq+'.jpg';
+}
+async function collectCarFiles(c){
+  const photos=(c.photos||[]).slice().sort((a,b)=>(a.stageIndex-b.stageIndex)||(a.ts-b.ts));
+  const files=[]; let seq=1;
+  for(const p of photos){
+    const rec=await pdbGet(p.id).catch(()=>null);
+    if(rec&&rec.blob){ const buf=new Uint8Array(await rec.blob.arrayBuffer()); files.push({name:carFolder(c)+'/'+photoFileName(p,seq),data:buf}); }
+    seq++;
+  }
+  return files;
+}
+function downloadBlob(blob,name){
+  const u=URL.createObjectURL(blob);
+  const a=document.createElement('a'); a.href=u; a.download=name; document.body.appendChild(a); a.click();
+  setTimeout(()=>{ try{a.remove(); URL.revokeObjectURL(u);}catch(e){} },1500);
+}
+async function exportCarZip(carId){
+  const c=findCar(carId); if(!c) return;
+  if(!(c.photos&&c.photos.length)){ toast('写真がありません'); return; }
+  toast('ZIPを作成中…');
+  const files=await collectCarFiles(c);
+  if(!files.length){ toast('写真を読み込めませんでした'); return; }
+  downloadBlob(buildZip(files), carFolder(c)+'_工程写真.zip');
+  toast('ZIPを保存しました');
+}
+async function exportAllZip(){
+  const cars=state.cars.filter(c=>c.photos&&c.photos.length);
+  if(!cars.length){ toast('写真がありません'); return; }
+  toast('全車のZIPを作成中…');
+  let all=[];
+  for(const c of cars){ all=all.concat(await collectCarFiles(c)); }
+  if(!all.length){ toast('写真を読み込めませんでした'); return; }
+  const d=new Date(); const stamp=d.getFullYear()+('0'+(d.getMonth()+1)).slice(-2)+('0'+d.getDate()).slice(-2);
+  downloadBlob(buildZip(all), '作業写真_'+stamp+'.zip');
+  toast('ZIPを保存しました');
+}
+
+/* ---------- render ---------- */
+function render(){
+  renderStoreLabel();
+  const nyuko = state.cars.filter(c=>c.status==='nyuko');
+  const work  = state.cars.filter(c=>c.status==='work');
+  const done  = state.cars.filter(c=>c.status==='done');
+
+  // 下タブの台数バッジ（入庫／作業中／完成）
+  const setBadge=(id,n)=>{ const b=document.getElementById(id); if(!b) return; b.textContent=n; b.classList.toggle('hidden', n===0); };
+  setBadge('badge-nyuko', nyuko.length);
+  setBadge('badge-work', work.length);
+  setBadge('badge-done', done.filter(c=>isSameDay(c.doneAt)).length);   // 本日の完成
+
+  // 検索ヒント（どのタブに何台マッチしているか）
+  const sh=document.getElementById('search-hint');
+  if(searchQ){
+    const cnt={work:0,nyuko:0,done:0};
+    state.cars.forEach(c=>{ if(matchQ(c)) cnt[c.status]=(cnt[c.status]||0)+1; });
+    sh.innerHTML = `「${esc(searchQ)}」`
+      + `<span class="shchip ${currentTab==='nyuko'?'on':''}" onclick="switchTab('nyuko')">入庫 ${cnt.nyuko}</span>`
+      + `<span class="shchip ${currentTab==='work'?'on':''}" onclick="switchTab('work')">作業中 ${cnt.work}</span>`
+      + `<span class="shchip ${currentTab==='done'?'on':''}" onclick="switchTab('done')">完成 ${cnt.done}</span>`;
+    sh.classList.remove('hidden');
+  }else{
+    sh.classList.add('hidden');
+  }
+
+  if(currentTab==='work') renderWork(work);
+  if(currentTab==='nyuko') renderNyuko(nyuko);
+  if(currentTab==='done') renderDone(done);
+}
+
+function renderWork(work){
+  work = work.filter(matchQ);
+  document.getElementById('work-count').textContent = work.length+'台'
+    + (work.some(c=>c.waitingParts)? '（部品待ち'+work.filter(c=>c.waitingParts).length+'）':'');
+  const list=document.getElementById('work-list');
+  document.getElementById('work-empty').classList.toggle('hidden', work.length>0);
+  // 並び順: ①自分が担当している車 → ②納車が近い順（未設定は最後）
+  const me = (state.store && state.store.myName) || '';
+  work.sort((a,b)=>{
+    const aMine = (me && a.assignee===me) ? 0 : 1;
+    const bMine = (me && b.assignee===me) ? 0 : 1;
+    if(aMine!==bMine) return aMine-bMine;
+    const ad = a.deliveryDate ? daysUntil(a.deliveryDate) : Infinity;
+    const bd = b.deliveryDate ? daysUntil(b.deliveryDate) : Infinity;
+    return ad-bd;
+  });
+  list.innerHTML = work.map(c=>{
+    const S = getStages(c.kind);
+    let body, action, cardCls='car';
+    if(S.length===0){
+      /* 整備など工程ゼロ＝シンプル表示（作業中／部品待ち／完成だけ） */
+      c.stage = 0;
+      if(c.waitingParts){
+        cardCls='car waiting';
+        const d = c.partSince? daysBetween(c.partSince, nowISO()) : 0;
+        body = `
+        <div class="nowline waiting" style="margin:8px 0 4px;">
+          <span class="nowstage"><span class="nowlabel">状態</span>● 部品待ち</span>
+        </div>
+        <div class="sub danger" style="margin-top:2px;">⏸ 停止中・${d}日（部品が来たら🚩を押して再開）</div>`;
+        action = '';
+      }else{
+        body = `
+        <div class="nowline" style="margin:8px 0 4px;">
+          <span class="nowstage"><span class="nowlabel">状態</span>● 作業中</span>
+        </div>`;
+        action = `<div class="stepnav"><button class="pill green" onclick="finishCar('${c.id}')">✓ 完成</button></div>`;
+      }
+    }else{
+      if(c.stage > S.length-1) c.stage = S.length-1;   // 工程数が減った場合の保険
+      const steps = S.map((name,i)=>{
+        let cls='hstep todo', t='';
+        if(i<c.stage){
+          cls='hstep done';
+          const m=(c.stageDur&&c.stageDur[i])||0; if(m>0) t=Math.round(m)+'分';
+        }else if(i===c.stage){
+          if(c.waitingParts){ cls='hstep curw'; t='停止'; }
+          else { cls='hstep cur'; const m=curStageMinutes(c); if(m>0) t=Math.round(m)+'分'; }
+        }
+        return `<div class="${cls}"><div class="hbar"></div><div class="hname">${esc(name)}</div><div class="htime">${t}</div></div>`;
+      }).join('');
+      const isLast = c.stage===S.length-1;
+      const curName = `${mark(c.stage)} ${esc(S[c.stage])}`;
+      if(c.waitingParts){
+        cardCls='car waiting';
+        const d = c.partSince? daysBetween(c.partSince, nowISO()) : 0;
+        body = `
+        <div class="nowline waiting" style="margin:8px 0 6px;">
+          <span class="nowstage"><span class="nowlabel">部品待ち</span>${curName}</span>
+          <span class="stepcount">${c.stage+1} / ${S.length}</span>
+        </div>
+        <div class="hsteps">${steps}</div>
+        <div class="sub danger" style="margin-top:4px;">⏸ 停止中・${d}日（部品が来たら🚩を押して再開）</div>`;
+        action = '';
+      }else{
+        body = `
+        <div class="nowline">
+          <span class="nowstage"><span class="nowlabel">いま</span>${curName}</span>
+          <span class="stepcount">${c.stage+1} / ${S.length}工程</span>
+        </div>
+        <div class="hsteps">${steps}</div>`;
+        const back = c.stage>0 ? `<button class="pill" onclick="prevStage('${c.id}')">← 戻る</button>` : '';
+        const fwd = isLast
+          ? `<button class="pill green" onclick="finishCar('${c.id}')">✓ 完成</button>`
+          : `<button class="pill" onclick="nextStage('${c.id}')">次へ →</button>`;
+        action = `<div class="stepnav">${back}${fwd}</div>`;
+      }
+    }
+    return `
+    <div class="${cardCls} ${kindClass(c)}">
+      <div class="top">
+        <div>${kindBadge(c)}<span class="name">${esc(c.cartype)}</span><span class="num">・${esc(c.number)}</span>${assignChip(c)}</div>
+        <div class="row-actions">
+          ${photoBtn(c)}
+          <button class="flagbtn ${c.waitingParts?'on':''}" title="部品待ち" onclick="toggleParts('${c.id}')">${c.waitingParts?'🚩':'⚑'}</button>
+        </div>
+      </div>
+      ${deliveryLine(c)}
+      <div class="times">${timesLine(c)}</div>
+      ${body}
+      ${action}
+      ${(function(){
+        var cur=curStageMinutes(c), tot=totalMinutes(c);
+        if(tot<=0) return '';
+        var now = c.waitingParts ? '' : `この工程 ${fmtMin(cur)}　/　`;
+        return `<div class="crew"><b>⏱</b> ${now}累計 ${fmtMin(tot)}</div>`;
+      })()}
+      ${(function(){var cl=crewLine(c); return cl?`<div class="crew"><b>済</b> ${cl}</div>`:'';})()}
+      <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:9px;">
+        <button class="delbtn" onclick="backToNyuko('${c.id}')">↩ 入庫に戻す</button>
+        <button class="delbtn" onclick="askDelete('${c.id}')">🗑 削除</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function renderNyuko(nyuko){
+  nyuko = nyuko.filter(matchQ);
+  document.getElementById('nyuko-count').textContent = nyuko.length+'台';
+  const list=document.getElementById('nyuko-list');
+  document.getElementById('nyuko-empty').classList.toggle('hidden', nyuko.length>0);
+  // 待ちが長い順
+  nyuko.sort((a,b)=> new Date(a.nyukoAt)-new Date(b.nyukoAt));
+  list.innerHTML = nyuko.map(c=>{
+    const d = daysBetween(c.nyukoAt, nowISO());
+    const long = d>=7;
+    const cardCls = long? 'car waiting':'car';
+    const subCls = long? 'sub danger':'sub';
+    return `
+    <div class="${cardCls} ${kindClass(c)}">
+      <div class="top">
+        <div>
+          <div>${kindBadge(c)}<span class="name">${esc(c.cartype)}</span><span class="num">・${esc(c.number)}</span>${assignChip(c)}</div>
+          <div class="${subCls}">⏱ ${fmtDateTime(c.nyukoAt)} 入庫・${d}日待ち</div>
+          ${deliveryLine(c)}
+        </div>
+        <div class="row-actions">
+          ${photoBtn(c)}
+          <button class="iconbtn" title="削除" onclick="askDelete('${c.id}')">🗑</button>
+          <button class="pill" onclick="startCar('${c.id}')">作業開始 →</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function isSameDay(iso){ if(!iso) return false; const d=new Date(iso), n=new Date(); return d.getFullYear()===n.getFullYear()&&d.getMonth()===n.getMonth()&&d.getDate()===n.getDate(); }
+function isSameMonth(iso){ if(!iso) return false; const d=new Date(iso), n=new Date(); return d.getFullYear()===n.getFullYear()&&d.getMonth()===n.getMonth(); }
+function setDoneFilter(f){
+  doneFilter=f;
+  document.querySelectorAll('#done-filter .seg-btn').forEach(b=>b.classList.toggle('active', b.dataset.f===f));
+  render();
+}
+function renderDone(done){
+  // 集計は常に全データから（本日/今月は日付で自動リセット）
+  const todayN = done.filter(c=>isSameDay(c.doneAt)).length;
+  const monthN = done.filter(c=>isSameMonth(c.doneAt)).length;
+  document.getElementById('done-today').innerHTML = todayN+'<small> 台</small>';
+  document.getElementById('done-month').innerHTML = monthN+'<small> 台</small>';
+  // 表示だけ期間で絞る（データは消さない）
+  let shown = (doneFilter==='today') ? done.filter(c=>isSameDay(c.doneAt))
+            : (doneFilter==='month') ? done.filter(c=>isSameMonth(c.doneAt))
+            : done.slice();
+  shown = shown.filter(matchQ);
+  shown.sort((a,b)=> new Date(b.doneAt)-new Date(a.doneAt));
+  document.getElementById('done-count').textContent = shown.length+'台';
+  const empty=document.getElementById('done-empty');
+  empty.classList.toggle('hidden', shown.length>0);
+  empty.textContent = (doneFilter==='today') ? '今日の完成はまだありません。'
+                    : (doneFilter==='month') ? '今月の完成はまだありません。'
+                    : 'まだ完成した車はありません。';
+  const list=document.getElementById('done-list');
+  list.innerHTML = shown.map(c=>{
+    const lead = (c.nyukoAt&&c.doneAt)? daysBetween(c.nyukoAt,c.doneAt) : null;
+    const leadTxt = lead==null? '' : `<span class="n" style="color:var(--muted2)">入庫→完成 ${lead}日</span>`;
+    return `
+    <div class="car done-card ${kindClass(c)}">
+      <div class="top">
+        <div>
+          <div>${kindBadge(c)}<span class="name">${esc(c.cartype)}</span><span class="num">・${esc(c.number)}</span>${assignChip(c)}</div>
+          <div class="sub" style="color:var(--green)">🏁 ${c.doneAt?fmtDateTime(c.doneAt):''} 完成　${leadTxt}</div>
+          <div class="times">${timesLine(c)}</div>
+          ${(function(){var tot=totalMinutes(c); return tot>0?`<div class="crew"><b>作業時間</b> 累計 ${fmtMin(tot)}</div>`:'';})()}
+          ${(function(){var cl=crewLine(c); return cl?`<div class="crew"><b>工程担当</b> ${cl}</div>`:'';})()}
+        </div>
+        <div class="row-actions">
+          ${photoBtn(c)}
+          <button class="iconbtn" title="作業中に戻す" onclick="reopenCar('${c.id}')">↩</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+/* ---------- sheet / modal ---------- */
+function showSheet(innerHTML, dismissable=true){
+  closeSheet();
+  const ov=document.createElement('div');
+  ov.className='overlay'; ov.id='overlay';
+  ov.innerHTML=`<div class="sheet" onclick="event.stopPropagation()">${innerHTML}</div>`;
+  if(dismissable) ov.addEventListener('click', closeSheet);
+  document.body.appendChild(ov);
+}
+function closeSheet(){ const o=document.getElementById('overlay'); if(o) o.remove(); }
+
+/* ---------- boot ---------- */
+loadState();
+applyTheme();
+renderStoreLabel();
+if(!ensureStore()){ /* setup shown */ }
+switchTab('work');
+</script>
+</body>
+</html>
