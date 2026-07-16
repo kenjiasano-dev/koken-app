@@ -363,7 +363,7 @@ button{font-family:inherit; cursor:pointer;}
      同じスプレッドシートに「進捗/入庫/完成履歴」シートとして相乗りできる。
    - いまは persist() が localStorage に書くだけ＝バックエンド不要で即使える。
    =================================================================== */
-const APP_VERSION = '20260716c';
+const APP_VERSION = '20260716d';
 const STORE_KEY   = 'board_state_v1';
 const DEFAULT_STAGES = ['パネル修正','パテ','サフ','調色','マスキング','塗装','乾燥','磨き','組み付け'];
 /* 工程は店舗ごとに設定で変更可。state.store.stages に保存、無ければ標準9工程 */
@@ -1233,7 +1233,12 @@ function buildZip(files){
   return new Blob(parts.concat(central,[eocd]),{type:'application/zip'});
 }
 function sanitizeName(s){ return String(s==null?'':s).replace(/[\/\\:*?"<>|]/g,'_').replace(/\s+/g,'').slice(0,40) || '無題'; }
-function carFolder(c){ return sanitizeName(c.cartype)+'_'+sanitizeName(c.number||'ナンバーなし'); }
+function carFolder(c){
+  var num=sanitizeName(c.number||'ナンバーなし');
+  var dt='';
+  if(c.nyukoAt){ var d=new Date(c.nyukoAt); if(!isNaN(d.getTime())) dt='_'+d.getFullYear()+('0'+(d.getMonth()+1)).slice(-2)+('0'+d.getDate()).slice(-2); }
+  return sanitizeName(c.cartype)+'_'+num+dt;   // 例: プリウス_2345_20260716（車種_下4桁_入庫日）
+}
 function photoFileName(p,seq){
   const d=new Date(p.ts);
   const stamp=(d.getMonth()+1)+('0'+d.getDate()).slice(-2)+'-'+('0'+d.getHours()).slice(-2)+('0'+d.getMinutes()).slice(-2);
