@@ -364,7 +364,7 @@ button{font-family:inherit; cursor:pointer;}
      同じスプレッドシートに「進捗/入庫/完成履歴」シートとして相乗りできる。
    - いまは persist() が localStorage に書くだけ＝バックエンド不要で即使える。
    =================================================================== */
-const APP_VERSION = '20260717c';
+const APP_VERSION = '20260717d';
 const STORE_KEY   = 'board_state_v1';
 const DEFAULT_STAGES = ['パネル修正','パテ','サフ','調色','マスキング','塗装','乾燥','磨き','組み付け'];
 /* 工程は店舗ごとに設定で変更可。state.store.stages に保存、無ければ標準9工程 */
@@ -1165,7 +1165,9 @@ async function gdriveFolder(name, parentId, auth){
 }
 async function gdriveDoUpload(carId, token){
   const c=findCar(carId); if(!c) return;
-  const photos=c.photos||[]; if(!photos.length) return;
+  const all=c.photos||[]; if(!all.length) return;
+  const photos=all.filter(p=>!p.gdriveId);          // 送信済みは二重送信しない
+  if(!photos.length){ toast('新しい写真はありません（すべて保存済み）'); return; }
   const folderName=carFolder(c);
   const auth={'Authorization':'Bearer '+token};
   toast(photos.length+'枚をGoogleドライブにアップロード中…');
@@ -1184,9 +1186,10 @@ async function gdriveDoUpload(carId, token){
       form.append('file',rec.blob);
       try{
         let ur=await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id',{method:'POST',headers:auth,body:form});
-        if(ur.ok){ ok++; } else { fail++; }
+        if(ur.ok){ const uj=await ur.json(); p.gdriveId=(uj&&uj.id)||'1'; persist(); ok++; } else { fail++; }
       }catch(e){ fail++; }
     }
+    if(document.getElementById('gallery-body')) refreshGallery(carId);
     toast(ok+'枚を「'+GDRIVE_ROOT_FOLDER+'／'+folderName+'」に保存しました'+(fail?'（'+fail+'枚失敗）':''));
   }catch(e){
     toast('Googleドライブ接続でエラーが発生しました');
@@ -1229,6 +1232,11 @@ function openGallery(carId){
 }
 function galleryHTML(c){
   const photos=(c.photos||[]).slice().sort((a,b)=>(a.stageIndex-b.stageIndex)||(a.ts-b.ts));
+  const pend=photos.filter(p=>!p.gdriveId).length;   // まだドライブに送っていない枚数
+  const gbtn = !photos.length
+    ? '<button class="btn" disabled style="opacity:.4">☁️ Googleドライブに送る</button>'
+    : (pend ? '<button class="btn" onclick="uploadPhotosToGDrive(\''+c.id+'\')">☁️ Googleドライブに送る（未送信 '+pend+'枚）</button>'
+            : '<button class="btn" disabled style="opacity:.5">✅ ドライブに保存済み</button>');
   let inner;
   if(!photos.length){
     inner='<p style="color:var(--muted);font-size:14px;margin:6px 0 14px;">まだ写真がありません。下の「撮る／追加」から入庫や各工程の写真を残せます。</p>';
@@ -1252,7 +1260,7 @@ function galleryHTML(c){
     <p style="color:var(--muted);font-size:12px;margin:0 0 12px;">工程ごとに残した写真・${photos.length}枚</p>
     <div style="max-height:52vh;overflow:auto;margin-bottom:12px;">${inner}</div>
     <button class="btn ghost" style="margin-bottom:9px;" onclick="addPhoto('${c.id}')">📷 撮る / 追加</button>
-    <button class="btn" ${photos.length?'':'disabled style=\"opacity:.4\"'} onclick="uploadPhotosToGDrive('${c.id}')">☁️ Googleドライブにアップロード</button>
+    ${gbtn}
     <div style="height:9px;"></div>
     <button class="btn ghost" ${photos.length?'':'disabled style=\"opacity:.4\"'} onclick="exportCarZip('${c.id}')">⬇ この車の写真をZIPで保存</button>`;
 }
