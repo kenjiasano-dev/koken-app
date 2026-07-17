@@ -373,7 +373,7 @@ button{font-family:inherit; cursor:pointer;}
      同じスプレッドシートに「進捗/入庫/完成履歴」シートとして相乗りできる。
    - いまは persist() が localStorage に書くだけ＝バックエンド不要で即使える。
    =================================================================== */
-const APP_VERSION = '20260717e';
+const APP_VERSION = '20260717f';
 const STORE_KEY   = 'board_state_v1';
 const DEFAULT_STAGES = ['パネル修正','パテ','サフ','調色','マスキング','塗装','乾燥','磨き','組み付け'];
 /* 工程は店舗ごとに設定で変更可。state.store.stages に保存、無ければ標準9工程 */
@@ -820,7 +820,8 @@ function nextStage(id){
   if(c.stage < getStages(c.kind).length-1){
     accStageMinutes(c);                       // 終えた工程の時間を確定
     c.stageBy = c.stageBy || [];
-    c.stageBy[c.stage] = c.assignee || '';   // 終えた工程を担当者で記録
+    // すでに担当を選んである工程（2〜3名など）は尊重し、上書きしない。未選択のときだけ今の担当を記録
+    if(!byNames(c.stageBy[c.stage]).length) c.stageBy[c.stage] = c.assignee ? [c.assignee] : [];
     c.stage++;
     c.stageStart = Date.now();                // 次の工程の計測開始
     persist(); render();
@@ -832,7 +833,7 @@ function prevStage(id){
   if(c.stage > 0){
     accStageMinutes(c);                       // 今の工程分を確定してから
     c.stage--;
-    if(c.stageBy) c.stageBy[c.stage] = '';
+    if(c.stageBy) c.stageBy[c.stage] = [];
     if(c.stageDur) c.stageDur[c.stage] = 0;   // 戻った工程はやり直し＝時間もリセット
     c.stageStart = Date.now();
     persist(); render();
@@ -844,20 +845,23 @@ function finishCar(id){
   accStageMinutes(c);                         // 最終工程の時間を確定
   c.stageStart = null;                        // 計測停止
   c.stageBy = c.stageBy || [];
-  c.stageBy[c.stage] = c.assignee || '';
+  if(!byNames(c.stageBy[c.stage]).length) c.stageBy[c.stage] = c.assignee ? [c.assignee] : [];
   c.status='done'; c.waitingParts=false; c.doneAt=nowISO();
   persist(); toast(c.cartype+' を完成に記録'); render();
 }
-/* 工程担当を「①–③浅野 / ④⑤山田」形式にまとめる */
+/* 工程の担当は「1名＝文字列」または「複数名＝配列」。どちらで保存されていても配列として読む（古いデータ互換） */
+function byNames(v){ return !v ? [] : (Array.isArray(v) ? v.filter(Boolean) : [v]); }
+/* 工程担当を「①–③浅野 / ④⑤山田・佐藤」形式にまとめる */
 function crewLine(c){
   const by = c.stageBy || [];
   const groups=[];
   for(let i=0;i<by.length;i++){
-    const name = by[i];
-    if(!name) continue;
+    const names = byNames(by[i]);
+    if(!names.length) continue;
+    const key = names.join('・');
     const last = groups[groups.length-1];
-    if(last && last.name===name && last.end===i-1){ last.end=i; }
-    else groups.push({name, start:i, end:i});
+    if(last && last.name===key && last.end===i-1){ last.end=i; }
+    else groups.push({name:key, start:i, end:i});
   }
   if(!groups.length) return '';
   return groups.map(g=>{
@@ -984,27 +988,55 @@ function assignPick(id,i){
 }
 /* 工程ごとの担当を選ぶ（ゲージの各工程タップ）。過去工程の訂正も可。
    今の工程を変えたら「今の担当」も更新し、以降の工程に自動で引き継ぐ。 */
+let _crewSel=null;   // 担当選択の作業中の状態 {carId, i, names:[]}
 function openStageAssign(carId, i){
   const c=findCar(carId); if(!c) return;
   const S=getStages(c.kind); if(!S.length) return;
-  const mem=getMembers();
-  const cur=(c.stageBy&&c.stageBy[i]) || (i===c.stage ? (c.assignee||'') : '');
-  let list = mem.map((m,idx)=>`<button class="btn ghost" style="text-align:left;margin-bottom:7px;${cur===m?'border-color:var(--accent);color:var(--accent);':''}" onclick="stageAssignPick('${carId}',${i},${idx})">👤 ${esc(m)}</button>`).join('');
+  let cur=byNames(c.stageBy && c.stageBy[i]);
+  if(!cur.length && i===c.stage && c.assignee) cur=[c.assignee];   // 今の工程は今の担当を初期選択に
+  _crewSel={carId:carId, i:i, names:cur.slice()};
+  renderStageAssign();
+}
+function renderStageAssign(){
+  const s=_crewSel; if(!s) return;
+  const c=findCar(s.carId); if(!c) return;
+  const S=getStages(c.kind), mem=getMembers();
+  let list = mem.map((m,idx)=>{
+    const on = s.names.indexOf(m)>=0;
+    const hi = on ? 'border-color:var(--accent);color:var(--accent);background:var(--accent-bg);' : '';
+    return `<button class="btn ghost" style="text-align:left;margin-bottom:7px;${hi}" onclick="stageCrewToggle(${idx})">${on?'✅':'⬜'}　${esc(m)}</button>`;
+  }).join('');
   if(!mem.length) list=`<p style="color:var(--muted);font-size:13px;margin:0 0 12px;">作業者が未登録です。⚙設定→担当者（メンバー）で追加してください。</p>`;
+  const sel = s.names.length
+    ? `<span style="color:var(--accent);font-weight:600;">${esc(s.names.join('・'))}（${s.names.length}名）</span>`
+    : `<span style="color:var(--muted2);">未選択</span>`;
   showSheet(`
-    <h2>${mark(i)} ${esc(S[i])}｜担当</h2>
-    <p style="color:var(--muted);font-size:12px;margin:0 0 12px;">この工程をやった人を選びます（${esc(c.cartype)} ・${esc(c.number)}）</p>
-    <div style="max-height:40vh;overflow:auto;margin-bottom:8px;">${list}</div>
-    <button class="btn ghost" onclick="stageAssignPick('${carId}',${i},-1)">未割り当てにする</button>`);
+    <h2>${mark(s.i)} ${esc(S[s.i])}｜担当</h2>
+    <p style="color:var(--muted);font-size:12px;margin:0 0 6px;">この工程をやった人を選びます・<b>複数えらべます</b>（${esc(c.cartype)} ・${esc(c.number)}）</p>
+    <p style="font-size:14px;margin:0 0 12px;">選択中：${sel}</p>
+    <div style="max-height:36vh;overflow:auto;margin-bottom:10px;">${list}</div>
+    <button class="btn" onclick="stageCrewSave()">決定</button>
+    <div style="height:9px;"></div>
+    <button class="btn ghost" onclick="stageCrewClear()">未割り当てにする</button>`);
 }
-function stageAssignPick(carId,i,idx){
-  const c=findCar(carId); if(!c) return;
+function stageCrewToggle(idx){
+  const s=_crewSel; if(!s) return;
+  const m=getMembers()[idx]; if(!m) return;
+  const k=s.names.indexOf(m);
+  if(k>=0) s.names.splice(k,1); else s.names.push(m);
+  renderStageAssign();               // 押すたびに選択状態を描き直す（シートは開いたまま）
+}
+function stageCrewSave(){
+  const s=_crewSel; if(!s) return;
+  const c=findCar(s.carId); if(!c){ _crewSel=null; return; }
   c.stageBy=c.stageBy||[];
-  const name=(idx<0)?'':(getMembers()[idx]||'');
-  c.stageBy[i]=name;
-  if(i===c.stage && name){ c.assignee=name; }   // 今の工程を変えたら「今の担当」も更新→以降に引き継ぐ
-  persist(); closeSheet(); render(); toast('工程の担当を記録しました');
+  c.stageBy[s.i]=s.names.slice();
+  if(s.i===c.stage && s.names.length){ c.assignee=s.names[0]; }   // 先頭を主担当に＝並び替えと以降の工程への引き継ぎ用
+  persist(); closeSheet(); render();
+  toast(s.names.length ? ('担当を記録しました（'+s.names.length+'名）') : '担当を未割り当てにしました');
+  _crewSel=null;
 }
+function stageCrewClear(){ const s=_crewSel; if(!s) return; s.names=[]; stageCrewSave(); }
 let editMembers=[];
 function openMembers(){
   if(!state.store) return;
@@ -1454,9 +1486,10 @@ function renderWork(work){
           else { cls='hstep cur'; const m=curStageMinutes(c); if(m>0) t=Math.round(m)+'分'; }
         }
         // 工程ごとの担当名。済んだ工程は記録値、今の工程はまだ未記録なら今の担当を薄く表示
-        const recorded=(c.stageBy&&c.stageBy[i])||'';
-        let who=recorded, whoStyle='color:var(--accent);';
-        if(!who && i===c.stage && !c.waitingParts){ who=c.assignee||''; whoStyle='color:var(--muted2);'; }
+        let arr=byNames(c.stageBy&&c.stageBy[i]), whoStyle='color:var(--accent);';
+        if(!arr.length && i===c.stage && !c.waitingParts){ arr=c.assignee?[c.assignee]:[]; whoStyle='color:var(--muted2);'; }
+        // 幅が狭いので複数名は「浅野+1」の形（タップすれば全員見える）
+        const who = arr.length ? (arr.length>1 ? arr[0]+'+'+(arr.length-1) : arr[0]) : '';
         const whoHtml = who
           ? `<div class="hwho" style="font-size:11px;line-height:1.15;margin-top:1px;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;${whoStyle}">${esc(who)}</div>`
           : (i<=c.stage ? `<div class="hwho" style="font-size:11px;line-height:1.15;margin-top:1px;text-align:center;color:var(--muted2);opacity:.45;">＋</div>` : '');
