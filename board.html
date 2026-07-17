@@ -364,7 +364,7 @@ button{font-family:inherit; cursor:pointer;}
      同じスプレッドシートに「進捗/入庫/完成履歴」シートとして相乗りできる。
    - いまは persist() が localStorage に書くだけ＝バックエンド不要で即使える。
    =================================================================== */
-const APP_VERSION = '20260717a';
+const APP_VERSION = '20260717b';
 const STORE_KEY   = 'board_state_v1';
 const DEFAULT_STAGES = ['パネル修正','パテ','サフ','調色','マスキング','塗装','乾燥','磨き','組み付け'];
 /* 工程は店舗ごとに設定で変更可。state.store.stages に保存、無ければ標準9工程 */
@@ -1243,7 +1243,9 @@ function galleryHTML(c){
     <p style="color:var(--muted);font-size:12px;margin:0 0 12px;">工程ごとに残した写真・${photos.length}枚</p>
     <div style="max-height:52vh;overflow:auto;margin-bottom:12px;">${inner}</div>
     <button class="btn ghost" style="margin-bottom:9px;" onclick="addPhoto('${c.id}')">📷 撮る / 追加</button>
-    <button class="btn" ${photos.length?'':'disabled style=\"opacity:.4\"'} onclick="exportCarZip('${c.id}')">⬇ この車の写真をZIPで保存</button>`;
+    <button class="btn" ${photos.length?'':'disabled style=\"opacity:.4\"'} onclick="uploadPhotosToGDrive('${c.id}')">☁️ Googleドライブにアップロード</button>
+    <div style="height:9px;"></div>
+    <button class="btn ghost" ${photos.length?'':'disabled style=\"opacity:.4\"'} onclick="exportCarZip('${c.id}')">⬇ この車の写真をZIPで保存</button>`;
 }
 function loadGalleryThumbs(){
   _gUrls.forEach(u=>{ try{URL.revokeObjectURL(u);}catch(e){} }); _gUrls=[];
