@@ -228,11 +228,20 @@ button{font-family:inherit; cursor:pointer;}
   display:flex; align-items:flex-end; justify-content:center;
 }
 .sheet{
+  position:relative;
   width:100%; max-width:520px; background:var(--card); border-radius:16px 16px 0 0;
   padding:18px 16px calc(18px + env(safe-area-inset-bottom)); border-top:0.5px solid var(--line2);
   max-height:90vh; overflow-y:auto;
 }
-.sheet h2{font-size:21px; font-weight:600; margin:0 0 18px;}
+/* どのシートにも必ず出る閉じるボタン（showSheetが自動で入れる） */
+.sheet-x{
+  position:absolute; top:12px; right:12px; z-index:3;
+  width:38px; height:38px; border-radius:50%;
+  background:var(--card2); color:var(--text); border:0.5px solid var(--line2);
+  font-size:18px; line-height:1; cursor:pointer; padding:0;
+}
+.sheet-x:active{transform:scale(.94);}
+.sheet h2{font-size:21px; font-weight:600; margin:0 0 18px; padding-right:44px;}
 .field{margin-bottom:20px;}
 .field label{display:block; font-size:16px; font-weight:600; color:var(--text); margin-bottom:9px;}
 .field label .req{color:var(--accent); font-size:13px; font-weight:500; margin-left:6px;}
@@ -364,7 +373,7 @@ button{font-family:inherit; cursor:pointer;}
      同じスプレッドシートに「進捗/入庫/完成履歴」シートとして相乗りできる。
    - いまは persist() が localStorage に書くだけ＝バックエンド不要で即使える。
    =================================================================== */
-const APP_VERSION = '20260717d';
+const APP_VERSION = '20260717e';
 const STORE_KEY   = 'board_state_v1';
 const DEFAULT_STAGES = ['パネル修正','パテ','サフ','調色','マスキング','塗装','乾燥','磨き','組み付け'];
 /* 工程は店舗ごとに設定で変更可。state.store.stages に保存、無ければ標準9工程 */
@@ -1262,7 +1271,9 @@ function galleryHTML(c){
     <button class="btn ghost" style="margin-bottom:9px;" onclick="addPhoto('${c.id}')">📷 撮る / 追加</button>
     ${gbtn}
     <div style="height:9px;"></div>
-    <button class="btn ghost" ${photos.length?'':'disabled style=\"opacity:.4\"'} onclick="exportCarZip('${c.id}')">⬇ この車の写真をZIPで保存</button>`;
+    <button class="btn ghost" ${photos.length?'':'disabled style=\"opacity:.4\"'} onclick="exportCarZip('${c.id}')">⬇ この車の写真をZIPで保存</button>
+    <div style="height:9px;"></div>
+    <button class="btn ghost" onclick="closeSheet()">閉じる</button>`;
 }
 function loadGalleryThumbs(){
   _gUrls.forEach(u=>{ try{URL.revokeObjectURL(u);}catch(e){} }); _gUrls=[];
@@ -1589,7 +1600,8 @@ function showSheet(innerHTML, dismissable=true){
   closeSheet();
   const ov=document.createElement('div');
   ov.className='overlay'; ov.id='overlay';
-  ov.innerHTML=`<div class="sheet" onclick="event.stopPropagation()">${innerHTML}</div>`;
+  const xbtn = dismissable ? '<button class="sheet-x" title="閉じる" aria-label="閉じる" onclick="closeSheet()">✕</button>' : '';
+  ov.innerHTML=`<div class="sheet" onclick="event.stopPropagation()">${xbtn}${innerHTML}</div>`;
   if(dismissable) ov.addEventListener('click', closeSheet);
   document.body.appendChild(ov);
 }
