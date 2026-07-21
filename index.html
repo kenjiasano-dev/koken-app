@@ -1457,7 +1457,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = '20260721k';
+const APP_VERSION = '20260721l';
 // LINEログイン(LIFF) — LINEコンソールで作成したLIFFアプリのIDを入れる
 const LIFF_ID = '2010638896-vJtjkUOr';
 // 公式アカウント「カーコン工賃通知」友だち追加URL（ここに飛ばすとLINEアプリの友だち追加画面が直接開く）
@@ -2376,43 +2376,92 @@ function renderMyBadge() {
 }
 
 // ============================================================
-// 店舗の1年推移（月別達成率テーブル）2026-07-21
+// 店舗の1年推移（メンバー別スタック棒グラフ）2026-07-21
 // ============================================================
 async function renderStoreYearTrend() {
   var el = document.getElementById('store-trend-content');
   if (!el) return;
   var code = userData.activeGroupCode || userData.groupCode;
   if (!code) { el.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text-sub);">グループコードを設定してください</div>'; return; }
-  var goal = adminGoals.storeWageGoal || 0;
+  var personalGoal = (userData.goal || 0) * 10000;
   try {
     var res = await fetchFromGAS('getStoreTrend', { groupCode: code });
     if (!res || !res.months) { el.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text-sub);">データなし</div>'; return; }
     var months = res.months;
     var sortedMonths = Object.keys(months).sort().reverse().slice(0, 12).sort();
     if (!sortedMonths.length) { el.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text-sub);">データなし</div>'; return; }
-    var rows = sortedMonths.map(function(m) {
+
+    // メンバー一覧と色を作成
+    var allMembers = {};
+    sortedMonths.forEach(function(m){ Object.assign(allMembers, months[m].members || {}); });
+    var memberList = Object.keys(allMembers).sort();
+    var colors = ['#4A9ECC', '#27ae60', '#e74c3c', '#f39c12', '#9b59b6', '#1abc9c', '#e67e22', '#34495e', '#c0392b', '#16a085', '#8e44ad', '#2980b9'];
+    var memberColors = {};
+    memberList.forEach(function(name, i){ memberColors[name] = colors[i % colors.length]; });
+
+    // グラフ描画用の計算
+    var maxVal = 0;
+    sortedMonths.forEach(function(m){ maxVal = Math.max(maxVal, months[m].total || 0); });
+    maxVal = Math.max(maxVal, personalGoal * 1.2);
+
+    var graphHeight = 200, graphWidth = 320, margin = 50;
+    var barWidth = Math.floor((graphWidth - margin) / sortedMonths.length);
+    var barSpacing = barWidth + 10;
+
+    // SVGバーグラフ
+    var svg = '<svg viewBox="0 0 '+(graphWidth+margin)+' '+(graphHeight+80)+'" style="width:100%;max-width:380px;">';
+
+    // Y軸ラベル
+    svg += '<text x="20" y="20" font-size="12" fill="var(--text-sub)">¥'+Math.round(maxVal/1000000)+'M</text>';
+    svg += '<text x="20" y="'+Math.round(graphHeight/2)+'" font-size="12" fill="var(--text-sub)">¥'+Math.round(maxVal/2000000)+'M</text>';
+    svg += '<text x="20" y="'+(graphHeight+20)+'" font-size="12" fill="var(--text-sub)">¥0</text>';
+
+    // グリッド線
+    svg += '<line x1="40" y1="20" x2="40" y2="'+(graphHeight+20)+'" stroke="var(--border)" stroke-width="1"/>';
+    svg += '<line x1="40" y1="'+(graphHeight+20)+'" x2="'+(graphWidth+margin)+'" y2="'+(graphHeight+20)+'" stroke="var(--border)" stroke-width="1"/>';
+
+    // 個人の目標ライン
+    var goalLineY = graphHeight + 20 - Math.round(personalGoal / maxVal * graphHeight);
+    if (personalGoal > 0) {
+      svg += '<line x1="40" y1="'+goalLineY+'" x2="'+(graphWidth+margin)+'" y2="'+goalLineY+'" stroke="#FF6B6B" stroke-width="2" stroke-dasharray="4,4"/>';
+      svg += '<text x="'+(graphWidth+margin-80)+'" y="'+(goalLineY-5)+'" font-size="11" fill="#FF6B6B" font-weight="700">目標</text>';
+    }
+
+    // 棒グラフ描画（メンバー別スタック）
+    sortedMonths.forEach(function(m, idx) {
+      var x = 50 + idx * barSpacing;
       var data = months[m];
-      var total = data.total || 0;
-      var pct = goal > 0 ? Math.round(total / (goal * 10000) * 100) : 0;
-      var isAchieved = goal > 0 && total >= goal * 10000;
+      var members = data.members || {};
+      var yOffset = graphHeight + 20;
+
+      // メンバー順に積み上げ
+      memberList.forEach(function(name) {
+        var amt = members[name] || 0;
+        var barH = Math.round(amt / maxVal * graphHeight);
+        if (barH > 0) {
+          svg += '<rect x="'+x+'" y="'+(yOffset-barH)+'" width="'+Math.max(2, barWidth-8)+'" height="'+barH+'" fill="'+memberColors[name]+'" opacity="0.85"/>';
+        }
+        yOffset -= barH;
+      });
+
+      // 月ラベル
       var mo = parseInt(m.slice(5));
-      var badge = isAchieved ? '🏆' : (pct >= 100 ? '✓' : '');
-      return '<tr style="border-bottom:1px solid var(--border);">'
-        + '<td style="padding:10px 12px;font-weight:700;width:60px;">'+mo+'月</td>'
-        + '<td style="padding:10px 12px;text-align:right;width:110px;">¥'+Math.round(total/10000).toLocaleString()+'万</td>'
-        + '<td style="padding:10px 12px;text-align:right;width:110px;">'+(goal ? '¥'+goal.toLocaleString()+'万' : '—')+'</td>'
-        + '<td style="padding:10px 12px;text-align:right;width:80px;font-weight:700;color:'+(isAchieved?'#FFD700':pct>=100?'var(--green)':'var(--text-sub)')+';">'+pct+'%</td>'
-        + '<td style="padding:10px 12px;font-size:16px;">'+badge+'</td>'
-        + '</tr>';
-    }).join('');
+      svg += '<text x="'+(x+Math.max(2, barWidth-8)/2)+'" y="'+(graphHeight+40)+'" font-size="11" text-anchor="middle" fill="var(--text-sub);">'+mo+'月</text>';
+    });
+
+    svg += '</svg>';
+
+    // 凡例
+    var legend = '<div style="padding:12px;display:flex;flex-wrap:wrap;gap:12px;font-size:12px;">';
+    memberList.forEach(function(name) {
+      legend += '<div style="display:flex;align-items:center;gap:6px;"><span style="width:12px;height:12px;background:'+memberColors[name]+';border-radius:2px;"></span>'+escapeHtml(name)+'</div>';
+    });
+    legend += '</div>';
+
     el.innerHTML = ''
-      + '<div style="padding:12px;border-bottom:2px solid var(--border);font-size:13px;font-weight:700;color:var(--text-sub);">過去12ヶ月の推移（店舗合計）</div>'
-      + '<table style="width:100%;border-collapse:collapse;font-size:13px;">'
-      + '<thead style="background:var(--card);color:var(--text-sub);">'
-      + '<tr><th style="padding:8px 12px;text-align:left;">月</th><th style="padding:8px 12px;text-align:right;">工賃</th><th style="padding:8px 12px;text-align:right;">目標</th><th style="padding:8px 12px;text-align:right;">達成率</th><th style="padding:8px 12px;">状態</th></tr>'
-      + '</thead>'
-      + '<tbody>'+rows+'</tbody>'
-      + '</table>';
+      + '<div style="padding:12px;border-bottom:2px solid var(--border);font-size:13px;font-weight:700;color:var(--text-sub);">メンバー別の月別工賃推移（過去12ヶ月）</div>'
+      + '<div style="padding:12px;overflow-x:auto;">'+svg+'</div>'
+      + legend;
   } catch(e) {
     console.error('renderStoreYearTrend:', e);
     el.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text-sub);">読み込みエラー</div>';
