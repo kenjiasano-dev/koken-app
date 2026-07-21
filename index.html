@@ -113,6 +113,10 @@ input, select, textarea { font-family: inherit; }
 .form-label { font-size: 13px; font-weight: 600; color: var(--text-sub); margin-bottom: 6px; display: block; }
 .form-input { width: 100%; padding: 12px 14px; border: 2px solid var(--border); border-radius: 10px; font-size: 16px; transition: border-color .2s; background: var(--input-bg, #222); color: var(--text); }
 .form-input:focus { outline: none; border-color: var(--green); }
+input[type="date"].form-input { color-scheme: dark; }
+[data-theme="light"] input[type="date"].form-input { color-scheme: light; }
+input[type="date"].form-input::-webkit-calendar-picker-indicator { filter: invert(1); opacity: .7; cursor: pointer; border-radius: 6px; }
+[data-theme="light"] input[type="date"].form-input::-webkit-calendar-picker-indicator { filter: none; opacity: .6; }
 .amount-input-wrap { position: relative; }
 .amount-input-wrap .yen { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); font-size: 18px; color: var(--text-sub); pointer-events: none; }
 .amount-input-wrap input { padding-left: 32px; font-size: 22px; font-weight: 700; }
@@ -293,7 +297,10 @@ input, select, textarea { font-family: inherit; }
 <div id="app">
   <!-- HEADER -->
   <div id="header">
-    <h1 id="header-title">🔧 カーコン工賃管理</h1>
+    <div style="display:flex;align-items:center;gap:10px;flex:1;min-width:0;">
+      <div style="width:34px;height:34px;border-radius:10px;background:rgba(255,255,255,.18);display:flex;align-items:center;justify-content:center;font-size:19px;font-weight:900;color:#fff;flex-shrink:0;">工</div>
+      <h1 id="header-title" style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">🔧 カーコン工賃管理</h1>
+    </div>
     <div class="rank-badge" id="my-rank-badge">⚔️ 侍</div>
   </div>
 
@@ -1457,7 +1464,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = '20260721o';
+const APP_VERSION = '20260721p';
 // LINEログイン(LIFF) — LINEコンソールで作成したLIFFアプリのIDを入れる
 const LIFF_ID = '2010638896-vJtjkUOr';
 // 公式アカウント「カーコン工賃通知」友だち追加URL（ここに飛ばすとLINEアプリの友だち追加画面が直接開く）
@@ -1501,7 +1508,7 @@ if (!userData.activeGroupCode) userData.activeGroupCode = '';
 if (!userData.avatar) userData.avatar = '';
 if (!userData.role) userData.role = '';
 if (userData.ninjaMode === undefined) userData.ninjaMode = false;
-if (!userData.theme) userData.theme = 'light';
+if (!userData.theme) userData.theme = 'samurai';
 if (!settings.notifRankup) settings.notifRankup = true;
 if (!settings.notifGoal) settings.notifGoal = true;
 if (!settings.notifRocket) settings.notifRocket = true;
