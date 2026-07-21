@@ -312,7 +312,9 @@ input, select, textarea { font-family: inherit; }
       <div id="sstab-team-wage">
         <!-- カテゴリ別予算進捗 -->
         <div id="category-budget-progress" style="padding:12px 12px 0;"></div>
-        <div style="padding:8px 16px;font-size:12px;color:var(--text-sub);text-align:center;">社内ランキングは「マイ → 🏆ランキング」で見られます</div>
+        <div style="padding:8px 12px 0;">
+          <button onclick="goToMyRanking()" style="width:100%;padding:11px;border-radius:10px;font-size:13px;font-weight:700;background:var(--card);color:var(--green);border:1px solid var(--green);cursor:pointer;">🏆 社内ランキングを見る</button>
+        </div>
       </div>
       <!-- 受付状況 -->
       <div id="sstab-front-status" style="display:none;">
@@ -1448,7 +1450,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = '20260721h';
+const APP_VERSION = '20260721i';
 // LINEログイン(LIFF) — LINEコンソールで作成したLIFFアプリのIDを入れる
 const LIFF_ID = '2010638896-vJtjkUOr';
 // 公式アカウント「カーコン工賃通知」友だち追加URL（ここに飛ばすとLINEアプリの友だち追加画面が直接開く）
@@ -1962,6 +1964,13 @@ async function renderFrontRanking2() {
 // ============================================================
 let myPageTab = 'status';
 let rankCategory = 'total'; // 'total' | 'bankin' | 'seibi'
+
+// 店舗状況側から「マイ→ランキング」へワンタップで移動するための導線
+function goToMyRanking() {
+  switchTab('my');
+  var btn = document.querySelector('#my-sub-tabs [data-mytab="ranking"]');
+  if (btn) btn.click();
+}
 
 function initMyPage() {
   var subTabs = document.getElementById('my-sub-tabs');
