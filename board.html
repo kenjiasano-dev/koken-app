@@ -374,7 +374,7 @@ button{font-family:inherit; cursor:pointer;}
      同じスプレッドシートに「進捗/入庫/完成履歴」シートとして相乗りできる。
    - いまは persist() が localStorage に書くだけ＝バックエンド不要で即使える。
    =================================================================== */
-const APP_VERSION = '20260721b';
+const APP_VERSION = '20260721c';
 const STORE_KEY   = 'board_state_v1';
 const DEFAULT_STAGES = ['パネル修正','パテ','サフ','調色','マスキング','塗装','乾燥','磨き','組み付け'];
 /* 工程は店舗ごとに設定で変更可。state.store.stages に保存、無ければ標準9工程 */
@@ -473,7 +473,89 @@ function toggleTheme(){
 /* ---------- persistence (ここをGAS呼び出しに差し替えれば統合) ---------- */
 function persist(){
   try{ localStorage.setItem(STORE_KEY, JSON.stringify(state)); }catch(e){}
-  // 将来: postToGAS('saveBoard', {group:state.store.group, cars:state.cars})
+}
+
+/* ---------- 工賃アプリと同じGASへの案件同期（2026-07-21〜）----------
+   ローカル(localStorage)が正＝GAS送信はあくまで「工賃アプリ側から見えるように」の
+   バックグラウンド同期。失敗してもボード自体の操作は止めない（fire-and-forget＋再送キュー）。 */
+const BOARD_GAS_URL = 'https://script.google.com/macros/s/AKfycbxyh_WByXmc8qeKmz0H9q0Kf2y4xKl-4C2cK6F2Ul3OkFGQZhFPvQArnlIwlo701WifwQ/exec';
+const BOARD_GAS_TOKEN = 'carcon-kotin-2025';
+const BOARD_GAS_QUEUE_KEY = 'board_gasSendQueue';
+let _boardGasFlushing = false;
+
+function pad2(n){ return String(n).padStart(2,'0'); }
+function isoDateStr(d){ d=d||new Date(); return d.getFullYear()+'-'+pad2(d.getMonth()+1)+'-'+pad2(d.getDate()); }
+/* サーバー側(GAS)と全く同じ式で projectId を作る。下4桁が無い車は同期対象外（一意にならないため） */
+function boardProjectId(c){
+  if(!c || !c.number) return null;
+  const inboundDate = c.nyukoAt ? isoDateStr(new Date(c.nyukoAt)) : isoDateStr();
+  return c.cartype+'_'+c.number+'_'+inboundDate;
+}
+function _boardLoadQueue(){ try{ return JSON.parse(localStorage.getItem(BOARD_GAS_QUEUE_KEY)||'[]'); }catch(e){ return []; } }
+function _boardSaveQueue(q){ try{ localStorage.setItem(BOARD_GAS_QUEUE_KEY, JSON.stringify(q)); }catch(e){} }
+function postToBoardGAS(action, data){
+  const q = _boardLoadQueue();
+  q.push(Object.assign({action:action, token:BOARD_GAS_TOKEN}, data, {_ts:Date.now()}));
+  if(q.length>300) q.splice(0, q.length-300);
+  _boardSaveQueue(q);
+  flushBoardQueue();
+}
+async function flushBoardQueue(){
+  if(_boardGasFlushing) return;
+  _boardGasFlushing = true;
+  try{
+    while(true){
+      let q=_boardLoadQueue();
+      if(q.length===0) break;
+      try{
+        await fetch(BOARD_GAS_URL, {method:'POST', mode:'no-cors', headers:{'Content-Type':'text/plain'}, body:JSON.stringify(q[0])});
+      }catch(e){ break; } // オフライン等：順序維持のため中断、次回に再送
+      q=_boardLoadQueue(); q.shift(); _boardSaveQueue(q);
+    }
+  } finally { _boardGasFlushing = false; }
+}
+window.addEventListener('online', flushBoardQueue);
+setInterval(()=>{ if(_boardLoadQueue().length>0) flushBoardQueue(); }, 60000);
+
+/* 入庫追加時：案件をGASに登録（工賃アプリ側の「案件を選択」に出るようにする） */
+function syncProjectCreate(c){
+  const projectId = boardProjectId(c);
+  if(!projectId || !state.store) return;
+  c.projectId = projectId;
+  postToBoardGAS('createProject', {
+    shopCode: state.store.group||'',
+    carType: c.cartype,
+    licensePlate: c.number,
+    inboundDate: c.nyukoAt ? isoDateStr(new Date(c.nyukoAt)) : isoDateStr(),
+    createdByUuid: state.store.myName||''
+  });
+}
+/* 工程完了時：担当者・撮影枚数をGASに反映 */
+function syncStageProgress(c, stageIdx, status){
+  const projectId = c.projectId || boardProjectId(c);
+  if(!projectId) return;
+  const stages = getStages(c.kind);
+  if(!stages.length || stageIdx==null || stageIdx<0 || stageIdx>=stages.length) return;
+  const photos = (c.photos||[]).filter(p=>p.stageIndex===stageIdx);
+  postToBoardGAS('updateProjectProgress', {
+    projectId: projectId,
+    stageNumber: stageIdx+1,
+    stageName: stages[stageIdx],
+    assignedMembers: byNames(c.stageBy && c.stageBy[stageIdx]),
+    photosCount: photos.length,
+    photosList: photos.map(p=>({name:p.stageLabel, uploadedAt:p.ts})),
+    status: status||'完了'
+  });
+}
+/* 完成時：案件ステータスをGASに反映 */
+function syncProjectComplete(c){
+  const projectId = c.projectId || boardProjectId(c);
+  if(!projectId) return;
+  postToBoardGAS('completeProject', {
+    projectId: projectId,
+    completedDate: c.doneAt ? isoDateStr(new Date(c.doneAt)) : isoDateStr(),
+    deliveryDate: c.deliveryDate||''
+  });
 }
 function loadState(){
   try{
@@ -661,8 +743,10 @@ function saveCar(){
     stageStart:null,   // 今の工程の計測開始時刻(ms)
     nyukoAt: nowISO(),
     startAt:null,
-    doneAt:null
+    doneAt:null,
+    projectId:null     // 下4桁が揃うとGAS側の案件と紐付く（工賃アプリと連携）
   });
+  syncProjectCreate(state.cars[state.cars.length-1]);
   persist(); closeSheet(); toast('入庫に追加しました'); render();
 }
 function findCar(id){ return state.cars.find(c=>c.id===id); }
@@ -823,6 +907,7 @@ function nextStage(id){
     c.stageBy = c.stageBy || [];
     // すでに担当を選んである工程（2〜3名など）は尊重し、上書きしない。未選択のときだけ今の担当を記録
     if(!byNames(c.stageBy[c.stage]).length) c.stageBy[c.stage] = c.assignee ? [c.assignee] : [];
+    syncStageProgress(c, c.stage, '完了');    // いま終えた工程をGASに反映
     c.stage++;
     c.stageStart = Date.now();                // 次の工程の計測開始
     persist(); render();
@@ -847,7 +932,9 @@ function finishCar(id){
   c.stageStart = null;                        // 計測停止
   c.stageBy = c.stageBy || [];
   if(!byNames(c.stageBy[c.stage]).length) c.stageBy[c.stage] = c.assignee ? [c.assignee] : [];
+  syncStageProgress(c, c.stage, '完了');      // 最終工程をGASに反映
   c.status='done'; c.waitingParts=false; c.doneAt=nowISO();
+  syncProjectComplete(c);                     // 案件完成をGASに反映
   persist(); toast(c.cartype+' を完成に記録'); render();
 }
 /* 工程の担当は「1名＝文字列」または「複数名＝配列」。どちらで保存されていても配列として読む（古いデータ互換） */
