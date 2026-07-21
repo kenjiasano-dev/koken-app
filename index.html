@@ -1058,6 +1058,18 @@ input, select, textarea { font-family: inherit; }
       </div>
       </div><!-- /advanced-settings-block -->
 
+      <!-- 使う機能（店舗共通・使わない機能は画面から消してシンプルに） -->
+      <div class="card">
+        <div class="card-title">🧩 使う機能</div>
+        <div style="font-size:12px;color:var(--text-sub);margin-bottom:8px;line-height:1.6;">店舗で使わない機能をOFFにすると、画面からタブが消えてシンプルになります（お店の全員に反映）。</div>
+        <ul class="settings-list" style="margin:0;box-shadow:none;">
+          <li class="setting-item">
+            <div class="setting-icon" style="background:#d1e7dd;">📋</div>
+            <div><div class="setting-label">フロント受付</div><div class="setting-sub">見積・受注の受付入力タブ</div></div>
+            <label class="toggle"><input type="checkbox" id="feature-use-front" checked onchange="saveFeatureToggles()"><span class="toggle-slider"></span></label>
+          </li>
+        </ul>
+      </div>
       <!-- 目標設定（各自が設定・常時表示） -->
       <div class="card">
         <div class="card-title">🎯 目標設定</div>
@@ -1436,7 +1448,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = '20260721g';
+const APP_VERSION = '20260721h';
 // LINEログイン(LIFF) — LINEコンソールで作成したLIFFアプリのIDを入れる
 const LIFF_ID = '2010638896-vJtjkUOr';
 // 公式アカウント「カーコン工賃通知」友だち追加URL（ここに飛ばすとLINEアプリの友だち追加画面が直接開く）
@@ -1643,14 +1655,39 @@ async function syncGroupGoalFromServer() {
       if (typeof gg.storeWageGoal === 'number') adminGoals.storeWageGoal = gg.storeWageGoal;
       if (typeof gg.storeCount === 'number')    adminGoals.storeCount    = gg.storeCount;
       if (typeof gg.storeAmount === 'number')   adminGoals.storeAmount   = gg.storeAmount;
+      if (typeof gg.useFront === 'boolean')     adminGoals.useFront      = gg.useFront;
       saveLocal();
       // 設定画面の目標入力欄が表示中なら最新値に更新
       var _sv = function(id, val){ var e=document.getElementById(id); if(e) e.value = (val ? val : ''); };
       _sv('goal-store-count', adminGoals.storeCount);
       _sv('goal-store-amount', adminGoals.storeAmount);
       _sv('goal-store-wage', adminGoals.storeWageGoal);
+      var _ft = document.getElementById('feature-use-front'); if (_ft) _ft.checked = (adminGoals.useFront !== false);
+      applyFeatureToggles();
     }
   } catch(e) {}
+}
+
+// 使う機能（店舗共通）のON/OFF。使わない機能はタブごと画面から消してシンプルにする。
+function applyFeatureToggles() {
+  var showFront = adminGoals.useFront !== false;
+  var frontBtn = document.querySelector('.tab-btn[data-tab="front"]');
+  if (frontBtn) frontBtn.style.display = showFront ? '' : 'none';
+  if (!showFront && currentTab === 'front') switchTab('input');
+}
+
+function saveFeatureToggles() {
+  var el = document.getElementById('feature-use-front');
+  adminGoals.useFront = el ? el.checked : true;
+  saveLocal();
+  applyFeatureToggles();
+  var _goalCode = userData.activeGroupCode || userData.groupCode;
+  if (_goalCode) {
+    postToGAS({ action: 'setGroupGoal', groupCode: _goalCode, storeWageGoal: adminGoals.storeWageGoal, storeCount: adminGoals.storeCount, storeAmount: adminGoals.storeAmount, useFront: adminGoals.useFront });
+    showToast(adminGoals.useFront ? '📋 フロント受付を表示します' : '📋 フロント受付を非表示にしました（お店全員に反映）');
+  } else {
+    showToast(adminGoals.useFront ? '📋 フロント受付を表示します' : '📋 フロント受付を非表示にしました');
+  }
 }
 
 function saveStoreGoals() {
@@ -3146,6 +3183,7 @@ function initSettings() {
   _gv('goal-store-amount', adminGoals.storeAmount);
   _gv('goal-store-wage', adminGoals.storeWageGoal);
   _gv('goal-personal-wage', userData.goal);
+  var _ftEl = document.getElementById('feature-use-front'); if (_ftEl) _ftEl.checked = (adminGoals.useFront !== false);
 
   // toggle listeners
   ['notif-rankup','notif-goal','notif-rocket','notif-receive'].forEach(id => {
@@ -3886,6 +3924,7 @@ function init() {
   initCalendar();
   initInputPage();
   initSettings();
+  applyFeatureToggles();
   applyNinjaMode();
   applyTheme();
   renderRanking();
