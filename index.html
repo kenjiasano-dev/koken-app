@@ -1457,7 +1457,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = '20260721l';
+const APP_VERSION = '20260721m';
 // LINEログイン(LIFF) — LINEコンソールで作成したLIFFアプリのIDを入れる
 const LIFF_ID = '2010638896-vJtjkUOr';
 // 公式アカウント「カーコン工賃通知」友だち追加URL（ここに飛ばすとLINEアプリの友だち追加画面が直接開く）
@@ -1684,6 +1684,15 @@ function applyFeatureToggles() {
   var frontBtn = document.querySelector('.tab-btn[data-tab="front"]');
   if (frontBtn) frontBtn.style.display = showFront ? '' : 'none';
   if (!showFront && currentTab === 'front') switchTab('input');
+  // 店舗状況の「受付状況」サブタブも同時に隠す
+  var frontSubBtn = document.querySelector('#store-status-sub-tabs [data-sstab="front-status"]');
+  if (frontSubBtn) frontSubBtn.style.display = showFront ? '' : 'none';
+  if (!showFront && storeStatusTab === 'front-status' && frontSubBtn) {
+    var teamWageBtn = document.querySelector('#store-status-sub-tabs [data-sstab="team-wage"]');
+    if (teamWageBtn) teamWageBtn.click();
+  }
+  // マイ状況ページの受付表示も更新（切替ボタンごと隠す）
+  if (typeof renderMyStatus === 'function' && document.getElementById('my-status-content')) renderMyStatus();
 }
 
 function saveFeatureToggles() {
@@ -2022,6 +2031,7 @@ function setMyStatusView(v) {
 function renderMyStatus() {
   var el = document.getElementById('my-status-content');
   if (!el) return;
+  if (adminGoals.useFront === false) myStatusView = 'wage';
   var now = new Date();
   var month = now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0');
   var monthData = wageData.filter(function(d){ return d.date && d.date.startsWith(month); });
@@ -2061,11 +2071,12 @@ function renderMyStatus() {
         '</div>' +
       '</div>' +
     '</div>' +
-    // 切り替えボタン
+    // 切り替えボタン（フロント受付OFFの店舗では工賃のみ・ボタン自体を隠す）
+    (adminGoals.useFront === false ? '' :
     '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:0 0 8px;">' +
       '<button id="my-view-btn-wage" onclick="setMyStatusView(&quot;wage&quot;)" style="padding:10px;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;background:var(--green);color:#fff;border:none;">💰 工賃</button>' +
       '<button id="my-view-btn-front" onclick="setMyStatusView(&quot;front&quot;)" style="padding:10px;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;background:var(--card);color:var(--text-sub);border:1px solid var(--border);">📋 受付</button>' +
-    '</div>' +
+    '</div>') +
     // 工賃セクション
     '<div id="my-view-wage">' +
       '<div class="card">' +
