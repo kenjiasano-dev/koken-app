@@ -1457,7 +1457,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = '20260721m';
+const APP_VERSION = '20260721n';
 // LINEログイン(LIFF) — LINEコンソールで作成したLIFFアプリのIDを入れる
 const LIFF_ID = '2010638896-vJtjkUOr';
 // 公式アカウント「カーコン工賃通知」友だち追加URL（ここに飛ばすとLINEアプリの友だち追加画面が直接開く）
@@ -2284,98 +2284,6 @@ function renderMyTrend() {
 
 // 店舗の1年推移（店舗状況「📈推移」タブ）。renderMyTrendと同じ見た目で、
 // データはGAS(getStoreTrend)から取得し、目標は店舗工賃目標(adminGoals.storeWageGoal)を使う。
-async function renderStoreYearTrend() {
-  var el = document.getElementById('store-trend-content');
-  if (!el) return;
-  var code = userData.activeGroupCode || userData.groupCode;
-  if (!code) { el.innerHTML = '<div style="text-align:center;padding:30px;color:var(--text-sub);font-size:13px;">グループコードを設定してください</div>'; return; }
-  el.innerHTML = '<div style="text-align:center;padding:30px;color:var(--text-sub);font-size:13px;">読み込み中...</div>';
-  var fiscalStart = parseInt(userData.fiscalStart) || 1;
-  var res = await fetchFromGAS('getStoreTrend', { groupCode: code });
-  var monthsData = (res && res.months) || {};
-
-  var fySet = {};
-  Object.keys(monthsData).forEach(function(m){ fySet[getFiscalYear(m + '-01', fiscalStart)] = true; });
-  var fiscalYears = Object.keys(fySet).map(Number).sort();
-  if (!fiscalYears.length) { el.innerHTML = '<div style="text-align:center;padding:30px;color:var(--text-sub);font-size:13px;">データなし</div>'; return; }
-  if (!fySet[trendYear]) trendYear = fiscalYears[fiscalYears.length-1];
-
-  var fiscalKeys = getFiscalMonths(trendYear, fiscalStart);
-  var months = {}, bankinMonths = {}, seibiMonths = {};
-  fiscalKeys.forEach(function(k){
-    var d = monthsData[k] || { total: 0, bankin: 0, seibi: 0 };
-    months[k] = d.total; bankinMonths[k] = d.bankin; seibiMonths[k] = d.seibi;
-  });
-
-  var keys = fiscalKeys;
-  var goal = (adminGoals.storeWageGoal || 0) * 10000;
-  var maxVal = Math.max.apply(null, keys.map(function(k){return months[k];}));
-  var max = Math.max(maxVal, goal) || 1;
-  var total = keys.reduce(function(s,k){return s+months[k];},0);
-  var peak  = keys.reduce(function(best,k){ return months[k]>months[best]?k:best; }, keys[0]);
-  var achievedCount = goal > 0 ? keys.filter(function(k){ return months[k] >= goal; }).length : 0;
-
-  var yearBtns = fiscalYears.map(function(y) {
-    var active = (y == trendYear);
-    return '<button onclick="trendYear='+y+';renderStoreYearTrend();" style="padding:5px 12px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;'
-      + (active ? 'background:var(--green);color:#111;border:none;' : 'background:var(--card);color:var(--text-sub);border:1px solid var(--border);')
-      + '">'+y+'年</button>';
-  }).join('');
-
-  var goalPct = goal > 0 ? Math.round(goal/max*100) : 0;
-
-  var bars = keys.map(function(m) {
-    var total_m = months[m];
-    var bankin  = bankinMonths[m];
-    var seibi   = seibiMonths[m];
-    var pctB = Math.round(bankin/max*100);
-    var pctS = Math.round(seibi/max*100);
-    var mo = parseInt(m.slice(5));
-    var isPeak = m === peak && total_m > 0;
-    var isAchieved = goal > 0 && total_m >= goal;
-    var labelColor = isAchieved ? '#FFD700' : 'var(--green)';
-    var achievedBadge = isAchieved ? ' <span style="font-size:10px;background:#2a2000;color:#FFD700;padding:1px 5px;border-radius:6px;">🏆達成</span>' : '';
-    var peakBadge = isPeak ? ' <span style="font-size:10px;color:#aaa;">▲最高</span>' : '';
-    return '<div style="margin-bottom:10px;">'
-      + '<div style="display:flex;justify-content:space-between;align-items:center;font-size:12px;margin-bottom:3px;">'
-      +   '<span style="color:var(--text-sub);min-width:28px;">' + mo + '月</span>'
-      +   (total_m > 0
-            ? '<span style="font-weight:700;color:'+labelColor+';">¥'+total_m.toLocaleString()+achievedBadge+peakBadge+'</span>'
-            : '<span style="color:var(--text-sub);font-size:11px;">—</span>')
-      + '</div>'
-      + '<div style="position:relative;height:14px;background:var(--border);border-radius:6px;overflow:hidden;">'
-      +   '<div style="height:100%;width:'+pctB+'%;background:'+(isAchieved?'#C9A84C':'#4A9ECC')+';transition:width .6s;float:left;"></div>'
-      +   '<div style="height:100%;width:'+pctS+'%;background:'+(isAchieved?'#e6c06a':'#27ae60')+';transition:width .6s;float:left;"></div>'
-      + (goalPct > 0 ? '<div style="position:absolute;top:0;left:'+goalPct+'%;width:2px;height:100%;background:#FF6B6B;"></div>' : '')
-      + '</div>'
-      + '</div>';
-  }).join('');
-
-  var goalLine = goal > 0
-    ? '<div style="display:flex;gap:12px;padding:0 12px 4px;font-size:11px;align-items:center;">'
-      + '<span style="display:flex;align-items:center;gap:4px;"><span style="display:inline-block;width:2px;height:12px;background:#FF6B6B;"></span>店舗目標 ¥'+goal.toLocaleString()+'</span>'
-      + (achievedCount > 0 ? '<span style="color:#FFD700;font-weight:700;">🏆 '+achievedCount+'ヶ月達成</span>' : '<span style="color:var(--text-sub);">未達成</span>')
-      + '</div>'
-    : '<div style="padding:0 12px 8px;font-size:11px;color:var(--text-sub);">※設定タブの🎯目標設定で店舗の工賃目標を入れると、目標ラインが表示されます</div>';
-
-  el.innerHTML = ''
-    + '<div style="padding:10px 12px 4px;display:flex;gap:6px;flex-wrap:wrap;align-items:center;">'
-    +   yearBtns
-    + '</div>'
-    + '<div style="margin:6px 12px 8px;padding:10px 14px;background:var(--card);border:1px solid var(--border);border-radius:10px;display:flex;gap:16px;">'
-    +   '<div><div style="font-size:10px;color:var(--text-sub);">'+(fiscalStart<=1?trendYear+'年':trendYear+'年度')+' 合計</div><div style="font-size:18px;font-weight:900;color:var(--green);">¥'+total.toLocaleString()+'</div></div>'
-    +   '<div><div style="font-size:10px;color:var(--text-sub);">月平均</div><div style="font-size:18px;font-weight:900;color:var(--green);">¥'+Math.round(total/12).toLocaleString()+'</div></div>'
-    +   (achievedCount > 0 ? '<div><div style="font-size:10px;color:var(--text-sub);">達成月数</div><div style="font-size:18px;font-weight:900;color:#FFD700;">'+achievedCount+' ヶ月</div></div>' : '')
-    + '</div>'
-    + '<div style="display:flex;gap:10px;padding:0 12px 6px;font-size:11px;flex-wrap:wrap;">'
-    +   '<span style="display:flex;align-items:center;gap:4px;"><span style="display:inline-block;width:12px;height:12px;background:#4A9ECC;border-radius:2px;"></span>鈑金塗装</span>'
-    +   '<span style="display:flex;align-items:center;gap:4px;"><span style="display:inline-block;width:12px;height:12px;background:#27ae60;border-radius:2px;"></span>整備</span>'
-    +   (goal > 0 ? '<span style="display:flex;align-items:center;gap:4px;"><span style="display:inline-block;width:2px;height:12px;background:#FF6B6B;"></span>目標ライン</span>' : '')
-    + '</div>'
-    + goalLine
-    + '<div style="padding:0 12px 12px;">' + bars + '</div>';
-}
-
 function renderMyBadge() {
   var el = document.getElementById('my-badge-content');
   if (!el) return;
@@ -2387,14 +2295,14 @@ function renderMyBadge() {
 }
 
 // ============================================================
-// 店舗の1年推移（メンバー別スタック棒グラフ）2026-07-21
+// 店舗の1年推移（メンバー別・色分け折れ線グラフ + 個人合計）2026-07-21
 // ============================================================
 async function renderStoreYearTrend() {
   var el = document.getElementById('store-trend-content');
   if (!el) return;
   var code = userData.activeGroupCode || userData.groupCode;
   if (!code) { el.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text-sub);">グループコードを設定してください</div>'; return; }
-  var personalGoal = (userData.goal || 0) * 10000;
+  el.innerHTML = '<div style="text-align:center;padding:30px;color:var(--text-sub);font-size:13px;">読み込み中...</div>';
   try {
     var res = await fetchFromGAS('getStoreTrend', { groupCode: code });
     if (!res || !res.months) { el.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text-sub);">データなし</div>'; return; }
@@ -2402,77 +2310,88 @@ async function renderStoreYearTrend() {
     var sortedMonths = Object.keys(months).sort().reverse().slice(0, 12).sort();
     if (!sortedMonths.length) { el.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text-sub);">データなし</div>'; return; }
 
-    // メンバー一覧と色を作成
-    var allMembers = {};
-    sortedMonths.forEach(function(m){ Object.assign(allMembers, months[m].members || {}); });
-    var memberList = Object.keys(allMembers).sort();
-    var colors = ['#4A9ECC', '#27ae60', '#e74c3c', '#f39c12', '#9b59b6', '#1abc9c', '#e67e22', '#34495e', '#c0392b', '#16a085', '#8e44ad', '#2980b9'];
+    // メンバー一覧と色を作成（合計降順）
+    var memberTotals = {};
+    sortedMonths.forEach(function(m){
+      var mem = months[m].members || {};
+      Object.keys(mem).forEach(function(n){ memberTotals[n] = (memberTotals[n]||0) + mem[n]; });
+    });
+    var memberList = Object.keys(memberTotals).sort(function(a,b){ return memberTotals[b]-memberTotals[a]; });
+    var colors = ['#4A9ECC', '#27ae60', '#e74c3c', '#f39c12', '#9b59b6', '#1abc9c', '#e67e22', '#c0392b', '#16a085', '#8e44ad'];
     var memberColors = {};
     memberList.forEach(function(name, i){ memberColors[name] = colors[i % colors.length]; });
 
-    // グラフ描画用の計算
+    // 折れ線グラフの座標計算
     var maxVal = 0;
-    sortedMonths.forEach(function(m){ maxVal = Math.max(maxVal, months[m].total || 0); });
-    maxVal = Math.max(maxVal, personalGoal * 1.2);
+    sortedMonths.forEach(function(m){
+      var mem = months[m].members || {};
+      memberList.forEach(function(n){ maxVal = Math.max(maxVal, mem[n]||0); });
+    });
+    maxVal = maxVal || 1;
+    // 見やすいキリのいい上限に切り上げ（10万円単位）
+    maxVal = Math.ceil(maxVal / 100000) * 100000;
 
-    var graphHeight = 200, graphWidth = 320, margin = 50;
-    var barWidth = Math.floor((graphWidth - margin) / sortedMonths.length);
-    var barSpacing = barWidth + 10;
+    var leftM = 46, rightM = 12, topM = 16, bottomM = 26;
+    var chartW = 300, chartH = 170;
+    var svgW = leftM + chartW + rightM;
+    var svgH = topM + chartH + bottomM;
+    var n = sortedMonths.length;
+    var xAt = function(i){ return n > 1 ? leftM + (chartW * i / (n-1)) : leftM + chartW/2; };
+    var yAt = function(v){ return topM + chartH - (v / maxVal * chartH); };
 
-    // SVGバーグラフ
-    var svg = '<svg viewBox="0 0 '+(graphWidth+margin)+' '+(graphHeight+80)+'" style="width:100%;max-width:380px;">';
+    var svg = '<svg viewBox="0 0 '+svgW+' '+svgH+'" style="width:100%;max-width:400px;display:block;">';
 
-    // Y軸ラベル
-    svg += '<text x="20" y="20" font-size="12" fill="var(--text-sub)">¥'+Math.round(maxVal/1000000)+'M</text>';
-    svg += '<text x="20" y="'+Math.round(graphHeight/2)+'" font-size="12" fill="var(--text-sub)">¥'+Math.round(maxVal/2000000)+'M</text>';
-    svg += '<text x="20" y="'+(graphHeight+20)+'" font-size="12" fill="var(--text-sub)">¥0</text>';
+    // 横グリッド線 + Y軸ラベル（0/50%/100%）
+    [0, 0.5, 1].forEach(function(f){
+      var y = yAt(maxVal * f);
+      svg += '<line x1="'+leftM+'" y1="'+y+'" x2="'+(leftM+chartW)+'" y2="'+y+'" stroke="var(--border)" stroke-width="1"/>';
+      svg += '<text x="'+(leftM-6)+'" y="'+(y+4)+'" font-size="10" text-anchor="end" fill="var(--text-sub)">¥'+Math.round(maxVal*f/10000)+'万</text>';
+    });
 
-    // グリッド線
-    svg += '<line x1="40" y1="20" x2="40" y2="'+(graphHeight+20)+'" stroke="var(--border)" stroke-width="1"/>';
-    svg += '<line x1="40" y1="'+(graphHeight+20)+'" x2="'+(graphWidth+margin)+'" y2="'+(graphHeight+20)+'" stroke="var(--border)" stroke-width="1"/>';
-
-    // 個人の目標ライン
-    var goalLineY = graphHeight + 20 - Math.round(personalGoal / maxVal * graphHeight);
-    if (personalGoal > 0) {
-      svg += '<line x1="40" y1="'+goalLineY+'" x2="'+(graphWidth+margin)+'" y2="'+goalLineY+'" stroke="#FF6B6B" stroke-width="2" stroke-dasharray="4,4"/>';
-      svg += '<text x="'+(graphWidth+margin-80)+'" y="'+(goalLineY-5)+'" font-size="11" fill="#FF6B6B" font-weight="700">目標</text>';
-    }
-
-    // 棒グラフ描画（メンバー別スタック）
-    sortedMonths.forEach(function(m, idx) {
-      var x = 50 + idx * barSpacing;
-      var data = months[m];
-      var members = data.members || {};
-      var yOffset = graphHeight + 20;
-
-      // メンバー順に積み上げ
-      memberList.forEach(function(name) {
-        var amt = members[name] || 0;
-        var barH = Math.round(amt / maxVal * graphHeight);
-        if (barH > 0) {
-          svg += '<rect x="'+x+'" y="'+(yOffset-barH)+'" width="'+Math.max(2, barWidth-8)+'" height="'+barH+'" fill="'+memberColors[name]+'" opacity="0.85"/>';
-        }
-        yOffset -= barH;
-      });
-
-      // 月ラベル
+    // 月ラベル（X軸）
+    sortedMonths.forEach(function(m, i){
       var mo = parseInt(m.slice(5));
-      svg += '<text x="'+(x+Math.max(2, barWidth-8)/2)+'" y="'+(graphHeight+40)+'" font-size="11" text-anchor="middle" fill="var(--text-sub);">'+mo+'月</text>';
+      svg += '<text x="'+xAt(i)+'" y="'+(topM+chartH+18)+'" font-size="10" text-anchor="middle" fill="var(--text-sub)">'+mo+'月</text>';
+    });
+
+    // メンバーごとの折れ線
+    memberList.forEach(function(name){
+      var pts = sortedMonths.map(function(m, i){
+        var v = (months[m].members || {})[name] || 0;
+        return xAt(i) + ',' + yAt(v);
+      }).join(' ');
+      svg += '<polyline points="'+pts+'" fill="none" stroke="'+memberColors[name]+'" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>';
+      sortedMonths.forEach(function(m, i){
+        var v = (months[m].members || {})[name] || 0;
+        svg += '<circle cx="'+xAt(i)+'" cy="'+yAt(v)+'" r="3" fill="'+memberColors[name]+'"/>';
+      });
     });
 
     svg += '</svg>';
 
     // 凡例
-    var legend = '<div style="padding:12px;display:flex;flex-wrap:wrap;gap:12px;font-size:12px;">';
+    var legend = '<div style="padding:4px 12px 12px;display:flex;flex-wrap:wrap;gap:10px 14px;font-size:12px;">';
     memberList.forEach(function(name) {
-      legend += '<div style="display:flex;align-items:center;gap:6px;"><span style="width:12px;height:12px;background:'+memberColors[name]+';border-radius:2px;"></span>'+escapeHtml(name)+'</div>';
+      legend += '<div style="display:flex;align-items:center;gap:5px;"><span style="width:10px;height:10px;background:'+memberColors[name]+';border-radius:50%;"></span>'+escapeHtml(name)+'</div>';
     });
     legend += '</div>';
 
+    // 下段：個人工賃合計（年間合計・降順）
+    var totalsRows = memberList.map(function(name){
+      var isMe = name === userData.name;
+      return '<div style="display:flex;justify-content:space-between;align-items:center;padding:9px 14px;'+(isMe?'background:var(--green-light);border-radius:8px;':'')+'">'
+        + '<span style="font-size:13px;font-weight:'+(isMe?'700':'400')+';display:flex;align-items:center;gap:6px;"><span style="width:9px;height:9px;border-radius:50%;background:'+memberColors[name]+';display:inline-block;"></span>'+escapeHtml(name)+(isMe?' (あなた)':'')+'</span>'
+        + '<span style="font-size:14px;font-weight:700;color:var(--green);">¥'+Math.round(memberTotals[name]).toLocaleString()+'</span>'
+        + '</div>';
+    }).join('');
+
     el.innerHTML = ''
-      + '<div style="padding:12px;border-bottom:2px solid var(--border);font-size:13px;font-weight:700;color:var(--text-sub);">メンバー別の月別工賃推移（過去12ヶ月）</div>'
-      + '<div style="padding:12px;overflow-x:auto;">'+svg+'</div>'
-      + legend;
+      + '<div style="padding:12px 12px 0;font-size:13px;font-weight:700;color:var(--text-sub);">メンバー別 月次工賃推移（過去12ヶ月）</div>'
+      + '<div style="padding:8px 8px 0;overflow-x:auto;">'+svg+'</div>'
+      + legend
+      + '<div style="height:8px;"></div>'
+      + '<div style="padding:12px 0 4px;margin:0 12px;border-top:2px solid var(--border);font-size:13px;font-weight:700;color:var(--text-sub);">個人工賃合計（過去12ヶ月）</div>'
+      + '<div style="padding:4px 4px 16px;">'+totalsRows+'</div>';
   } catch(e) {
     console.error('renderStoreYearTrend:', e);
     el.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text-sub);">読み込みエラー</div>';
