@@ -1457,7 +1457,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = '20260721n';
+const APP_VERSION = '20260721o';
 // LINEログイン(LIFF) — LINEコンソールで作成したLIFFアプリのIDを入れる
 const LIFF_ID = '2010638896-vJtjkUOr';
 // 公式アカウント「カーコン工賃通知」友だち追加URL（ここに飛ばすとLINEアプリの友だち追加画面が直接開く）
@@ -2307,8 +2307,13 @@ async function renderStoreYearTrend() {
     var res = await fetchFromGAS('getStoreTrend', { groupCode: code });
     if (!res || !res.months) { el.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text-sub);">データなし</div>'; return; }
     var months = res.months;
-    var sortedMonths = Object.keys(months).sort().reverse().slice(0, 12).sort();
-    if (!sortedMonths.length) { el.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text-sub);">データなし</div>'; return; }
+    if (!Object.keys(months).length) { el.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text-sub);">データなし</div>'; return; }
+    // 設定の年度開始月に合わせて、今日を含む年度の12ヶ月を並べる
+    var fiscalStart = parseInt(userData.fiscalStart) || 1;
+    var todayStr = new Date().toISOString().slice(0,10);
+    var curFiscalYear = getFiscalYear(todayStr, fiscalStart);
+    var sortedMonths = getFiscalMonths(curFiscalYear, fiscalStart);
+    sortedMonths.forEach(function(m){ if (!months[m]) months[m] = { total: 0, bankin: 0, seibi: 0, members: {} }; });
 
     // メンバー一覧と色を作成（合計降順）
     var memberTotals = {};
@@ -2385,12 +2390,13 @@ async function renderStoreYearTrend() {
         + '</div>';
     }).join('');
 
+    var fyLabel = fiscalStart <= 1 ? (curFiscalYear+'年') : (curFiscalYear+'年度');
     el.innerHTML = ''
-      + '<div style="padding:12px 12px 0;font-size:13px;font-weight:700;color:var(--text-sub);">メンバー別 月次工賃推移（過去12ヶ月）</div>'
+      + '<div style="padding:12px 12px 0;font-size:13px;font-weight:700;color:var(--text-sub);">メンバー別 月次工賃推移（'+fyLabel+'）</div>'
       + '<div style="padding:8px 8px 0;overflow-x:auto;">'+svg+'</div>'
       + legend
       + '<div style="height:8px;"></div>'
-      + '<div style="padding:12px 0 4px;margin:0 12px;border-top:2px solid var(--border);font-size:13px;font-weight:700;color:var(--text-sub);">個人工賃合計（過去12ヶ月）</div>'
+      + '<div style="padding:12px 0 4px;margin:0 12px;border-top:2px solid var(--border);font-size:13px;font-weight:700;color:var(--text-sub);">個人工賃合計（'+fyLabel+'）</div>'
       + '<div style="padding:4px 4px 16px;">'+totalsRows+'</div>';
   } catch(e) {
     console.error('renderStoreYearTrend:', e);
