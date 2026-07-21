@@ -374,7 +374,7 @@ button{font-family:inherit; cursor:pointer;}
      同じスプレッドシートに「進捗/入庫/完成履歴」シートとして相乗りできる。
    - いまは persist() が localStorage に書くだけ＝バックエンド不要で即使える。
    =================================================================== */
-const APP_VERSION = '20260721d';
+const APP_VERSION = '20260721e';
 const STORE_KEY   = 'board_state_v1';
 const DEFAULT_STAGES = ['パネル修正','パテ','サフ','調色','マスキング','塗装','乾燥','磨き','組み付け'];
 /* 工程は店舗ごとに設定で変更可。state.store.stages に保存、無ければ標準9工程 */
@@ -1417,17 +1417,24 @@ async function uploadOnePhoto(c, photoId, token){
     return false;
   }catch(e){ return false; }
 }
-/* 撮影直後に呼ぶ：サイレントにトークンが取れれば自動送信、取れなければ黙ってスキップ（あとで拾う） */
-async function autoUploadPhoto(carId, photoId){
+/* 撮影直後に呼ぶ：サイレントにトークンが取れれば自動送信。
+   ページ読み込み直後などGIS未準備で失敗した場合に備え、5秒後に1回だけ再挑戦する（それでもダメなら定期リトライに任せる）。 */
+async function autoUploadPhoto(carId, photoId, _retried){
   const c=findCar(carId); if(!c) return;
   const token=await requestGDriveToken(false);
-  if(!token) return;
+  if(!token){
+    if(!_retried) setTimeout(()=>autoUploadPhoto(carId, photoId, true), 5000);
+    return;
+  }
   const ok=await ensureGDriveConsent(token);
   if(!ok) return;
   await uploadOnePhoto(c, photoId, token);
 }
-/* 未送信分をまとめて再送（オンライン復帰時・定期・手動ボタンから） */
+/* 未送信分をまとめて再送（オンライン復帰時・定期・ギャラリーを開いた時・手動ボタンから）。
+   未送信が無ければ何もせず終わる＝無駄な認証リクエストを出さない。 */
 async function retryPendingGDriveUploads(interactive){
+  const hasPending = state.cars.some(c=>(c.photos||[]).some(p=>!p.gdriveId));
+  if(!hasPending && !interactive) return;
   const token=await requestGDriveToken(!!interactive);
   if(!token) return;
   const ok=await ensureGDriveConsent(token);
@@ -1438,7 +1445,7 @@ async function retryPendingGDriveUploads(interactive){
   }
 }
 window.addEventListener('online', ()=>retryPendingGDriveUploads(false));
-setInterval(()=>retryPendingGDriveUploads(false), 90000);
+setInterval(()=>retryPendingGDriveUploads(false), 20000);
 /* 設定ページ「🔗 Googleドライブ連携」用（初回連携・アカウント切り替え） */
 function connectGDrive(){
   requestGDriveToken(true).then(async token=>{
@@ -1496,6 +1503,7 @@ function openGallery(carId){
   const c=findCar(carId); if(!c) return;
   showSheet(`<div id="gallery-body">${galleryHTML(c)}</div>`);
   loadGalleryThumbs(carId);
+  retryPendingGDriveUploads(false);   // ギャラリーを開いたタイミングでも未送信分の送信を試みる
 }
 function galleryHTML(c){
   const photos=(c.photos||[]).slice().sort((a,b)=>(a.stageIndex-b.stageIndex)||(a.ts-b.ts));
