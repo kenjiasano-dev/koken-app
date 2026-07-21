@@ -16,6 +16,7 @@
   --red:#ef5350; --red-bg:#3a1717;
   --nav-bg:#151619; --toast-bg:#2a2b30;
   --radius:12px;
+  --shadow:0 3px 10px rgba(0,0,0,.4);
 }
 :root[data-theme="light"]{
   --bg:#f3f4f6; --card:#ffffff; --card2:#eef0f3; --line:#e3e5ea;
@@ -25,6 +26,7 @@
   --amber:#c07d0c; --amber-bg:#fbf0d9;
   --red:#dc4640; --red-bg:#fdeceb;
   --nav-bg:#ffffff; --toast-bg:#2a2b30;
+  --shadow:0 2px 8px rgba(30,32,40,.12);
 }
 *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
 html,body{margin:0; padding:0;}
@@ -53,7 +55,7 @@ button{font-family:inherit; cursor:pointer;}
 .searchbar{display:flex; align-items:center; gap:8px; padding:10px 14px; border-bottom:0.5px solid var(--line); position:sticky; top:0; z-index:15; background:var(--bg);}
 .searchbar .si{color:var(--muted2); font-size:18px;}
 .searchbar input{flex:1; background:var(--card); border:0.5px solid var(--line2); color:var(--text); font-size:16px; padding:13px 12px; border-radius:10px; font-family:inherit;}
-.searchbar button{border:none; background:var(--card2); color:var(--muted); font-size:17px; width:44px; height:44px; border-radius:10px;}
+.searchbar button{border:none; background:var(--card2); color:var(--muted); font-size:17px; width:44px; height:44px; border-radius:13px; box-shadow:var(--shadow);}
 .search-hint{padding:8px 14px; font-size:12px; color:var(--muted); border-bottom:0.5px solid var(--line); display:flex; gap:6px; align-items:center; flex-wrap:wrap;}
 .shchip{background:var(--card2); border:0.5px solid var(--line2); border-radius:14px; padding:4px 11px; color:var(--text);}
 .shchip.on{border-color:var(--accent); color:var(--accent);}
@@ -61,27 +63,23 @@ button{font-family:inherit; cursor:pointer;}
 /* page */
 .page{padding:14px 14px 20px; max-width:520px; margin:0 auto;}
 .sectlabel{display:flex; align-items:center; gap:7px; margin:2px 2px 10px; font-size:13px; color:var(--muted);}
+.sectlabel .ic{font-size:21px;}
 .sectlabel .n{color:var(--muted2);}
 .addbtn{
-  margin-left:auto; font-size:15px; font-weight:500; color:var(--accent);
-  background:var(--accent-bg); border:0.5px solid var(--accent); padding:10px 18px; border-radius:11px;
-  display:flex; align-items:center; gap:4px;
+  margin-left:auto; font-size:15px; font-weight:600; color:var(--accent);
+  background:var(--accent-bg); border:0.5px solid var(--accent); padding:12px 20px; border-radius:14px;
+  display:flex; align-items:center; gap:4px; box-shadow:var(--shadow);
 }
 .addbtn:active{transform:scale(.97);}
-/* 0台のときの大きな追加ボタン */
-.bigadd{
-  display:inline-flex; align-items:center; gap:6px; margin-top:16px;
-  background:var(--accent); color:#fff; border:none; font-size:17px; font-weight:600;
-  padding:16px 28px; border-radius:12px;
-}
-.bigadd:active{transform:scale(.98);}
 
 /* car card */
 .car{
   background:var(--card); border:0.5px solid var(--line); border-radius:var(--radius);
   padding:11px 13px; margin-bottom:9px;
 }
-.car .top{display:flex; align-items:center; justify-content:space-between; gap:8px;}
+.car .top{display:flex; align-items:center; justify-content:space-between; gap:8px 10px; flex-wrap:wrap;}
+.car .top>div:first-child{min-width:0; flex:1 1 auto;}
+.car .top .row-actions{flex:0 0 auto; margin-left:auto;}
 .car .name{font-size:17px; font-weight:600;}
 .car .num{font-size:13px; color:var(--muted); font-family:ui-monospace,Menlo,Consolas,monospace; margin-left:5px;}
 .car .sub{font-size:11px; color:var(--muted); margin-top:3px;}
@@ -124,18 +122,20 @@ button{font-family:inherit; cursor:pointer;}
 /* buttons on card */
 .pill{
   border:0.5px solid var(--line2); background:var(--card2); color:var(--accent);
-  font-size:14px; padding:9px 14px; border-radius:10px; display:inline-flex; align-items:center; gap:4px; white-space:nowrap;
+  font-size:14px; padding:11px 16px; border-radius:14px; display:inline-flex; align-items:center; gap:4px; white-space:nowrap;
+  box-shadow:var(--shadow);
 }
 .pill.green{color:var(--green); border-color:#2c5648;}
 .pill:active{transform:scale(.96);}
 /* 戻る/次へ を下に大きく横並び */
 .stepnav{display:flex; gap:8px; margin-top:11px;}
-.stepnav .pill{flex:1; justify-content:center; text-align:center; font-size:16px; font-weight:500; padding:14px 10px;}
+.stepnav .pill{flex:1; justify-content:center; text-align:center; font-size:16px; font-weight:500; padding:15px 10px;}
 /* ごみ箱（削除）を見やすく */
-.delbtn{border:0.5px solid var(--line2); background:var(--card2); color:var(--muted); font-size:14px; padding:9px 16px; border-radius:9px;}
+.delbtn{border:0.5px solid var(--line2); background:var(--card2); color:var(--muted); font-size:14px; padding:11px 18px; border-radius:12px; box-shadow:var(--shadow);}
 .delbtn:active{transform:scale(.97);}
-.iconbtn{border:none; background:none; padding:5px; color:var(--muted2); font-size:27px; line-height:1;
-  min-width:44px; min-height:44px; display:inline-flex; align-items:center; justify-content:center;}
+.iconbtn{border:none; background:var(--card2); padding:5px; color:var(--muted2); font-size:27px; line-height:1;
+  min-width:46px; min-height:46px; display:inline-flex; align-items:center; justify-content:center;
+  border-radius:13px; box-shadow:var(--shadow);}
 .iconbtn.on{color:var(--red);}
 /* 部品待ちの旗を大きく */
 .flagbtn{border:none; background:none; padding:4px 6px; font-size:36px; line-height:1;}
@@ -143,19 +143,19 @@ button{font-family:inherit; cursor:pointer;}
 .row-actions{display:flex; align-items:center; gap:10px;}
 .times{font-size:11px; color:var(--muted2); margin-top:5px;}
 .dv-chips{display:flex; flex-wrap:wrap; gap:9px;}
-.dv-chip{border:0.5px solid var(--line2); background:var(--card2); color:var(--text); font-size:16px; font-weight:500; padding:14px 20px; border-radius:11px;}
+.dv-chip{border:0.5px solid var(--line2); background:var(--card2); color:var(--text); font-size:16px; font-weight:500; padding:15px 21px; border-radius:14px; box-shadow:var(--shadow);}
 .dv-chip:active{transform:scale(.97);}
 .dv-cal-head{display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; font-size:19px; font-weight:600;}
-.dv-nav{border:none; background:var(--card2); color:var(--text); font-size:24px; width:48px; height:48px; border-radius:10px;}
+.dv-nav{border:none; background:var(--card2); color:var(--text); font-size:24px; width:48px; height:48px; border-radius:13px; box-shadow:var(--shadow);}
 .dv-nav:active{transform:scale(.95);}
 .dv-dow{display:grid; grid-template-columns:repeat(7,1fr); text-align:center; font-size:13px; color:var(--muted); margin-bottom:6px;}
 .dv-dow .sun{color:var(--red);}
 .dv-dow .sat{color:var(--accent);}
 .dv-grid{display:grid; grid-template-columns:repeat(7,1fr); gap:4px;}
-.dv-cell{border:none; background:var(--card2); color:var(--text); font-size:19px; padding:15px 0; border-radius:10px;}
+.dv-cell{border:none; background:var(--card2); color:var(--text); font-size:19px; padding:15px 0; border-radius:11px;}
 .dv-cell.empty{visibility:hidden; background:none;}
 .dv-cell.today{border:2px solid var(--accent);}
-.dv-cell.sel{background:var(--accent); color:#fff; font-weight:600;}
+.dv-cell.sel{background:var(--accent); color:#fff; font-weight:600; box-shadow:var(--shadow);}
 .dv-cell:active{opacity:.7;}
 /* 種別（板金/整備）色分け */
 .kind{font-size:11px; border-radius:6px; padding:2px 7px; margin-right:6px; font-weight:500; white-space:nowrap;}
@@ -163,14 +163,14 @@ button{font-family:inherit; cursor:pointer;}
 .kind-seibi{background:var(--green-bg); color:var(--green);}
 .car.k-bankin{border-left:3px solid var(--accent);}
 .car.k-seibi{border-left:3px solid var(--green);}
-.kbtn{flex:1; border:0.5px solid var(--line2); background:var(--bg); color:var(--muted); font-size:16px; padding:12px; border-radius:10px;}
+.kbtn{flex:1; border:0.5px solid var(--line2); background:var(--bg); color:var(--muted); font-size:16px; padding:13px; border-radius:13px; box-shadow:var(--shadow);}
 .kbtn.sel{border-color:var(--accent); background:var(--accent-bg); color:var(--accent); font-weight:600;}
 .kbtn.sel.seibi{border-color:var(--green); background:var(--green-bg); color:var(--green);}
 .deliv{font-size:13px; color:var(--muted); margin-top:6px; display:inline-block; cursor:pointer;}
 .deliv.amber{color:var(--amber); font-weight:600;}
 .deliv.red{color:var(--red); font-weight:600;}
 .deliv-set{color:var(--accent); font-size:12px;}
-.assign{display:inline-flex; align-items:center; gap:3px; border:0.5px solid var(--line2); background:var(--card2); color:var(--muted); font-size:15px; padding:9px 14px; border-radius:20px; margin-left:8px; line-height:1.4; vertical-align:middle;}
+.assign{display:inline-flex; align-items:center; gap:3px; border:0.5px solid var(--line2); background:var(--card2); color:var(--muted); font-size:15px; padding:10px 15px; border-radius:20px; margin-left:8px; line-height:1.4; vertical-align:middle; box-shadow:var(--shadow);}
 .assign.has{color:var(--accent); border-color:#2c4a72; background:var(--accent-bg);}
 .assign:active{transform:scale(.96);}
 
@@ -197,9 +197,9 @@ button{font-family:inherit; cursor:pointer;}
 .metric .m-val small{font-size:12px; color:var(--muted); font-weight:400;}
 
 /* 完成タブの期間フィルタ */
-.segbar{display:flex; gap:5px; background:var(--card); border:0.5px solid var(--line); border-radius:10px; padding:4px; margin-bottom:12px;}
-.seg-btn{flex:1; background:none; border:none; color:var(--muted); font-size:14px; padding:9px 0; border-radius:7px;}
-.seg-btn.active{background:var(--card2); color:var(--text); font-weight:600;}
+.segbar{display:flex; gap:5px; background:var(--card); border:0.5px solid var(--line); border-radius:14px; padding:4px; margin-bottom:12px;}
+.seg-btn{flex:1; background:none; border:none; color:var(--muted); font-size:14px; padding:10px 0; border-radius:11px;}
+.seg-btn.active{background:var(--card2); color:var(--text); font-weight:600; box-shadow:var(--shadow);}
 .seg-btn:active{transform:scale(.98);}
 
 /* bottom tabbar */
@@ -239,7 +239,7 @@ button{font-family:inherit; cursor:pointer;}
   position:absolute; top:10px; right:10px; z-index:3;
   width:44px; height:44px; border-radius:50%;
   background:var(--card2); color:var(--text); border:0.5px solid var(--line2);
-  font-size:20px; line-height:1; cursor:pointer; padding:0;
+  font-size:20px; line-height:1; cursor:pointer; padding:0; box-shadow:var(--shadow);
 }
 .sheet-x:active{transform:scale(.94);}
 .sheet h2{font-size:21px; font-weight:600; margin:0 0 18px; padding-right:50px;}
@@ -252,8 +252,8 @@ button{font-family:inherit; cursor:pointer;}
 }
 .field input::placeholder{color:var(--muted2);}
 .btn{
-  width:100%; border:none; border-radius:11px; padding:15px; font-size:17px; font-weight:600;
-  background:var(--accent); color:#fff;
+  width:100%; border:none; border-radius:15px; padding:17px; font-size:17px; font-weight:600;
+  background:var(--accent); color:#fff; box-shadow:var(--shadow);
 }
 .btn:active{transform:scale(.99);}
 .btn.ghost{background:var(--card2); color:var(--text); border:0.5px solid var(--line2); font-weight:500;}
@@ -319,7 +319,7 @@ button{font-family:inherit; cursor:pointer;}
     <button class="addbtn" onclick="openAddCar()">＋ 入庫を追加</button>
   </div>
   <div id="nyuko-list"></div>
-  <div class="emptybox hidden" id="nyuko-empty">入庫中の車はありません。<br><button class="bigadd" onclick="openAddCar()">＋ 入庫を追加</button></div>
+  <div class="emptybox hidden" id="nyuko-empty">入庫中の車はありません。<br>上の「＋ 入庫を追加」からはじめられます。</div>
 </div>
 
 <!-- 完成 -->
@@ -374,7 +374,7 @@ button{font-family:inherit; cursor:pointer;}
      同じスプレッドシートに「進捗/入庫/完成履歴」シートとして相乗りできる。
    - いまは persist() が localStorage に書くだけ＝バックエンド不要で即使える。
    =================================================================== */
-const APP_VERSION = '20260721e';
+const APP_VERSION = '20260721f';
 const STORE_KEY   = 'board_state_v1';
 const DEFAULT_STAGES = ['パネル修正','パテ','サフ','調色','マスキング','塗装','乾燥','磨き','組み付け'];
 /* 工程は店舗ごとに設定で変更可。state.store.stages に保存、無ければ標準9工程 */
