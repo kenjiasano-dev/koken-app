@@ -51,9 +51,9 @@ button{font-family:inherit; cursor:pointer;}
 
 /* 検索バー */
 .searchbar{display:flex; align-items:center; gap:8px; padding:10px 14px; border-bottom:0.5px solid var(--line); position:sticky; top:0; z-index:15; background:var(--bg);}
-.searchbar .si{color:var(--muted2); font-size:15px;}
-.searchbar input{flex:1; background:var(--card); border:0.5px solid var(--line2); color:var(--text); font-size:16px; padding:10px 12px; border-radius:10px; font-family:inherit;}
-.searchbar button{border:none; background:var(--card2); color:var(--muted); font-size:15px; width:36px; height:36px; border-radius:8px;}
+.searchbar .si{color:var(--muted2); font-size:18px;}
+.searchbar input{flex:1; background:var(--card); border:0.5px solid var(--line2); color:var(--text); font-size:16px; padding:13px 12px; border-radius:10px; font-family:inherit;}
+.searchbar button{border:none; background:var(--card2); color:var(--muted); font-size:17px; width:44px; height:44px; border-radius:10px;}
 .search-hint{padding:8px 14px; font-size:12px; color:var(--muted); border-bottom:0.5px solid var(--line); display:flex; gap:6px; align-items:center; flex-wrap:wrap;}
 .shchip{background:var(--card2); border:0.5px solid var(--line2); border-radius:14px; padding:4px 11px; color:var(--text);}
 .shchip.on{border-color:var(--accent); color:var(--accent);}
@@ -134,7 +134,8 @@ button{font-family:inherit; cursor:pointer;}
 /* ごみ箱（削除）を見やすく */
 .delbtn{border:0.5px solid var(--line2); background:var(--card2); color:var(--muted); font-size:14px; padding:9px 16px; border-radius:9px;}
 .delbtn:active{transform:scale(.97);}
-.iconbtn{border:none; background:none; padding:5px; color:var(--muted2); font-size:27px; line-height:1;}
+.iconbtn{border:none; background:none; padding:5px; color:var(--muted2); font-size:27px; line-height:1;
+  min-width:44px; min-height:44px; display:inline-flex; align-items:center; justify-content:center;}
 .iconbtn.on{color:var(--red);}
 /* 部品待ちの旗を大きく */
 .flagbtn{border:none; background:none; padding:4px 6px; font-size:36px; line-height:1;}
@@ -169,7 +170,7 @@ button{font-family:inherit; cursor:pointer;}
 .deliv.amber{color:var(--amber); font-weight:600;}
 .deliv.red{color:var(--red); font-weight:600;}
 .deliv-set{color:var(--accent); font-size:12px;}
-.assign{display:inline-flex; align-items:center; gap:3px; border:0.5px solid var(--line2); background:var(--card2); color:var(--muted); font-size:14px; padding:6px 12px; border-radius:20px; margin-left:8px; line-height:1.4; vertical-align:middle;}
+.assign{display:inline-flex; align-items:center; gap:3px; border:0.5px solid var(--line2); background:var(--card2); color:var(--muted); font-size:15px; padding:9px 14px; border-radius:20px; margin-left:8px; line-height:1.4; vertical-align:middle;}
 .assign.has{color:var(--accent); border-color:#2c4a72; background:var(--accent-bg);}
 .assign:active{transform:scale(.96);}
 
@@ -209,9 +210,9 @@ button{font-family:inherit; cursor:pointer;}
 }
 .tab{
   flex:1; background:none; border:none; color:var(--muted2);
-  display:flex; flex-direction:column; align-items:center; gap:2px; padding:6px 0; font-size:11px;
+  display:flex; flex-direction:column; align-items:center; gap:3px; padding:9px 0; font-size:12.5px; font-weight:500;
 }
-.tab .ic{font-size:20px; line-height:1;}
+.tab .ic{font-size:25px; line-height:1;}
 .tab.active{color:var(--accent);}
 .tab .badge{
   position:absolute; transform:translate(14px,-6px); background:var(--red); color:#fff;
@@ -235,13 +236,13 @@ button{font-family:inherit; cursor:pointer;}
 }
 /* どのシートにも必ず出る閉じるボタン（showSheetが自動で入れる） */
 .sheet-x{
-  position:absolute; top:12px; right:12px; z-index:3;
-  width:38px; height:38px; border-radius:50%;
+  position:absolute; top:10px; right:10px; z-index:3;
+  width:44px; height:44px; border-radius:50%;
   background:var(--card2); color:var(--text); border:0.5px solid var(--line2);
-  font-size:18px; line-height:1; cursor:pointer; padding:0;
+  font-size:20px; line-height:1; cursor:pointer; padding:0;
 }
 .sheet-x:active{transform:scale(.94);}
-.sheet h2{font-size:21px; font-weight:600; margin:0 0 18px; padding-right:44px;}
+.sheet h2{font-size:21px; font-weight:600; margin:0 0 18px; padding-right:50px;}
 .field{margin-bottom:20px;}
 .field label{display:block; font-size:16px; font-weight:600; color:var(--text); margin-bottom:9px;}
 .field label .req{color:var(--accent); font-size:13px; font-weight:500; margin-left:6px;}
@@ -288,8 +289,8 @@ button{font-family:inherit; cursor:pointer;}
   </div>
   <div style="display:flex; align-items:center; gap:14px;">
     <div class="sync"><span class="dot"></span><span id="sync-label">この端末に保存</span></div>
-    <button class="iconbtn" id="theme-btn" style="font-size:19px; color:var(--muted);" title="明るさ切替" onclick="toggleTheme()">🌙</button>
-    <button class="iconbtn" style="font-size:21px; color:var(--muted);" title="設定" onclick="openSettings()">⚙</button>
+    <button class="iconbtn" id="theme-btn" style="font-size:24px; color:var(--muted);" title="明るさ切替" onclick="toggleTheme()">🌙</button>
+    <button class="iconbtn" style="font-size:26px; color:var(--muted);" title="設定" onclick="openSettings()">⚙</button>
   </div>
 </div>
 
@@ -373,7 +374,7 @@ button{font-family:inherit; cursor:pointer;}
      同じスプレッドシートに「進捗/入庫/完成履歴」シートとして相乗りできる。
    - いまは persist() が localStorage に書くだけ＝バックエンド不要で即使える。
    =================================================================== */
-const APP_VERSION = '20260721a';
+const APP_VERSION = '20260721b';
 const STORE_KEY   = 'board_state_v1';
 const DEFAULT_STAGES = ['パネル修正','パテ','サフ','調色','マスキング','塗装','乾燥','磨き','組み付け'];
 /* 工程は店舗ごとに設定で変更可。state.store.stages に保存、無ければ標準9工程 */
