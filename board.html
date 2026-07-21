@@ -374,7 +374,7 @@ button{font-family:inherit; cursor:pointer;}
      同じスプレッドシートに「進捗/入庫/完成履歴」シートとして相乗りできる。
    - いまは persist() が localStorage に書くだけ＝バックエンド不要で即使える。
    =================================================================== */
-const APP_VERSION = '20260721c';
+const APP_VERSION = '20260721d';
 const STORE_KEY   = 'board_state_v1';
 const DEFAULT_STAGES = ['パネル修正','パテ','サフ','調色','マスキング','塗装','乾燥','磨き','組み付け'];
 /* 工程は店舗ごとに設定で変更可。state.store.stages に保存、無ければ標準9工程 */
@@ -470,16 +470,66 @@ function toggleTheme(){
   persist(); applyTheme();
 }
 
-/* ---------- persistence (ここをGAS呼び出しに差し替えれば統合) ---------- */
-function persist(){
+/* ---------- persistence ----------
+   car を渡すとその car の updatedAt を刻んでから保存＝端末間マージの判定に使う。
+   保存のたびに、複数端末で見られるようにGASへの同期もスケジュールする。 */
+function persist(car){
+  if(car) car.updatedAt = Date.now();
+  saveLocal();
+  scheduleBoardSync();
+}
+function saveLocal(){
   try{ localStorage.setItem(STORE_KEY, JSON.stringify(state)); }catch(e){}
 }
 
-/* ---------- 工賃アプリと同じGASへの案件同期（2026-07-21〜）----------
-   ローカル(localStorage)が正＝GAS送信はあくまで「工賃アプリ側から見えるように」の
-   バックグラウンド同期。失敗してもボード自体の操作は止めない（fire-and-forget＋再送キュー）。 */
+/* ---------- 複数端末での共有（2026-07-21〜） ----------
+   従来はlocalStorageだけ＝端末ごとに別々のデータだった。
+   ここからは店舗コード(shopCode=state.store.group)単位でGASに全車両をpush/pullし、
+   updatedAtが新しい方を勝たせる方式（後勝ち）でマージする。
+   写真の実体(blob)は同期対象外＝GASを経由させない（本部に画像保管義務を負わせないため）。
+   同期対象はステータス・工程・担当者・納車日などのテキスト情報と、写真の「枚数」だけ。 */
 const BOARD_GAS_URL = 'https://script.google.com/macros/s/AKfycbxyh_WByXmc8qeKmz0H9q0Kf2y4xKl-4C2cK6F2Ul3OkFGQZhFPvQArnlIwlo701WifwQ/exec';
 const BOARD_GAS_TOKEN = 'carcon-kotin-2025';
+let _boardSyncTimer=null, _boardSyncing=false;
+function scheduleBoardSync(){
+  clearTimeout(_boardSyncTimer);
+  _boardSyncTimer=setTimeout(()=>{ syncBoardCars(state.cars); }, 1200);
+}
+async function syncBoardCars(carsList){
+  if(!state.store || !state.store.group) return;
+  if(_boardSyncing) return;
+  _boardSyncing=true;
+  try{
+    const res=await fetch(BOARD_GAS_URL, {
+      method:'POST',
+      headers:{'Content-Type':'text/plain'},
+      body:JSON.stringify({action:'syncBoard', token:BOARD_GAS_TOKEN, shopCode:state.store.group, cars:carsList})
+    });
+    const data=await res.json();
+    if(data && data.success && Array.isArray(data.cars)) mergeServerCars(data.cars);
+  }catch(e){ /* オフライン等：次回の定期同期・操作時に再試行される */ }
+  finally{ _boardSyncing=false; }
+}
+/* サーバーから来た全車両とローカルをマージ。updatedAtが新しい方を勝たせる。deleted付きは表示から除く */
+function mergeServerCars(serverCars){
+  const localById={}; state.cars.forEach(c=>{ localById[c.id]=c; });
+  const serverById={}; serverCars.forEach(c=>{ serverById[c.id]=c; });
+  const ids=new Set([...Object.keys(localById), ...Object.keys(serverById)]);
+  const merged=[];
+  ids.forEach(id=>{
+    const loc=localById[id], srv=serverById[id];
+    if(loc && srv) merged.push((Number(srv.updatedAt)||0) >= (Number(loc.updatedAt)||0) ? srv : loc);
+    else if(srv) merged.push(srv);     // 他端末が作った車
+    else if(loc) merged.push(loc);     // まだサーバーに届いていないローカルの新規（オフライン等）
+  });
+  state.cars = merged.filter(c=>!c.deleted);
+  saveLocal();
+  render();
+}
+/* 起動時・オンライン復帰時に一度全体を同期（他端末の変更を取り込む） */
+function boardSyncNow(){ if(state.store && state.store.group) syncBoardCars(state.cars); }
+window.addEventListener('online', boardSyncNow);
+setInterval(boardSyncNow, 25000);
 const BOARD_GAS_QUEUE_KEY = 'board_gasSendQueue';
 let _boardGasFlushing = false;
 
@@ -746,8 +796,9 @@ function saveCar(){
     doneAt:null,
     projectId:null     // 下4桁が揃うとGAS側の案件と紐付く（工賃アプリと連携）
   });
-  syncProjectCreate(state.cars[state.cars.length-1]);
-  persist(); closeSheet(); toast('入庫に追加しました'); render();
+  const newCar = state.cars[state.cars.length-1];
+  syncProjectCreate(newCar);
+  persist(newCar); closeSheet(); toast('入庫に追加しました'); render();
 }
 function findCar(id){ return state.cars.find(c=>c.id===id); }
 
@@ -888,7 +939,7 @@ function updateNcDisp(){
 function setDelivery(id,val){
   const c=findCar(id); if(!c) return;
   c.deliveryDate = val||'';
-  persist(); closeSheet(); render();
+  persist(c); closeSheet(); render();
 }
 
 /* 入庫 → 作業開始 */
@@ -897,7 +948,7 @@ function startCar(id){
   c.status='work'; c.stage=0; c.startAt=nowISO();
   c.stageDur = c.stageDur || [];
   c.stageStart = Date.now();          // 最初の工程の計測開始
-  persist(); toast(c.cartype+' を作業中へ'); render();
+  persist(c); toast(c.cartype+' を作業中へ'); render();
 }
 /* 次へ（工程を進める）＝いま終えた工程に現在の担当を刻む */
 function nextStage(id){
@@ -910,7 +961,7 @@ function nextStage(id){
     syncStageProgress(c, c.stage, '完了');    // いま終えた工程をGASに反映
     c.stage++;
     c.stageStart = Date.now();                // 次の工程の計測開始
-    persist(); render();
+    persist(c); render();
   }
 }
 /* 戻る（工程を一つ戻す）＝戻った工程はやり直しなので担当をクリア */
@@ -922,7 +973,7 @@ function prevStage(id){
     if(c.stageBy) c.stageBy[c.stage] = [];
     if(c.stageDur) c.stageDur[c.stage] = 0;   // 戻った工程はやり直し＝時間もリセット
     c.stageStart = Date.now();
-    persist(); render();
+    persist(c); render();
   }
 }
 /* 完成＝最終工程も担当者で記録 */
@@ -935,7 +986,7 @@ function finishCar(id){
   syncStageProgress(c, c.stage, '完了');      // 最終工程をGASに反映
   c.status='done'; c.waitingParts=false; c.doneAt=nowISO();
   syncProjectComplete(c);                     // 案件完成をGASに反映
-  persist(); toast(c.cartype+' を完成に記録'); render();
+  persist(c); toast(c.cartype+' を完成に記録'); render();
 }
 /* 工程の担当は「1名＝文字列」または「複数名＝配列」。どちらで保存されていても配列として読む（古いデータ互換） */
 function byNames(v){ return !v ? [] : (Array.isArray(v) ? v.filter(Boolean) : [v]); }
@@ -969,7 +1020,7 @@ function toggleParts(id){
     c.partSince = null;
     c.stageStart = Date.now(); // 再開
   }
-  persist(); render();
+  persist(c); render();
 }
 /* 削除（打ち間違い等） */
 function askDelete(id){
@@ -984,10 +1035,13 @@ function askDelete(id){
   showSheet(html);
 }
 function doDelete(id){
-  const c=findCar(id);
-  if(c&&c.photos&&c.photos.length){ c.photos.forEach(p=>{ pdbDel(p.id).catch(()=>{}); }); }
-  state.cars = state.cars.filter(c=>c.id!==id);
-  persist(); closeSheet(); toast('削除しました'); render();
+  const c=findCar(id); if(!c) return;
+  if(c.photos && c.photos.length){ c.photos.forEach(p=>{ pdbDel(p.id).catch(()=>{}); }); }
+  // 他端末にも削除を伝えるため、消す前に「削除済み」印(tombstone)を一度サーバーへ送る
+  c.deleted = true; c.updatedAt = Date.now();
+  syncBoardCars([c]);
+  state.cars = state.cars.filter(x=>x.id!==id);
+  saveLocal(); closeSheet(); toast('削除しました'); render();
 }
 /* 完成 → 作業中へ戻す（取り消し） */
 /* 作業中 → 入庫に戻す（開始前に戻す・進捗と時間はリセット） */
@@ -996,13 +1050,13 @@ function backToNyuko(id){
   c.status='nyuko';
   c.stage=0; c.stageStart=null; c.stageDur=[]; c.stageBy=[];
   c.waitingParts=false; c.partSince=null; c.startAt=null;
-  persist(); toast(c.cartype+' を入庫に戻しました'); render();
+  persist(c); toast(c.cartype+' を入庫に戻しました'); render();
 }
 function reopenCar(id){
   const c=findCar(id); if(!c) return;
   c.status='work'; c.doneAt=null;
   c.stageStart = Date.now();   // 最終工程の計測を再開
-  persist(); toast('作業中に戻しました'); render();
+  persist(c); toast('作業中に戻しました'); render();
 }
 
 /* ---------- 設定：工程の編集 ---------- */
@@ -1046,6 +1100,7 @@ function settingsHTML(){
       <button class="btn" onclick="saveStages()">保存</button>
     </div>
     <button class="btn ghost" style="margin-top:9px;" onclick="openMembers()">担当者（メンバー）の編集</button>
+    <button class="btn ghost" style="margin-top:9px;" onclick="connectGDrive()">🔗 Googleドライブ連携${(localStorage.getItem('gdrive_confirmed_email'))?'（'+esc(localStorage.getItem('gdrive_confirmed_email'))+'）':'（未接続）'}</button>
     <button class="btn ghost" style="margin-top:9px;" onclick="exportAllZip()">📷 全部の工程写真をまとめてZIPで書き出す</button>
     <button class="btn ghost" style="margin-top:9px;" onclick="openSetup()">店舗名・グループを変更</button>`;
 }
@@ -1072,7 +1127,7 @@ function openAssign(id){
 function assignPick(id,i){
   const c=findCar(id); if(!c) return;
   c.assignee = (i<0) ? '' : (getMembers()[i]||'');
-  persist(); closeSheet(); render();
+  persist(c); closeSheet(); render();
 }
 /* 工程ごとの担当を選ぶ（ゲージの各工程タップ）。過去工程の訂正も可。
    今の工程を変えたら「今の担当」も更新し、以降の工程に自動で引き継ぐ。 */
@@ -1120,7 +1175,7 @@ function stageCrewSave(){
   c.stageBy=c.stageBy||[];
   c.stageBy[s.i]=s.names.slice();
   if(s.i===c.stage && s.names.length){ c.assignee=s.names[0]; }   // 先頭を主担当に＝並び替えと以降の工程への引き継ぎ用
-  persist(); closeSheet(); render();
+  persist(c); closeSheet(); render();
   toast(s.names.length ? ('担当を記録しました（'+s.names.length+'名）') : '担当を未割り当てにしました');
   _crewSel=null;
 }
@@ -1245,7 +1300,8 @@ function onPhotoPicked(e){
       return pdbPut(rec).then(()=>{
         c.photos=c.photos||[];
         c.photos.push({id, stageIndex:ctx.idx, stageLabel:ctx.label, ts:rec.ts});
-        persist();
+        persist(c);
+        autoUploadPhoto(c.id, id);   // 撮影直後に自動でドライブへ送る（未連携なら黙ってスキップ）
       });
     }).catch(()=>{}).then(()=>{
       if(++done===files.length){ toast('写真を保存しました'); render(); if(document.getElementById('gallery-body')) refreshGallery(c.id); }
@@ -1254,10 +1310,12 @@ function onPhotoPicked(e){
 }
 /* 端末容量とZIPサイズを抑えるため長辺1600pxのJPEGに縮小（失敗時は元画像を保存） */
 
-/* ========== Google Drive アップロード（Google Identity Services + Drive REST） ========== */
+/* ========== Google Drive アップロード（Google Identity Services + Drive REST） ==========
+   2026-07-21〜: 写真を撮るたびに自動でドライブへ送る方式に変更（複数端末で同じ写真をすぐ見られるように）。
+   本部(GAS)は写真に一切触れない＝各店舗自身のGoogleドライブに直接送る設計は維持。 */
 const GDRIVE_CLIENT_ID='597554455043-5ai5p6ik57ovk4cavk73a6ssrf66583q.apps.googleusercontent.com';
 const GDRIVE_ROOT_FOLDER='修理画像';   // 車ごとのフォルダは、この親フォルダの中に作る
-let _gdriveTokenClient=null, _gdrivePendingCar=null;
+let _gdriveTokenClient=null, _gdriveToken=null, _gdriveTokenExp=0, _gdriveTokenResolvers=[];
 function gdriveReady(){ return window.google && google.accounts && google.accounts.oauth2; }
 function gdriveInit(){
   if(_gdriveTokenClient || !gdriveReady()) return;
@@ -1265,19 +1323,30 @@ function gdriveInit(){
     client_id:GDRIVE_CLIENT_ID,
     scope:'https://www.googleapis.com/auth/drive.file',
     callback:function(resp){
-      const carId=_gdrivePendingCar; _gdrivePendingCar=null;
-      if(resp&&resp.access_token&&carId){ gdriveDoUpload(carId,resp.access_token); }
-      else{ toast('Google認証がキャンセルされました'); }
+      const resolvers=_gdriveTokenResolvers; _gdriveTokenResolvers=[];
+      if(resp&&resp.access_token){
+        _gdriveToken=resp.access_token;
+        _gdriveTokenExp=Date.now()+((resp.expires_in||3300)*1000);
+        resolvers.forEach(r=>r(_gdriveToken));
+      }else{
+        resolvers.forEach(r=>r(null));
+      }
     }
   });
 }
-function uploadPhotosToGDrive(carId){
-  const c=findCar(carId); if(!c) return;
-  const photos=c.photos||[]; if(!photos.length){ toast('写真がありません'); return; }
-  gdriveInit();
-  if(!_gdriveTokenClient){ toast('Google連携の準備中です。数秒後にもう一度お試しください。'); return; }
-  _gdrivePendingCar=carId;
-  _gdriveTokenClient.requestAccessToken();
+/* トークンを取得。interactive=false は同意画面なしのサイレント取得（未連携なら黙って失敗＝null）。
+   interactive=true は「🔗 Googleドライブ連携」ボタンなど、ユーザー操作から呼ぶ想定（同意画面が出てよい）。 */
+function requestGDriveToken(interactive){
+  return new Promise(res=>{
+    gdriveInit();
+    if(!_gdriveTokenClient){ res(null); return; }
+    if(_gdriveToken && Date.now() < _gdriveTokenExp - 60000){ res(_gdriveToken); return; }
+    const inFlight=_gdriveTokenResolvers.length>0;
+    _gdriveTokenResolvers.push(res);
+    if(inFlight) return;
+    try{ _gdriveTokenClient.requestAccessToken(interactive ? {} : {prompt:''}); }
+    catch(e){ const rs=_gdriveTokenResolvers; _gdriveTokenResolvers=[]; rs.forEach(r=>r(null)); }
+  });
 }
 /* 親フォルダの下で name のフォルダを探し、無ければ作ってIDを返す（parentId未指定はマイドライブ直下） */
 async function gdriveFolder(name, parentId, auth){
@@ -1307,48 +1376,91 @@ async function gdriveFindFile(name, parentId, auth){
   const j=await r.json();
   return (j.files&&j.files[0])?j.files[0].id:null;
 }
-async function gdriveDoUpload(carId, token){
-  const c=findCar(carId); if(!c) return;
-  const all=c.photos||[]; if(!all.length) return;
-  const photos=all.filter(p=>!p.gdriveId);          // 送信済みは二重送信しない
-  if(!photos.length){ toast('新しい写真はありません（すべて保存済み）'); return; }
-  const folderName=carFolder(c);
+/* 初回だけ「このアカウントに送っていいか」確認。同じメールなら以降は聞かない */
+async function ensureGDriveConsent(token){
+  const email=await gdriveWhoAmI({'Authorization':'Bearer '+token});
+  if(!email) return true;   // メール取得できなくても致命的ではないので続行
+  localStorage.setItem('gdrive_last_account', email);
+  const confirmed=localStorage.getItem('gdrive_confirmed_email');
+  if(confirmed===email){ if(state.store) state.store.gdriveEmail=email; return true; }
+  const ok=confirm('『'+email+'』のGoogleドライブに写真を自動保存します。よろしいですか？\n（別の人のスマホと共通のアカウントか確認してください）');
+  if(ok){ localStorage.setItem('gdrive_confirmed_email', email); if(state.store){ state.store.gdriveEmail=email; persist(); } }
+  return ok;
+}
+/* 1枚だけアップロード（自動送信・手動リトライ共通の実処理） */
+async function uploadOnePhoto(c, photoId, token){
+  const p=(c.photos||[]).find(x=>x.id===photoId);
+  if(!p || p.gdriveId) return false;
   const auth={'Authorization':'Bearer '+token};
   try{
-    const email=await gdriveWhoAmI(auth);
-    if(email){
-      localStorage.setItem('gdrive_last_account', email);
-      if(!confirm('『'+email+'』のGoogleドライブに送ります。よろしいですか？\n（別の人のスマホと共通のアカウントか確認してください）')) return;
+    if(!c.gdriveFolderId){
+      const rootId=await gdriveFolder(GDRIVE_ROOT_FOLDER, null, auth);
+      if(!rootId) return false;
+      const folderId=await gdriveFolder(carFolder(c), rootId, auth);
+      if(!folderId) return false;
+      c.gdriveFolderId=folderId; persist(c);
     }
-    toast(photos.length+'枚をGoogleドライブにアップロード中…');
-    const rootId=await gdriveFolder(GDRIVE_ROOT_FOLDER, null, auth);
-    if(!rootId){ toast('「'+GDRIVE_ROOT_FOLDER+'」フォルダの作成に失敗しました'); return; }
-    const folderId=await gdriveFolder(folderName, rootId, auth);
-    if(!folderId){ toast('フォルダ作成に失敗しました'); return; }
-    let ok=0, fail=0, skipped=0;
-    for(const p of photos){
-      let rec; try{ rec=await pdbGet(p.id); }catch(e){}
-      if(!rec||!rec.blob){ fail++; continue; }
-      // 端末をまたいでも同じ名前になるよう、ランダムIDを含めない安定した名前にする
-      const fileName='p_'+p.stageLabel+'_'+new Date(p.ts).toISOString().slice(0,16).replace(/[:T]/g,'-')+'.jpg';
-      try{
-        const existing=await gdriveFindFile(fileName, folderId, auth);
-        if(existing){ p.gdriveId=existing; persist(); skipped++; continue; }   // 他の端末が先に送信済み＝二重に送らない
-        const form=new FormData();
-        form.append('metadata',new Blob([JSON.stringify({name:fileName,parents:[folderId]})],{type:'application/json'}));
-        form.append('file',rec.blob);
-        let ur=await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id',{method:'POST',headers:auth,body:form});
-        if(ur.ok){ const uj=await ur.json(); p.gdriveId=(uj&&uj.id)||'1'; persist(); ok++; } else { fail++; }
-      }catch(e){ fail++; }
+    const fileName='p_'+p.stageLabel+'_'+new Date(p.ts).toISOString().slice(0,16).replace(/[:T]/g,'-')+'.jpg';
+    const existing=await gdriveFindFile(fileName, c.gdriveFolderId, auth);
+    if(existing){ p.gdriveId=existing; persist(c); return true; }   // 他の端末が先に送信済み
+    let rec; try{ rec=await pdbGet(p.id); }catch(e){}
+    if(!rec||!rec.blob) return false;
+    const form=new FormData();
+    form.append('metadata',new Blob([JSON.stringify({name:fileName,parents:[c.gdriveFolderId]})],{type:'application/json'}));
+    form.append('file',rec.blob);
+    const ur=await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id',{method:'POST',headers:auth,body:form});
+    if(ur.ok){
+      const uj=await ur.json(); p.gdriveId=(uj&&uj.id)||'1'; persist(c);
+      if(document.getElementById('gallery-body')) refreshGallery(c.id);
+      return true;
     }
-    if(document.getElementById('gallery-body')) refreshGallery(carId);
-    let msg=ok+'枚を「'+GDRIVE_ROOT_FOLDER+'／'+folderName+'」に保存しました';
-    if(skipped) msg+='（'+skipped+'枚は送信済みでした）';
-    if(fail) msg+='（'+fail+'枚失敗）';
-    toast(msg);
-  }catch(e){
-    toast('Googleドライブ接続でエラーが発生しました');
+    return false;
+  }catch(e){ return false; }
+}
+/* 撮影直後に呼ぶ：サイレントにトークンが取れれば自動送信、取れなければ黙ってスキップ（あとで拾う） */
+async function autoUploadPhoto(carId, photoId){
+  const c=findCar(carId); if(!c) return;
+  const token=await requestGDriveToken(false);
+  if(!token) return;
+  const ok=await ensureGDriveConsent(token);
+  if(!ok) return;
+  await uploadOnePhoto(c, photoId, token);
+}
+/* 未送信分をまとめて再送（オンライン復帰時・定期・手動ボタンから） */
+async function retryPendingGDriveUploads(interactive){
+  const token=await requestGDriveToken(!!interactive);
+  if(!token) return;
+  const ok=await ensureGDriveConsent(token);
+  if(!ok) return;
+  for(const c of state.cars){
+    const pending=(c.photos||[]).filter(p=>!p.gdriveId);
+    for(const p of pending){ await uploadOnePhoto(c, p.id, token); }
   }
+}
+window.addEventListener('online', ()=>retryPendingGDriveUploads(false));
+setInterval(()=>retryPendingGDriveUploads(false), 90000);
+/* 設定ページ「🔗 Googleドライブ連携」用（初回連携・アカウント切り替え） */
+function connectGDrive(){
+  requestGDriveToken(true).then(async token=>{
+    if(!token){ toast('Google連携がキャンセルされました'); return; }
+    const ok=await ensureGDriveConsent(token);
+    if(ok){ toast('Googleドライブに接続しました'); retryPendingGDriveUploads(false); rebuildSettings(); }
+  });
+}
+/* ギャラリーの「☁️送る」ボタン：未送信分を今すぐ（必要なら同意画面つきで）送る手動フォールバック */
+function uploadPhotosToGDrive(carId){
+  const c=findCar(carId); if(!c) return;
+  const photos=(c.photos||[]).filter(p=>!p.gdriveId);
+  if(!photos.length){ toast('未送信の写真はありません（自動送信済み）'); return; }
+  requestGDriveToken(true).then(async token=>{
+    if(!token){ toast('Google連携がキャンセルされました'); return; }
+    const ok=await ensureGDriveConsent(token);
+    if(!ok) return;
+    toast(photos.length+'枚を送信中…');
+    let sent=0;
+    for(const p of photos){ if(await uploadOnePhoto(c, p.id, token)) sent++; }
+    toast(sent+'枚を送信しました');
+  });
 }
 
 function shrinkImage(file, max=1600, q=0.82){
@@ -1387,13 +1499,16 @@ function openGallery(carId){
 }
 function galleryHTML(c){
   const photos=(c.photos||[]).slice().sort((a,b)=>(a.stageIndex-b.stageIndex)||(a.ts-b.ts));
-  const pend=photos.filter(p=>!p.gdriveId).length;   // まだドライブに送っていない枚数
+  const pend=photos.filter(p=>!p.gdriveId).length;   // まだドライブに送れていない枚数（自動送信の取りこぼし分）
   const gbtn = !photos.length
-    ? '<button class="btn" disabled style="opacity:.4">☁️ Googleドライブに送る</button>'
-    : (pend ? '<button class="btn" onclick="uploadPhotosToGDrive(\''+c.id+'\')">☁️ Googleドライブに送る（未送信 '+pend+'枚）</button>'
-            : '<button class="btn" disabled style="opacity:.5">✅ ドライブに保存済み</button>');
+    ? '<button class="btn" disabled style="opacity:.4">☁️ 自動でドライブに送信</button>'
+    : (pend ? '<button class="btn" onclick="uploadPhotosToGDrive(\''+c.id+'\')">☁️ 未送信 '+pend+'枚を今すぐ送る</button>'
+            : '<button class="btn" disabled style="opacity:.5">✅ すべてドライブに保存済み</button>');
+  const viewBtn = c.gdriveFolderId
+    ? '<button class="btn ghost" onclick="window.open(\'https://drive.google.com/drive/folders/'+c.gdriveFolderId+'\',\'_blank\')" style="margin-top:8px;">📁 お店のドライブで見る（他の人が撮った分も）</button>'
+    : '';
   const lastAcc=localStorage.getItem('gdrive_last_account');
-  const accHint=lastAcc ? '<p style="color:var(--muted2);font-size:11px;margin:2px 0 8px;">☁️ 前回の送信先：'+esc(lastAcc)+'（違う場合は必ずお店共通のアカウントでログインしてください）</p>' : '';
+  const accHint=lastAcc ? '<p style="color:var(--muted2);font-size:11px;margin:2px 0 8px;">☁️ 送信先：'+esc(lastAcc)+'（違う場合は設定の🔗連携から切り替えてください）</p>' : '<p style="color:var(--muted2);font-size:11px;margin:2px 0 8px;">⚠️ まだGoogleドライブに未連携です。設定の「🔗 Googleドライブ連携」から接続してください</p>';
   let inner;
   if(!photos.length){
     inner='<p style="color:var(--muted);font-size:14px;margin:6px 0 14px;">まだ写真がありません。下の「撮る／追加」から入庫や各工程の写真を残せます。</p>';
@@ -1419,6 +1534,7 @@ function galleryHTML(c){
     <button class="btn ghost" style="margin-bottom:9px;" onclick="addPhoto('${c.id}')">📷 撮る / 追加</button>
     ${accHint}
     ${gbtn}
+    ${viewBtn}
     <div style="height:9px;"></div>
     <button class="btn ghost" ${photos.length?'':'disabled style=\"opacity:.4\"'} onclick="exportCarZip('${c.id}')">⬇ この車の写真をZIPで保存</button>
     <div style="height:9px;"></div>
@@ -1763,6 +1879,7 @@ applyTheme();
 renderStoreLabel();
 if(!ensureStore()){ /* setup shown */ }
 switchTab('work');
+boardSyncNow();   // 起動直後に他端末の変更を取り込む
 </script>
 </body>
 </html>
