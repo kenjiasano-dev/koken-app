@@ -374,7 +374,7 @@ button{font-family:inherit; cursor:pointer;}
      同じスプレッドシートに「進捗/入庫/完成履歴」シートとして相乗りできる。
    - いまは persist() が localStorage に書くだけ＝バックエンド不要で即使える。
    =================================================================== */
-const APP_VERSION = '20260721f';
+const APP_VERSION = '20260721g';
 const STORE_KEY   = 'board_state_v1';
 const DEFAULT_STAGES = ['パネル修正','パテ','サフ','調色','マスキング','塗装','乾燥','磨き','組み付け'];
 /* 工程は店舗ごとに設定で変更可。state.store.stages に保存、無ければ標準9工程 */
@@ -672,7 +672,10 @@ function openSetup(){
     </div>
     <div class="field">
       <label>あなたの名前（任意）</label>
-      <input id="su-myname" placeholder="山田" value="${esc(state.store?state.store.myName:'')}">
+      <div style="display:flex; gap:10px;">
+        <input id="su-sei" placeholder="姓（例：山田）" style="flex:1;" value="${esc(state.store?(state.store.sei!=null?state.store.sei:state.store.myName):'')}">
+        <input id="su-mei" placeholder="名（例：太郎）" style="flex:1;" value="${esc(state.store?(state.store.mei||''):'')}">
+      </div>
     </div>
     <button class="btn" onclick="saveSetup()">はじめる</button>`;
   showSheet(html, false);
@@ -680,12 +683,14 @@ function openSetup(){
 function saveSetup(){
   const name = document.getElementById('su-name').value.trim();
   if(!name){ toast('店舗名を入れてください'); return; }
-  const myName = document.getElementById('su-myname').value.trim();
+  const sei = document.getElementById('su-sei').value.trim();
+  const mei = document.getElementById('su-mei').value.trim();
+  const myName = (sei + mei).trim();
   const prev = state.store || {};
   state.store = Object.assign({}, prev, {
     name,
     group: document.getElementById('su-group').value.trim(),
-    myName,
+    sei, mei, myName,
     uuid: prev.uuid || uuid()
   });
   // 初回は自分をメンバーに入れておく（stages/membersは保持）
