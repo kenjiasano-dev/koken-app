@@ -1457,7 +1457,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = '20260721j';
+const APP_VERSION = '20260721k';
 // LINEログイン(LIFF) — LINEコンソールで作成したLIFFアプリのIDを入れる
 const LIFF_ID = '2010638896-vJtjkUOr';
 // 公式アカウント「カーコン工賃通知」友だち追加URL（ここに飛ばすとLINEアプリの友だち追加画面が直接開く）
@@ -2202,6 +2202,7 @@ function renderMyTrend() {
   var el = document.getElementById('my-trend-content');
   if (!el) return;
   var fiscalStart = parseInt(userData.fiscalStart) || 1;
+  var goal = (userData.goal || 0) * 10000;
 
   // 全データから年度リストを作成
   var fySet = {};
@@ -2212,10 +2213,8 @@ function renderMyTrend() {
 
   // 年度の12ヶ月キーを生成（年度開始月順）
   var fiscalKeys = getFiscalMonths(trendYear, fiscalStart);
-  var months = {};
-  fiscalKeys.forEach(function(k){ months[k] = 0; });
-  var bankinMonths = JSON.parse(JSON.stringify(months));
-  var seibiMonths  = JSON.parse(JSON.stringify(months));
+  var months = {}, bankinMonths = {}, seibiMonths = {};
+  fiscalKeys.forEach(function(k){ months[k] = 0; bankinMonths[k] = 0; seibiMonths[k] = 0; });
   wageData.forEach(function(d) {
     if (!d.date) return;
     if (getFiscalYear(d.date, fiscalStart) != trendYear) return;
@@ -2227,14 +2226,8 @@ function renderMyTrend() {
     }
   });
 
-  var keys = fiscalKeys;
-  var goal = (userData.goal || 0) * 10000;
-  var maxVal = Math.max.apply(null, keys.map(function(k){return months[k];}));
-  // 目標ラインをグラフに表示するため、maxはgoalも考慮
-  var max = Math.max(maxVal, goal) || 1;
-  var total = keys.reduce(function(s,k){return s+months[k];},0);
-  var peak  = keys.reduce(function(best,k){ return months[k]>months[best]?k:best; }, keys[0]);
-  var achievedCount = goal > 0 ? keys.filter(function(k){ return months[k] >= goal; }).length : 0;
+  var total = fiscalKeys.reduce(function(s,k){return s+months[k];},0);
+  var achievedCount = goal > 0 ? fiscalKeys.filter(function(k){ return months[k] >= goal; }).length : 0;
 
   // 年切り替えボタン
   var yearBtns = fiscalYears.map(function(y) {
@@ -2244,43 +2237,21 @@ function renderMyTrend() {
       + '">'+y+'年</button>';
   }).join('');
 
-  // 目標ライン位置（%）
-  var goalPct = goal > 0 ? Math.round(goal/max*100) : 0;
-
-  // バーグラフ
-  var bars = keys.map(function(m) {
-    var total_m = months[m];
-    var bankin  = bankinMonths[m];
-    var seibi   = seibiMonths[m];
-    var pctB = Math.round(bankin/max*100);
-    var pctS = Math.round(seibi/max*100);
+  // 表形式の月別行
+  var rows = fiscalKeys.map(function(m) {
     var mo = parseInt(m.slice(5));
-    var isPeak = m === peak && total_m > 0;
+    var total_m = months[m];
+    var pct = goal > 0 ? Math.round(total_m / goal * 100) : 0;
     var isAchieved = goal > 0 && total_m >= goal;
-    var labelColor = isAchieved ? '#FFD700' : 'var(--green)';
-    var achievedBadge = isAchieved ? ' <span style="font-size:10px;background:#2a2000;color:#FFD700;padding:1px 5px;border-radius:6px;">🏆達成</span>' : '';
-    var peakBadge = isPeak && !isAchieved ? ' <span style="font-size:10px;color:#aaa;">▲最高</span>' : (isPeak && isAchieved ? ' <span style="font-size:10px;color:#aaa;">▲最高</span>' : '');
-    return '<div style="margin-bottom:10px;">'
-      + '<div style="display:flex;justify-content:space-between;align-items:center;font-size:12px;margin-bottom:3px;">'
-      +   '<span style="color:var(--text-sub);min-width:28px;">' + mo + '月</span>'
-      +   (total_m > 0
-            ? '<span style="font-weight:700;color:'+labelColor+';">¥'+total_m.toLocaleString()+achievedBadge+peakBadge+'</span>'
-            : '<span style="color:var(--text-sub);font-size:11px;">—</span>')
-      + '</div>'
-      + '<div style="position:relative;height:14px;background:var(--border);border-radius:6px;overflow:hidden;">'
-      +   '<div style="height:100%;width:'+pctB+'%;background:'+(isAchieved?'#C9A84C':'#4A9ECC')+';transition:width .6s;float:left;"></div>'
-      +   '<div style="height:100%;width:'+pctS+'%;background:'+(isAchieved?'#e6c06a':'#27ae60')+';transition:width .6s;float:left;"></div>'
-      + (goalPct > 0 ? '<div style="position:absolute;top:0;left:'+goalPct+'%;width:2px;height:100%;background:#FF6B6B;"></div>' : '')
-      + '</div>'
-      + '</div>';
+    var badge = isAchieved ? '🏆' : (pct >= 100 ? '✓' : '');
+    return '<tr style="border-bottom:1px solid var(--border);">'
+      + '<td style="padding:10px 12px;font-weight:700;width:60px;">'+mo+'月</td>'
+      + '<td style="padding:10px 12px;text-align:right;width:110px;">¥'+total_m.toLocaleString()+'</td>'
+      + '<td style="padding:10px 12px;text-align:right;width:110px;">'+(goal ? '¥'+goal.toLocaleString() : '—')+'</td>'
+      + '<td style="padding:10px 12px;text-align:right;width:80px;font-weight:700;color:'+(isAchieved?'#FFD700':pct>=100?'var(--green)':'var(--text-sub)')+';">'+pct+'%</td>'
+      + '<td style="padding:10px 12px;font-size:16px;">'+badge+'</td>'
+      + '</tr>';
   }).join('');
-
-  var goalLine = goal > 0
-    ? '<div style="display:flex;gap:12px;padding:0 12px 4px;font-size:11px;align-items:center;">'
-      + '<span style="display:flex;align-items:center;gap:4px;"><span style="display:inline-block;width:2px;height:12px;background:#FF6B6B;"></span>目標 ¥'+goal.toLocaleString()+'</span>'
-      + (achievedCount > 0 ? '<span style="color:#FFD700;font-weight:700;">🏆 '+achievedCount+'ヶ月達成</span>' : '<span style="color:var(--text-sub);">未達成</span>')
-      + '</div>'
-    : '';
 
   el.innerHTML = ''
     + '<div style="padding:10px 12px 4px;display:flex;gap:6px;flex-wrap:wrap;align-items:center;">'
@@ -2291,13 +2262,13 @@ function renderMyTrend() {
     +   '<div><div style="font-size:10px;color:var(--text-sub);">月平均</div><div style="font-size:18px;font-weight:900;color:var(--green);">¥'+Math.round(total/12).toLocaleString()+'</div></div>'
     +   (achievedCount > 0 ? '<div><div style="font-size:10px;color:var(--text-sub);">達成月数</div><div style="font-size:18px;font-weight:900;color:#FFD700;">'+achievedCount+' ヶ月</div></div>' : '')
     + '</div>'
-    + '<div style="display:flex;gap:10px;padding:0 12px 6px;font-size:11px;flex-wrap:wrap;">'
-    +   '<span style="display:flex;align-items:center;gap:4px;"><span style="display:inline-block;width:12px;height:12px;background:#4A9ECC;border-radius:2px;"></span>鈑金塗装</span>'
-    +   '<span style="display:flex;align-items:center;gap:4px;"><span style="display:inline-block;width:12px;height:12px;background:#27ae60;border-radius:2px;"></span>整備</span>'
-    +   (goal > 0 ? '<span style="display:flex;align-items:center;gap:4px;"><span style="display:inline-block;width:2px;height:12px;background:#FF6B6B;"></span>目標ライン</span>' : '')
-    + '</div>'
-    + goalLine
-    + '<div style="padding:0 12px 12px;">' + bars + '</div>';
+    + '<div style="padding:12px;border-bottom:2px solid var(--border);font-size:13px;font-weight:700;color:var(--text-sub);">月別達成率（個人）</div>'
+    + '<table style="width:100%;border-collapse:collapse;font-size:13px;">'
+    + '<thead style="background:var(--card);color:var(--text-sub);">'
+    + '<tr><th style="padding:8px 12px;text-align:left;">月</th><th style="padding:8px 12px;text-align:right;">工賃</th><th style="padding:8px 12px;text-align:right;">目標</th><th style="padding:8px 12px;text-align:right;">達成率</th><th style="padding:8px 12px;">状態</th></tr>'
+    + '</thead>'
+    + '<tbody>'+rows+'</tbody>'
+    + '</table>';
 }
 
 // 店舗の1年推移（店舗状況「📈推移」タブ）。renderMyTrendと同じ見た目で、
@@ -2402,6 +2373,50 @@ function renderMyBadge() {
   var src = document.getElementById('page-rankguide');
   if (src) { el.innerHTML = src.innerHTML; }
   else { el.innerHTML = '<div style="text-align:center;padding:30px;color:var(--text-sub);font-size:13px;">称号データ読み込み中...</div>'; }
+}
+
+// ============================================================
+// 店舗の1年推移（月別達成率テーブル）2026-07-21
+// ============================================================
+async function renderStoreYearTrend() {
+  var el = document.getElementById('store-trend-content');
+  if (!el) return;
+  var code = userData.activeGroupCode || userData.groupCode;
+  if (!code) { el.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text-sub);">グループコードを設定してください</div>'; return; }
+  var goal = adminGoals.storeWageGoal || 0;
+  try {
+    var res = await fetchFromGAS('getStoreTrend', { groupCode: code });
+    if (!res || !res.months) { el.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text-sub);">データなし</div>'; return; }
+    var months = res.months;
+    var sortedMonths = Object.keys(months).sort().reverse().slice(0, 12).sort();
+    if (!sortedMonths.length) { el.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text-sub);">データなし</div>'; return; }
+    var rows = sortedMonths.map(function(m) {
+      var data = months[m];
+      var total = data.total || 0;
+      var pct = goal > 0 ? Math.round(total / (goal * 10000) * 100) : 0;
+      var isAchieved = goal > 0 && total >= goal * 10000;
+      var mo = parseInt(m.slice(5));
+      var badge = isAchieved ? '🏆' : (pct >= 100 ? '✓' : '');
+      return '<tr style="border-bottom:1px solid var(--border);">'
+        + '<td style="padding:10px 12px;font-weight:700;width:60px;">'+mo+'月</td>'
+        + '<td style="padding:10px 12px;text-align:right;width:110px;">¥'+Math.round(total/10000).toLocaleString()+'万</td>'
+        + '<td style="padding:10px 12px;text-align:right;width:110px;">'+(goal ? '¥'+goal.toLocaleString()+'万' : '—')+'</td>'
+        + '<td style="padding:10px 12px;text-align:right;width:80px;font-weight:700;color:'+(isAchieved?'#FFD700':pct>=100?'var(--green)':'var(--text-sub)')+';">'+pct+'%</td>'
+        + '<td style="padding:10px 12px;font-size:16px;">'+badge+'</td>'
+        + '</tr>';
+    }).join('');
+    el.innerHTML = ''
+      + '<div style="padding:12px;border-bottom:2px solid var(--border);font-size:13px;font-weight:700;color:var(--text-sub);">過去12ヶ月の推移（店舗合計）</div>'
+      + '<table style="width:100%;border-collapse:collapse;font-size:13px;">'
+      + '<thead style="background:var(--card);color:var(--text-sub);">'
+      + '<tr><th style="padding:8px 12px;text-align:left;">月</th><th style="padding:8px 12px;text-align:right;">工賃</th><th style="padding:8px 12px;text-align:right;">目標</th><th style="padding:8px 12px;text-align:right;">達成率</th><th style="padding:8px 12px;">状態</th></tr>'
+      + '</thead>'
+      + '<tbody>'+rows+'</tbody>'
+      + '</table>';
+  } catch(e) {
+    console.error('renderStoreYearTrend:', e);
+    el.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text-sub);">読み込みエラー</div>';
+  }
 }
 
 // ============================================================
