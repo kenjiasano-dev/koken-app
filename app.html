@@ -1380,6 +1380,17 @@ input[type="date"].form-input::-webkit-calendar-picker-indicator { filter: inver
           🥷 <b>監視役モードON中</b>：フォロー中の店舗を閲覧できます。あなたは<b>ランキング・メンバー一覧に表示されません</b>。<br>※ 自分の工賃データはこの端末にのみ保存され、サーバーには同期されません。
         </div>
       </div>
+      <!-- PC Dashboard -->
+      <div class="card">
+        <div class="card-title">🖥 PC全体表示（コントロールルーム）</div>
+        <ul class="settings-list" style="margin:0;box-shadow:none;">
+          <li class="setting-item">
+            <div class="setting-icon" style="background:#16233a;">🖥</div>
+            <div><div class="setting-label">PCで全体表示を使う</div><div class="setting-sub">画面が広いPCで、現場・お店/個人の達成率・推移をまとめて俯瞰する画面を表示します（スマホでは通常表示のまま）</div></div>
+            <label class="toggle"><input type="checkbox" id="pc-dash-toggle" onchange="pcDashSettingToggle(this.checked)"><span class="toggle-slider"></span></label>
+          </li>
+        </ul>
+      </div>
       <!-- Notifications -->
       <div class="card">
         <div class="card-title">🔔 通知設定</div>
@@ -3660,6 +3671,7 @@ function initSettings() {
   renderExpRows();
   renderFollowedStores();
   document.getElementById('ninja-mode-toggle').checked = userData.ninjaMode === true;
+  var _pt=document.getElementById('pc-dash-toggle'); if(_pt) _pt.checked = (typeof settings!=='undefined'&&settings) ? (settings.pcDash!==false) : true;
   document.getElementById('notif-rankup').checked = settings.notifRankup !== false;
   document.getElementById('notif-goal').checked = settings.notifGoal !== false;
   document.getElementById('notif-rocket').checked = settings.notifRocket !== false;
@@ -7305,6 +7317,11 @@ function pcdTogglePanel(key, show){
   settings.pcdHide[key]=!show;
   if(typeof saveLocal==='function') saveLocal();
   pcdApplyPanels();
+}
+/* ===== 段階6: 設定ページのPC全体表示トグル ===== */
+function pcDashSettingToggle(on){
+  try{ if(typeof settings!=='undefined'&&settings){ settings.pcDash=!!on; if(typeof saveLocal==='function') saveLocal(); } }catch(e){}
+  if(typeof updatePcDash==='function') updatePcDash();
 }
 function seedStoreFromUser(){
   var u = (typeof userData!=='undefined' && userData) ? userData : {};
