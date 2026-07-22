@@ -1845,15 +1845,15 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = '20260721q';
+const APP_VERSION = 'app202607221449';
 // LINEログイン(LIFF) — LINEコンソールで作成したLIFFアプリのIDを入れる
 const LIFF_ID = '2010638896-vJtjkUOr';
 // 公式アカウント「カーコン工賃通知」友だち追加URL（ここに飛ばすとLINEアプリの友だち追加画面が直接開く）
 const LINE_OA_ADD_URL = 'https://line.me/R/ti/p/@599mbpcq';
 (function() {
-  var stored = localStorage.getItem('appVersion');
+  var stored = localStorage.getItem('appVersionApp');
   if (stored !== APP_VERSION) {
-    localStorage.setItem('appVersion', APP_VERSION);
+    localStorage.setItem('appVersionApp', APP_VERSION);
     if (stored) {
       // 旧バージョン検出 → キャッシュを無視して強制リロード
       var url = location.pathname + '?v=' + APP_VERSION;
