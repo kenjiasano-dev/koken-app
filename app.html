@@ -1904,7 +1904,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = 'app202607241726';
+const APP_VERSION = 'app202607241732';
 // LINEログイン(LIFF) — LINEコンソールで作成したLIFFアプリのIDを入れる
 const LIFF_ID = '2010638896-vJtjkUOr';
 // 公式アカウント「カーコン工賃通知」友だち追加URL（ここに飛ばすとLINEアプリの友だち追加画面が直接開く）
@@ -7064,7 +7064,7 @@ function renderWork(work){
       <div class="top">
         <div>${kindBadge(c)}${insBadge(c)}<span class="name">${esc(c.cartype)}</span><span class="num">・${esc(c.number)}</span>${assignChip(c)}</div>
         <div class="row-actions">
-          ${wageBtn(c)} ${insBtn(c)} ${photoBtn(c)}
+          ${wageBtn(c)} ${insBtn(c)} ${photoBtn(c)} ${estBtn(c)}
           <button class="flagbtn ${c.waitingParts?'on':''}" title="部品待ち" onclick="toggleParts('${c.id}')">${c.waitingParts?'🚩':'⚑'}</button>
         </div>
       </div>
@@ -7109,7 +7109,7 @@ function renderNyuko(nyuko){
           ${holdBlock(c)}
         </div>
         <div class="row-actions">
-          ${wageBtn(c)} ${insBtn(c)} ${photoBtn(c)}
+          ${wageBtn(c)} ${insBtn(c)} ${photoBtn(c)} ${estBtn(c)}
           <button class="iconbtn" title="削除" onclick="askDelete('${c.id}')">🗑</button>
           <button class="pill" onclick="startCar('${c.id}')">作業開始 →</button>
         </div>
@@ -7158,7 +7158,7 @@ function renderDone(done){
           ${(function(){ var g=crewGauge(c); return g? g.replace(">済<",">工程担当<") : ""; })()}
         </div>
         <div class="row-actions">
-          ${wageBtn(c)} ${insBtn(c)} ${photoBtn(c)}
+          ${wageBtn(c)} ${insBtn(c)} ${photoBtn(c)} ${estBtn(c)}
           <button class="iconbtn" title="作業中に戻す" onclick="reopenCar('${c.id}')">↩</button>
         </div>
       </div>
@@ -7638,7 +7638,7 @@ function bd_workCardHtml(c){
     <div class="top">
       <div>${kindBadge(c)}${insBadge(c)}<span class="name">${esc(c.cartype)}</span><span class="num">・${esc(c.number)}</span>${assignChip(c)}</div>
       <div class="row-actions">
-        ${wageBtn(c)} ${insBtn(c)} ${photoBtn(c)}
+        ${wageBtn(c)} ${insBtn(c)} ${photoBtn(c)} ${estBtn(c)}
         <button class="flagbtn ${c.waitingParts?'on':''}" title="部品待ち" onclick="toggleParts('${c.id}')">${c.waitingParts?'🚩':'⚑'}</button>
       </div>
     </div>
@@ -7674,7 +7674,7 @@ function bd_nyukoCardHtml(c){
         ${holdBlock(c)}
       </div>
       <div class="row-actions">
-        ${wageBtn(c)} ${insBtn(c)} ${photoBtn(c)}
+        ${wageBtn(c)} ${insBtn(c)} ${photoBtn(c)} ${estBtn(c)}
         <button class="iconbtn" title="削除" onclick="askDelete('${c.id}')">🗑</button>
         <button class="pill" onclick="startCar('${c.id}')">作業開始 →</button>
       </div>
@@ -7695,7 +7695,7 @@ function bd_doneCardHtml(c){
         ${(function(){ var g=crewGauge(c); return g? g.replace(">済<",">工程担当<") : ""; })()}
       </div>
       <div class="row-actions">
-        ${wageBtn(c)} ${insBtn(c)} ${photoBtn(c)}
+        ${wageBtn(c)} ${insBtn(c)} ${photoBtn(c)} ${estBtn(c)}
         <button class="iconbtn" title="作業中に戻す" onclick="reopenCar('${c.id}')">↩</button>
       </div>
     </div>
@@ -7885,7 +7885,7 @@ function bd_workCardHtml(c){
   }
   var expandedPart = `
     <div class="row-actions" style="display:flex;gap:8px;margin-top:9px;flex-wrap:wrap;">
-      ${wageBtn(c)} ${insBtn(c)} ${photoBtn(c)}
+      ${wageBtn(c)} ${insBtn(c)} ${photoBtn(c)} ${estBtn(c)}
       <button class="flagbtn ${c.waitingParts?'on':''}" title="部品待ち" onclick="toggleParts('${c.id}')">${c.waitingParts?'🚩':'⚑'}</button>
     </div>
     ${body}
@@ -8056,7 +8056,7 @@ function bd_workCardHtml(c){
   }
   var expandedPart = `
     <div class="row-actions" style="display:flex;gap:8px;margin-top:9px;flex-wrap:wrap;">
-      ${wageBtn(c)} ${insBtn(c)} ${photoBtn(c)}
+      ${wageBtn(c)} ${insBtn(c)} ${photoBtn(c)} ${estBtn(c)}
       <button class="flagbtn ${c.waitingParts?'on':''}" title="部品待ち" onclick="toggleParts('${c.id}')">${c.waitingParts?'🚩':'⚑'}</button>
     </div>
     ${body}
@@ -8314,7 +8314,7 @@ function bd_nyukoCardHtml(c){
       </div>
       <div class="row-actions">
         ${pinBox}
-        ${wageBtn(c)} ${insBtn(c)} ${photoBtn(c)}
+        ${wageBtn(c)} ${insBtn(c)} ${photoBtn(c)} ${estBtn(c)}
         <button class="iconbtn" title="削除" onclick="askDelete('${c.id}')">🗑</button>
         <button class="pill" onclick="startCar('${c.id}')">作業開始 →</button>
       </div>
@@ -8338,7 +8338,7 @@ function bd_doneCardHtml(c){
       </div>
       <div class="row-actions">
         ${pinBox}
-        ${wageBtn(c)} ${insBtn(c)} ${photoBtn(c)}
+        ${wageBtn(c)} ${insBtn(c)} ${photoBtn(c)} ${estBtn(c)}
         <button class="iconbtn" title="作業中に戻す" onclick="reopenCar('${c.id}')">↩</button>
       </div>
     </div>
@@ -8446,6 +8446,44 @@ function renderPcDash(){
   setTx('pcd-date', bd_pcDateStr());
   var st=document.getElementById('pcd-store'); if(st) st.textContent=(state.store&&state.store.name)||'現場コントロール';
   renderPcAchievement(); pcdApplyPanels(); bd_pcdUpdateExpandBtnLabel(); bd_pcdUpdateOverviewBtnLabel();
+}
+/* ===== 段階38: 車のカードに見積書への直接ボタン(未撮影なら即撮影、あれば直接開く) ===== */
+function estBtn(c){
+  var ests=(c.photos||[]).filter(function(p){ return p.stageLabel==='見積書'; });
+  var n=ests.length;
+  if(!n){
+    return '<button class="iconbtn" title="見積書を撮る" onclick="event.stopPropagation();addDocument(\''+c.id+'\')">📄</button>';
+  }
+  return '<button class="iconbtn" title="見積書を見る" style="color:var(--accent);border-color:var(--accent);" onclick="event.stopPropagation();openEstimates(\''+c.id+'\')">📄<span style="font-size:15px;margin-left:2px;font-weight:600;">'+n+'</span></button>';
+}
+function openEstimates(carId){
+  const c=findCar(carId); if(!c) return;
+  const ests=(c.photos||[]).filter(function(p){ return p.stageLabel==='見積書'; }).sort(function(a,b){ return a.ts-b.ts; });
+  if(!ests.length){ addDocument(carId); return; }
+  if(ests.length===1){ viewPhoto(ests[0].id); return; }
+  showSheet(`
+    <h2>${esc(c.cartype)} ${esc(c.number)} の見積書</h2>
+    <p style="color:var(--muted);font-size:12px;margin:0 0 12px;">${ests.length}件</p>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:14px;">
+      ${ests.map(p=>p.isPdf ? `
+        <div style="position:relative;padding-top:100%;">
+          <div data-pid="${p.id}" onclick="viewPhoto('${p.id}')" title="PDF" style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;border-radius:8px;background:var(--card2);border:1px solid var(--line2);cursor:pointer;">
+            <span style="font-size:30px;">📄</span><span style="font-size:9px;color:var(--muted);margin-top:2px;">PDF</span>
+          </div>
+        </div>` : `
+        <div style="position:relative;padding-top:100%;">
+          <img data-pid="${p.id}" onclick="viewPhoto('${p.id}')" alt="見積書" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:8px;background:#222;cursor:pointer;">
+        </div>`).join('')}
+    </div>
+    <button class="btn ghost" onclick="addDocument('${c.id}')">📄 見積書を追加で撮る</button>
+    <div style="height:9px;"></div>
+    <button class="btn ghost" onclick="closeSheet()">閉じる</button>
+  `);
+  setTimeout(function(){
+    document.querySelectorAll('.overlay .sheet img[data-pid]').forEach(function(im){
+      pdbGet(im.getAttribute('data-pid')).then(function(rec){ if(rec&&rec.blob){ var u=URL.createObjectURL(rec.blob); _gUrls.push(u); im.src=u; } }).catch(function(){});
+    });
+  }, 50);
 }
 function seedStoreFromUser(){
   var u = (typeof userData!=='undefined' && userData) ? userData : {};
