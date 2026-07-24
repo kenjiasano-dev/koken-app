@@ -600,7 +600,8 @@ input[type="time"]::-webkit-calendar-picker-indicator { filter: invert(1); opaci
 .dv-chip.on{ border-color:var(--accent); background:var(--accent-bg); color:var(--accent); font-weight:700; }
 /* ===== 段階20: 概要表示(タイル)モード ===== */
 .pcd-tilegrid{ display:flex; flex-wrap:wrap; gap:6px; align-content:flex-start; }
-.pcd-tile{ width:60px; height:60px; border-radius:10px; background:var(--card2); border:1px solid var(--line2); display:flex; flex-direction:column; align-items:center; justify-content:center; font-size:11px; cursor:pointer; text-align:center; padding:4px; flex-shrink:0; }
+.pcd-tile{ width:82px; min-height:68px; border-radius:10px; background:var(--card2); border:1px solid var(--line2); display:flex; flex-direction:column; align-items:center; justify-content:center; font-size:11px; cursor:pointer; text-align:center; padding:5px 4px; flex-shrink:0; }
+.pcd-tile .tt{ font-size:11px; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:74px; margin-top:2px; }
 .pcd-tile:hover{ border-color:var(--accent); }
 .pcd-tile .tk{ font-size:13px; line-height:1; }
 .pcd-tile .tn{ font-weight:700; font-size:12px; margin-top:3px; color:var(--text); font-family:ui-monospace,Menlo,Consolas,monospace; }
@@ -1887,7 +1888,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = 'app202607241042';
+const APP_VERSION = 'app202607241051';
 // LINEログイン(LIFF) — LINEコンソールで作成したLIFFアプリのIDを入れる
 const LIFF_ID = '2010638896-vJtjkUOr';
 // 公式アカウント「カーコン工賃通知」友だち追加URL（ここに飛ばすとLINEアプリの友だち追加画面が直接開く）
@@ -7922,6 +7923,7 @@ function bd_tile(c){
   return '<div class="'+cls+'" onclick="bd_openCarModal(\''+c.id+'\')" title="'+esc(c.cartype)+'・'+esc(c.number)+'">'
     + '<div class="tk">'+icon+'</div>'
     + '<div class="tn">'+esc(c.number)+'</div>'
+    + '<div class="tt">'+esc(c.cartype)+'</div>'
     + '</div>';
 }
 function bd_openCarModal(id){
