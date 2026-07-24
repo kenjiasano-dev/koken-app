@@ -1878,7 +1878,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = 'app202607241026';
+const APP_VERSION = 'app202607241031';
 // LINEログイン(LIFF) — LINEコンソールで作成したLIFFアプリのIDを入れる
 const LIFF_ID = '2010638896-vJtjkUOr';
 // 公式アカウント「カーコン工賃通知」友だち追加URL（ここに飛ばすとLINEアプリの友だち追加画面が直接開く）
@@ -7734,6 +7734,166 @@ function bd_pcdToggleAllExpand(){
 function bd_pcdUpdateExpandBtnLabel(){
   var el=document.getElementById('pcd-expand-toggle'); if(!el) return;
   el.textContent = bd_workDefaultExpanded() ? '▼ 簡潔表示にする' : '▲ 全部表示にする';
+}
+/* ===== 段階19: 車を選んだらポップアップで大きく表示(工程ゲージ・全ボタン込み・その場で更新) ===== */
+var _workModalCarId = null;
+function bd_openWorkModal(id){
+  var c = findCar(id); if(!c) return;
+  var saved = _expandedWork[id]; _expandedWork[id] = true;
+  var html = bd_workCardHtml(c);
+  _expandedWork[id] = saved;
+  showSheet('<h2>車両の詳細</h2>' + html);
+  _workModalCarId = id;   // showSheet()が内部でcloseSheet()を呼びリセットするため、必ずこの後にセットする
+}
+function closeSheet(){ _workModalCarId = null; const o=document.getElementById('overlay'); if(o) o.remove(); }
+
+function render(){
+  renderStoreLabel();
+  const nyuko = state.cars.filter(c=>c.status==='nyuko');
+  const work  = state.cars.filter(c=>c.status==='work');
+  const done  = state.cars.filter(c=>c.status==='done');
+  const yotei = state.cars.filter(c=>c.status==='yotei');
+
+  const setBadge=(id,n)=>{ const b=document.getElementById(id); if(!b) return; b.textContent=n; b.classList.toggle('hidden', n===0); };
+  setBadge('badge-nyuko', nyuko.length);
+  setBadge('badge-work', work.length);
+  setBadge('badge-done', done.filter(c=>isSameDay(c.doneAt)).length);   // 本日の完成
+  setBadge('badge-yotei', yotei.length);   // 入庫予定台数
+
+  const sh=document.getElementById('search-hint');
+  if(searchQ){
+    const cnt={work:0,nyuko:0,done:0};
+    state.cars.forEach(c=>{ if(matchQ(c)) cnt[c.status]=(cnt[c.status]||0)+1; });
+    sh.innerHTML = `「${esc(searchQ)}」`
+      + `<span class="shchip ${bd_currentTab==='nyuko'?'on':''}" onclick="bd_switchTab('nyuko')">入庫 ${cnt.nyuko}</span>`
+      + `<span class="shchip ${bd_currentTab==='work'?'on':''}" onclick="bd_switchTab('work')">作業中 ${cnt.work}</span>`
+      + `<span class="shchip ${bd_currentTab==='done'?'on':''}" onclick="bd_switchTab('done')">完成 ${cnt.done}</span>`;
+    sh.classList.remove('hidden');
+  }else{
+    sh.classList.add('hidden');
+  }
+
+  if(bd_currentTab==='work') renderWork(work);
+  if(bd_currentTab==='nyuko') renderNyuko(nyuko);
+  if(bd_currentTab==='done') renderDone(done);
+  if(bd_currentTab==='yotei') renderYotei(yotei);
+  var _pd=document.getElementById('pc-dash'); if(_pd && _pd.style.display==='flex' && typeof renderPcDash==='function') renderPcDash();
+
+  if(_workModalCarId){
+    var mc = findCar(_workModalCarId);
+    if(!mc || mc.status!=='work'){ closeSheet(); }
+    else {
+      var sheetEl = document.querySelector('#overlay .sheet');
+      if(sheetEl){
+        var savedM = _expandedWork[_workModalCarId]; _expandedWork[_workModalCarId] = true;
+        var xbtn = sheetEl.querySelector('.sheet-x');
+        sheetEl.innerHTML = (xbtn? xbtn.outerHTML : '') + '<h2>車両の詳細</h2>' + bd_workCardHtml(mc);
+        _expandedWork[_workModalCarId] = savedM;
+      }
+    }
+  }
+}
+
+function bd_workCardHtml(c){
+  const S = getStages(c.kind);
+  let body, action, cardCls='car';
+  if(S.length===0){
+    c.stage = 0;
+    if(c.waitingParts){
+      cardCls='car waiting';
+      const d = c.partSince? daysBetween(c.partSince, nowISO()) : 0;
+      body = `
+      <div class="nowline waiting" style="margin:8px 0 4px;">
+        <span class="nowstage"><span class="nowlabel">状態</span>● 部品待ち</span>
+      </div>
+      <div class="sub danger" style="margin-top:2px;">⏸ 停止中・${d}日（部品が来たら🚩を押して再開）</div>`;
+      action = '';
+    }else{
+      body = `
+      <div class="nowline" style="margin:8px 0 4px;">
+        <span class="nowstage"><span class="nowlabel">状態</span><span class="livedot"></span>作業中</span>
+      </div>`;
+      action = `<div class="stepnav"><button class="pill green" onclick="finishCar('${c.id}')">✓ 完成</button></div>`;
+    }
+  }else{
+    if(c.stage > S.length-1) c.stage = S.length-1;
+    const steps = S.map((name,i)=>{
+      let cls='hstep todo', t='';
+      if(i<c.stage){
+        cls='hstep done';
+        const m=(c.stageDur&&c.stageDur[i])||0; if(m>0) t=Math.round(m)+'分';
+      }else if(i===c.stage){
+        if(c.waitingParts){ cls='hstep curw'; t='停止'; }
+        else { cls='hstep cur'; const m=curStageMinutes(c); if(m>0) t=Math.round(m)+'分'; }
+      }
+      let arr=byNames(c.stageBy&&c.stageBy[i]), whoStyle='color:var(--accent);';
+      if(!arr.length && i===c.stage && !c.waitingParts){ arr=c.assignee?[c.assignee]:[]; whoStyle='color:var(--muted2);'; }
+      const who = arr.length ? (arr.length>1 ? arr[0]+'+'+(arr.length-1) : arr[0]) : '';
+      const whoHtml = who
+        ? `<div class="hwho" style="font-size:11px;line-height:1.15;margin-top:1px;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;${whoStyle}">${esc(who)}</div>`
+        : (i<=c.stage ? `<div class="hwho" style="font-size:11px;line-height:1.15;margin-top:1px;text-align:center;color:var(--muted2);opacity:.45;">＋</div>` : '');
+      return `<div class="${cls}" style="cursor:pointer;" title="この工程の担当を選ぶ" onclick="openStageAssign('${c.id}',${i})"><div class="hbar"></div><div class="hname">${esc(name)}</div><div class="htime">${t}</div>${whoHtml}</div>`;
+    }).join('');
+    const isLast = c.stage===S.length-1;
+    const curName = `${mark(c.stage)} ${esc(S[c.stage])}`;
+    if(c.waitingParts){
+      cardCls='car waiting';
+      const d = c.partSince? daysBetween(c.partSince, nowISO()) : 0;
+      body = `
+      <div class="nowline waiting" style="margin:8px 0 6px;">
+        <span class="nowstage"><span class="nowlabel">部品待ち</span>${curName}</span>
+        <span class="stepcount">${c.stage+1} / ${S.length}</span>
+      </div>
+      <div class="hsteps">${steps}</div>
+      <div class="sub danger" style="margin-top:4px;">⏸ 停止中・${d}日（部品が来たら🚩を押して再開）</div>`;
+      action = '';
+    }else{
+      body = `
+      <div class="nowline">
+        <span class="nowstage"><span class="nowlabel">いま</span>${curName}</span>
+        <span class="stepcount">${c.stage+1} / ${S.length}工程</span>
+      </div>
+      <div class="hsteps">${steps}</div>`;
+      const back = c.stage>0 ? `<button class="pill" onclick="prevStage('${c.id}')">← 戻る</button>` : '';
+      const fwd = isLast
+        ? `<button class="pill green" onclick="finishCar('${c.id}')">✓ 完成</button>`
+        : `<button class="pill" onclick="nextStage('${c.id}')">次へ →</button>`;
+      action = `<div class="stepnav">${back}${fwd}</div>`;
+    }
+  }
+  var expanded = bd_isWorkExpanded(c.id);
+  var toggleBtn = expanded
+    ? '<button class="iconbtn" title="閉じる" onclick="bd_toggleCardExpand(\''+c.id+'\')">▲</button>'
+    : '<button class="iconbtn" title="この車を大きく見る" onclick="bd_openWorkModal(\''+c.id+'\')">🔍</button>';
+  var compactPart = `
+    <div class="top">
+      <div>${kindBadge(c)}${insBadge(c)}<span class="name">${esc(c.cartype)}</span><span class="num">・${esc(c.number)}</span>${assignChip(c)}</div>
+      <div class="row-actions">${toggleBtn}</div>
+    </div>
+    ${deliveryLine(c)}
+    <div class="times">${timesLine(c)}</div>`;
+  if(!expanded){
+    return `<div class="${cardCls} ${kindClass(c)}">${compactPart}</div>`;
+  }
+  var expandedPart = `
+    <div class="row-actions" style="display:flex;gap:8px;margin-top:9px;flex-wrap:wrap;">
+      ${wageBtn(c)} ${insBtn(c)} ${photoBtn(c)}
+      <button class="flagbtn ${c.waitingParts?'on':''}" title="部品待ち" onclick="toggleParts('${c.id}')">${c.waitingParts?'🚩':'⚑'}</button>
+    </div>
+    ${body}
+    ${action}
+    ${(function(){
+      var cur=curStageMinutes(c), tot=totalMinutes(c);
+      if(tot<=0) return '';
+      var now = c.waitingParts ? '' : `この工程 ${fmtMin(cur)}　/　`;
+      return `<div class="crew"><b>⏱</b> ${now}累計 ${fmtMin(tot)}</div>`;
+    })()}
+    ${crewGauge(c)}
+    <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:9px;">
+      <button class="delbtn" onclick="backToNyuko('${c.id}')">↩ 入庫に戻す</button>
+      <button class="delbtn" onclick="askDelete('${c.id}')">🗑 削除</button>
+    </div>`;
+  return `<div class="${cardCls} ${kindClass(c)}">${compactPart}${expandedPart}</div>`;
 }
 function seedStoreFromUser(){
   var u = (typeof userData!=='undefined' && userData) ? userData : {};
