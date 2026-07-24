@@ -1903,7 +1903,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = 'app202607241307';
+const APP_VERSION = 'app202607241316';
 // LINEログイン(LIFF) — LINEコンソールで作成したLIFFアプリのIDを入れる
 const LIFF_ID = '2010638896-vJtjkUOr';
 // 公式アカウント「カーコン工賃通知」友だち追加URL（ここに飛ばすとLINEアプリの友だち追加画面が直接開く）
@@ -8080,6 +8080,136 @@ function bd_stageSummaryLine(c){
 function bd_pinCarModal(id, checked){
   if(checked){ bd_openWorkModal(id); }
   else if(_workModalCarId===id){ closeSheet(); render(); }
+}
+/* ===== 段階30: チェックで中央ポップアップ表示を全ステータス(入庫予定/入庫/作業中/完成)に一般化 ===== */
+function bd_carModalContentHtml(c){
+  if(c.status==='work'){
+    var saved = _expandedWork[c.id]; _expandedWork[c.id] = true;
+    var html = bd_workCardHtml(c);
+    _expandedWork[c.id] = saved;
+    return html;
+  } else if(c.status==='yotei'){ return bd_yoteiRow(c); }
+  else if(c.status==='nyuko'){ return bd_nyukoCardHtml(c); }
+  else if(c.status==='done'){ return bd_doneCardHtml(c); }
+  return '';
+}
+function bd_openCarModal(id){
+  var c = findCar(id); if(!c) return;
+  var html = bd_carModalContentHtml(c);
+  if(!html) return;
+  showSheet('<h2>車両の詳細</h2>' + html);
+  _workModalCarId = id;
+}
+function bd_pinCarModal(id, checked){
+  if(checked){ bd_openCarModal(id); }
+  else if(_workModalCarId===id){ closeSheet(); render(); }
+}
+function render(){
+  renderStoreLabel();
+  const nyuko = state.cars.filter(c=>c.status==='nyuko');
+  const work  = state.cars.filter(c=>c.status==='work');
+  const done  = state.cars.filter(c=>c.status==='done');
+  const yotei = state.cars.filter(c=>c.status==='yotei');
+
+  const setBadge=(id,n)=>{ const b=document.getElementById(id); if(!b) return; b.textContent=n; b.classList.toggle('hidden', n===0); };
+  setBadge('badge-nyuko', nyuko.length);
+  setBadge('badge-work', work.length);
+  setBadge('badge-done', done.filter(c=>isSameDay(c.doneAt)).length);   // 本日の完成
+  setBadge('badge-yotei', yotei.length);   // 入庫予定台数
+
+  const sh=document.getElementById('search-hint');
+  if(searchQ){
+    const cnt={work:0,nyuko:0,done:0};
+    state.cars.forEach(c=>{ if(matchQ(c)) cnt[c.status]=(cnt[c.status]||0)+1; });
+    sh.innerHTML = `「${esc(searchQ)}」`
+      + `<span class="shchip ${bd_currentTab==='nyuko'?'on':''}" onclick="bd_switchTab('nyuko')">入庫 ${cnt.nyuko}</span>`
+      + `<span class="shchip ${bd_currentTab==='work'?'on':''}" onclick="bd_switchTab('work')">作業中 ${cnt.work}</span>`
+      + `<span class="shchip ${bd_currentTab==='done'?'on':''}" onclick="bd_switchTab('done')">完成 ${cnt.done}</span>`;
+    sh.classList.remove('hidden');
+  }else{
+    sh.classList.add('hidden');
+  }
+
+  if(bd_currentTab==='work') renderWork(work);
+  if(bd_currentTab==='nyuko') renderNyuko(nyuko);
+  if(bd_currentTab==='done') renderDone(done);
+  if(bd_currentTab==='yotei') renderYotei(yotei);
+  var _pd=document.getElementById('pc-dash'); if(_pd && _pd.style.display==='flex' && typeof renderPcDash==='function') renderPcDash();
+
+  if(_workModalCarId){
+    var mc = findCar(_workModalCarId);
+    if(!mc){ closeSheet(); }
+    else {
+      var sheetEl = document.querySelector('#overlay .sheet');
+      if(sheetEl){
+        var html = bd_carModalContentHtml(mc);
+        var xbtn = sheetEl.querySelector('.sheet-x');
+        sheetEl.innerHTML = (xbtn? xbtn.outerHTML : '') + '<h2>車両の詳細</h2>' + html;
+      }
+    }
+  }
+}
+function bd_yoteiRow(c){
+  var inb = bd_fmtPlan(c.nyukoPlan);
+  var dlv = c.deliveryDate ? (bd_fmtDateMD(c.deliveryDate)+(c.deliveryTime?(' '+c.deliveryTime):'')) : '未定';
+  var pinChecked = (_workModalCarId===c.id);
+  var pinBox = '<label title="チェックすると中央に大きく表示" style="display:flex;align-items:center;cursor:pointer;"><input type="checkbox" style="width:16px;height:16px;" '+(pinChecked?'checked':'')+' onchange="bd_pinCarModal(\''+c.id+'\',this.checked)"></label>';
+  return '<div class="car '+kindClass(c)+'">'
+    + '<div class="top"><div>'+kindBadge(c)+insBadge(c)+'<span class="name">'+esc(c.cartype)+'</span><span class="num">・'+esc(c.number)+'</span></div>'
+    +   '<div class="row-actions">'+pinBox+'<button class="iconbtn" title="削除" onclick="askDelete(\''+c.id+'\')">🗑</button><button class="pill green" onclick="bd_arriveCar(\''+c.id+'\')">入庫する →</button></div>'
+    + '</div>'
+    + '<div style="display:flex;gap:18px;margin-top:9px;flex-wrap:wrap;">'
+    +   '<div><div style="font-size:11px;color:var(--muted);margin-bottom:2px;">🚙 入庫予定</div><div style="font-size:19px;font-weight:700;color:var(--accent);">'+inb+'</div></div>'
+    +   '<div><div style="font-size:11px;color:var(--muted);margin-bottom:2px;">🚚 納車予定</div><div style="font-size:19px;font-weight:700;color:var(--green);">'+dlv+'</div></div>'
+    + '</div></div>';
+}
+function bd_nyukoCardHtml(c){
+  const d = daysBetween(c.nyukoAt, nowISO());
+  const long = d>=7;
+  const cardCls = c.onHold ? 'car bd-hold' : (long? 'car waiting':'car');
+  const subCls = long? 'sub danger':'sub';
+  const pinChecked = (_workModalCarId===c.id);
+  const pinBox = '<label title="チェックすると中央に大きく表示" style="display:flex;align-items:center;cursor:pointer;"><input type="checkbox" style="width:16px;height:16px;" '+(pinChecked?'checked':'')+' onchange="bd_pinCarModal(\''+c.id+'\',this.checked)"></label>';
+  return `
+  <div class="${cardCls} ${kindClass(c)}">
+    <div class="top">
+      <div>
+        <div>${kindBadge(c)}${insBadge(c)}<span class="name">${esc(c.cartype)}</span><span class="num">・${esc(c.number)}</span>${assignChip(c)}</div>
+        <div class="${subCls}">⏱ ${fmtDateTime(c.nyukoAt)} 入庫・${d}日待ち</div>
+        ${deliveryLine(c)}
+        ${holdBlock(c)}
+      </div>
+      <div class="row-actions">
+        ${pinBox}
+        ${wageBtn(c)} ${insBtn(c)} ${photoBtn(c)}
+        <button class="iconbtn" title="削除" onclick="askDelete('${c.id}')">🗑</button>
+        <button class="pill" onclick="startCar('${c.id}')">作業開始 →</button>
+      </div>
+    </div>
+  </div>`;
+}
+function bd_doneCardHtml(c){
+  const lead = (c.nyukoAt&&c.doneAt)? daysBetween(c.nyukoAt,c.doneAt) : null;
+  const leadTxt = lead==null? '' : `<span class="n" style="color:var(--muted2)">入庫→完成 ${lead}日</span>`;
+  const pinChecked = (_workModalCarId===c.id);
+  const pinBox = '<label title="チェックすると中央に大きく表示" style="display:flex;align-items:center;cursor:pointer;"><input type="checkbox" style="width:16px;height:16px;" '+(pinChecked?'checked':'')+' onchange="bd_pinCarModal(\''+c.id+'\',this.checked)"></label>';
+  return `
+  <div class="car done-card ${kindClass(c)}">
+    <div class="top">
+      <div>
+        <div>${kindBadge(c)}${insBadge(c)}<span class="name">${esc(c.cartype)}</span><span class="num">・${esc(c.number)}</span>${assignChip(c)}</div>
+        <div class="sub" style="color:var(--green)">🏁 ${c.doneAt?fmtDateTime(c.doneAt):''} 完成　${leadTxt}</div>
+        <div class="times">${timesLine(c)}</div>
+        ${(function(){var tot=totalMinutes(c); return tot>0?`<div class="crew"><b>作業時間</b> 累計 ${fmtMin(tot)}</div>`:'';})()}
+        ${(function(){ var g=crewGauge(c); return g? g.replace(">済<",">工程担当<") : ""; })()}
+      </div>
+      <div class="row-actions">
+        ${pinBox}
+        ${wageBtn(c)} ${insBtn(c)} ${photoBtn(c)}
+        <button class="iconbtn" title="作業中に戻す" onclick="reopenCar('${c.id}')">↩</button>
+      </div>
+    </div>
+  </div>`;
 }
 function seedStoreFromUser(){
   var u = (typeof userData!=='undefined' && userData) ? userData : {};
