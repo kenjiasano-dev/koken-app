@@ -612,7 +612,17 @@ input[type="time"]::-webkit-calendar-picker-indicator { filter: invert(1); opaci
 @media (min-width:1100px){
   .overlay{ align-items:center; }
   .sheet{ border-radius:16px; max-height:85vh; }
-}</style>
+}
+/* ===== 段階26: 1列だけ表示している時はカードを横に並べて縦を圧縮 ===== */
+.pcd-cols.single-col .pcd-list{ display:grid; grid-template-columns:repeat(auto-fill,minmax(360px,1fr)); gap:10px; align-content:start; }
+.pcd-cols.single-col .pcd-list .car{ margin-bottom:0; }
+/* ===== 段階27: 1列全面表示(2列)時、工程ゲージをコンパクトに(所要時間は省略、工程名・担当は残す) ===== */
+.pcd-cols.single-col .car{ padding:8px 12px 9px; }
+.pcd-cols.single-col .hsteps{ gap:3px; margin:6px 0 5px; }
+.pcd-cols.single-col .hbar{ height:4px; margin-bottom:3px; }
+.pcd-cols.single-col .hname{ font-size:9.5px; min-height:auto; -webkit-line-clamp:1; }
+.pcd-cols.single-col .htime{ display:none; }
+.pcd-cols.single-col .hwho{ font-size:9.5px !important; margin-top:1px !important; }</style>
 <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
@@ -1893,7 +1903,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = 'app202607241140';
+const APP_VERSION = 'app202607241307';
 // LINEログイン(LIFF) — LINEコンソールで作成したLIFFアプリのIDを入れる
 const LIFF_ID = '2010638896-vJtjkUOr';
 // 公式アカウント「カーコン工賃通知」友だち追加URL（ここに飛ばすとLINEアプリの友だち追加画面が直接開く）
@@ -7735,7 +7745,8 @@ function bd_workCardHtml(c){
       <div class="row-actions">${toggleBtn}</div>
     </div>
     ${deliveryLine(c)}
-    <div class="times">${timesLine(c)}</div>`;
+    <div class="times">${timesLine(c)}</div>
+    ${bd_stageSummaryLine(c)}`;
   if(!expanded){
     return `<div class="${cardCls} ${kindClass(c)}">${compactPart}</div>`;
   }
@@ -7897,13 +7908,16 @@ function bd_workCardHtml(c){
   var toggleBtn = expanded
     ? '<button class="iconbtn" title="閉じる" onclick="bd_toggleCardExpand(\''+c.id+'\')">▲</button>'
     : '<button class="iconbtn" title="この車を大きく見る" onclick="bd_openWorkModal(\''+c.id+'\')">🔍</button>';
+  var pinChecked = (_workModalCarId===c.id);
+  var pinBox = '<label title="チェックすると中央に大きく表示" style="display:flex;align-items:center;cursor:pointer;margin-right:2px;"><input type="checkbox" style="width:16px;height:16px;" '+(pinChecked?'checked':'')+' onchange="bd_pinCarModal(\''+c.id+'\',this.checked)"></label>';
   var compactPart = `
     <div class="top">
       <div>${kindBadge(c)}${insBadge(c)}<span class="name">${esc(c.cartype)}</span><span class="num">・${esc(c.number)}</span>${assignChip(c)}</div>
-      <div class="row-actions">${toggleBtn}</div>
+      <div class="row-actions">${pinBox}${toggleBtn}</div>
     </div>
     ${deliveryLine(c)}
-    <div class="times">${timesLine(c)}</div>`;
+    <div class="times">${timesLine(c)}</div>
+    ${bd_stageSummaryLine(c)}`;
   if(!expanded){
     return `<div class="${cardCls} ${kindClass(c)}">${compactPart}</div>`;
   }
@@ -8030,7 +8044,11 @@ function pcdApplyPanels(){
   var side=document.querySelector('.pcd-side'); if(side) side.style.display=(h.store&&h.trend)?'none':'flex';
   var g=document.querySelector('.pcd-grid'); if(g) g.style.gridTemplateColumns=(h.store&&h.trend)?'1fr':'2.3fr 1fr';
   var visibleCount = ['yotei','nyuko','work','done'].filter(function(k){ return !h[k]; }).length;
-  var cols=document.querySelector('.pcd-cols'); if(cols) cols.style.gridTemplateColumns='repeat('+Math.max(visibleCount,1)+',1fr)';
+  var cols=document.querySelector('.pcd-cols');
+  if(cols){
+    cols.style.gridTemplateColumns='repeat('+Math.max(visibleCount,1)+',1fr)';
+    cols.classList.toggle('single-col', visibleCount===1);
+  }
   var cs=document.getElementById('pcd-show-store'); if(cs) cs.checked=!h.store;
   var ct=document.getElementById('pcd-show-trend'); if(ct) ct.checked=!h.trend;
   var cy=document.getElementById('pcd-show-yotei'); if(cy) cy.checked=!h.yotei;
@@ -8044,6 +8062,24 @@ function pcdTogglePanel(key, show){
   settings.pcdHide[key]=!show;
   if(typeof saveLocal==='function') saveLocal();
   pcdApplyPanels();
+}
+/* ===== 段階28: 簡潔表示でも現在の工程・担当を1行の文字で分かるように ===== */
+function bd_stageSummaryLine(c){
+  var S = getStages(c.kind);
+  if(c.waitingParts){
+    var d = c.partSince? daysBetween(c.partSince, nowISO()) : 0;
+    return '<div style="font-size:12px;color:var(--red);font-weight:700;margin-top:5px;">🚩 部品待ち・'+d+'日</div>';
+  }
+  if(S.length===0){ return '<div style="font-size:12px;color:var(--accent);font-weight:700;margin-top:5px;">作業中</div>'; }
+  var stage = Math.min(c.stage||0, S.length-1);
+  var name = mark(stage)+' '+esc(S[stage]);
+  var who = c.assignee ? '　担当: '+esc(c.assignee) : '';
+  return '<div style="font-size:12px;color:var(--accent);font-weight:700;margin-top:5px;">いま '+name+' ('+(stage+1)+'/'+S.length+'工程)'+who+'</div>';
+}
+/* ===== 段階29: チェックで車を中央に大きく表示(ポップアップ) ===== */
+function bd_pinCarModal(id, checked){
+  if(checked){ bd_openWorkModal(id); }
+  else if(_workModalCarId===id){ closeSheet(); render(); }
 }
 function seedStoreFromUser(){
   var u = (typeof userData!=='undefined' && userData) ? userData : {};
