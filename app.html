@@ -597,7 +597,16 @@ input[type="time"]::-webkit-calendar-picker-indicator { filter: invert(1); opaci
 .pcd-list .hname{ font-size:9px; }
 .pcd-list .htime{ font-size:11px; }
 /* ===== 段階15: 時刻クイックチップの選択強調 ===== */
-.dv-chip.on{ border-color:var(--accent); background:var(--accent-bg); color:var(--accent); font-weight:700; }</style>
+.dv-chip.on{ border-color:var(--accent); background:var(--accent-bg); color:var(--accent); font-weight:700; }
+/* ===== 段階20: 概要表示(タイル)モード ===== */
+.pcd-tilegrid{ display:flex; flex-wrap:wrap; gap:6px; align-content:flex-start; }
+.pcd-tile{ width:60px; height:60px; border-radius:10px; background:var(--card2); border:1px solid var(--line2); display:flex; flex-direction:column; align-items:center; justify-content:center; font-size:11px; cursor:pointer; text-align:center; padding:4px; flex-shrink:0; }
+.pcd-tile:hover{ border-color:var(--accent); }
+.pcd-tile .tk{ font-size:13px; line-height:1; }
+.pcd-tile .tn{ font-weight:700; font-size:12px; margin-top:3px; color:var(--text); font-family:ui-monospace,Menlo,Consolas,monospace; }
+.pcd-tile.wait{ background:var(--red-bg); border-color:var(--red); }
+.pcd-tile.hold{ background:var(--amber-bg); border-color:var(--amber); }
+.pcd-tile.done{ background:var(--green-bg); border-color:var(--green); }</style>
 <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
@@ -1878,7 +1887,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = 'app202607241031';
+const APP_VERSION = 'app202607241042';
 // LINEログイン(LIFF) — LINEコンソールで作成したLIFFアプリのIDを入れる
 const LIFF_ID = '2010638896-vJtjkUOr';
 // 公式アカウント「カーコン工賃通知」友だち追加URL（ここに飛ばすとLINEアプリの友だち追加画面が直接開く）
@@ -5431,6 +5440,7 @@ reclaimFromLineRedirect().then(function(reclaimed) {
       <label style="display:flex;align-items:center;gap:4px;cursor:pointer;"><input type="checkbox" id="pcd-show-store" checked onchange="pcdTogglePanel('store',this.checked)">達成率</label>
       <label style="display:flex;align-items:center;gap:4px;cursor:pointer;"><input type="checkbox" id="pcd-show-trend" checked onchange="pcdTogglePanel('trend',this.checked)">推移</label>
     </div>
+    <button id="pcd-overview-toggle" onclick="bd_pcdToggleOverview()" title="全体をタイルで概要表示します(混み具合が一目で分かります)">🔲 概要表示にする</button>
     <button id="pcd-expand-toggle" onclick="bd_pcdToggleAllExpand()" title="作業中カードの簡潔/全部表示を切り替えます">▼ 簡潔表示にする</button>
     <button onclick="pcdHardRefresh()" title="最新版を確実に取得します">🔄 更新</button>
     <button onclick="pcDashToggleOff()">🔽 スマホ表示に戻す</button>
@@ -7894,6 +7904,77 @@ function bd_workCardHtml(c){
       <button class="delbtn" onclick="askDelete('${c.id}')">🗑 削除</button>
     </div>`;
   return `<div class="${cardCls} ${kindClass(c)}">${compactPart}${expandedPart}</div>`;
+}
+/* ===== 段階20: 概要表示(タイル)モード ===== */
+var _pcdOverviewMode = false;
+function bd_pcdToggleOverview(){ _pcdOverviewMode = !_pcdOverviewMode; renderPcDash(); }
+function bd_pcdUpdateOverviewBtnLabel(){
+  var el=document.getElementById('pcd-overview-toggle'); if(!el) return;
+  el.textContent = _pcdOverviewMode ? '📋 詳細表示に戻す' : '🔲 概要表示にする';
+}
+function bd_tile(c){
+  var cls='pcd-tile';
+  if(c.status==='work' && c.waitingParts) cls+=' wait';
+  else if(c.status==='nyuko' && c.onHold) cls+=' hold';
+  else if(c.status==='nyuko' && daysBetween(c.nyukoAt, nowISO())>=7) cls+=' wait';
+  else if(c.status==='done') cls+=' done';
+  var icon = c.kind==='整備' ? '🛠' : '🔧';
+  return '<div class="'+cls+'" onclick="bd_openCarModal(\''+c.id+'\')" title="'+esc(c.cartype)+'・'+esc(c.number)+'">'
+    + '<div class="tk">'+icon+'</div>'
+    + '<div class="tn">'+esc(c.number)+'</div>'
+    + '</div>';
+}
+function bd_openCarModal(id){
+  var c = findCar(id); if(!c) return;
+  var html;
+  if(c.status==='work'){
+    var saved = _expandedWork[id]; _expandedWork[id] = true;
+    html = bd_workCardHtml(c);
+    _expandedWork[id] = saved;
+  } else if(c.status==='yotei'){ html = bd_yoteiRow(c); }
+  else if(c.status==='nyuko'){ html = bd_nyukoCardHtml(c); }
+  else if(c.status==='done'){ html = bd_doneCardHtml(c); }
+  else { return; }
+  showSheet('<h2>車両の詳細</h2>' + html);
+  _workModalCarId = (c.status==='work') ? id : null;
+}
+function renderPcDash(){
+  var q=(_pcdQ||'').trim();
+  function mq(c){ return !q || (String(c.number||'').indexOf(q)>=0) || (String(c.cartype||'').indexOf(q)>=0); }
+  var cars=state.cars.filter(mq);
+  var yotei=cars.filter(function(c){return c.status==='yotei';}).sort(function(a,b){return bd_planMs(a)-bd_planMs(b);});
+  var nyuko=cars.filter(function(c){return c.status==='nyuko';}).sort(function(a,b){ return new Date(a.nyukoAt)-new Date(b.nyukoAt); });
+  var me=(state.store && state.store.myName) || '';
+  var work=cars.filter(function(c){return c.status==='work';}).sort(function(a,b){
+    var aMine=(me&&a.assignee===me)?0:1, bMine=(me&&b.assignee===me)?0:1;
+    if(aMine!==bMine) return aMine-bMine;
+    var ad=a.deliveryDate?daysUntil(a.deliveryDate):Infinity, bdd=b.deliveryDate?daysUntil(b.deliveryDate):Infinity;
+    return ad-bdd;
+  });
+  var doneAll=cars.filter(function(c){return c.status==='done';});
+  var f=_pcdDoneFilter||'today';
+  var done=doneAll.filter(function(c){ if(f==='all')return true; if(f==='today')return isSameDay(c.doneAt); if(f==='month')return isSameMonth(c.doneAt); if(f==='week'){var d=new Date(c.doneAt),n=new Date(),diff=(n-d)/86400000; return diff>=0&&diff<=7;} return true; }).sort(function(a,b){ return new Date(b.doneAt)-new Date(a.doneAt); });
+  function fillHtml(id, html){ var el=document.getElementById(id); if(el) el.innerHTML = html || '<div style="color:var(--muted2);font-size:12px;padding:12px 4px;">なし</div>'; }
+  if(_pcdOverviewMode){
+    fillHtml('pcd-yotei', yotei.length? ('<div class="pcd-tilegrid">'+yotei.map(bd_tile).join('')+'</div>') : '');
+    fillHtml('pcd-nyuko', nyuko.length? ('<div class="pcd-tilegrid">'+nyuko.map(bd_tile).join('')+'</div>') : '');
+    fillHtml('pcd-work', work.length? ('<div class="pcd-tilegrid">'+work.map(bd_tile).join('')+'</div>') : '');
+    fillHtml('pcd-done', done.length? ('<div class="pcd-tilegrid">'+done.map(bd_tile).join('')+'</div>') : '');
+  }else{
+    fillHtml('pcd-yotei', yotei.map(bd_yoteiRow).join(''));
+    fillHtml('pcd-nyuko', nyuko.map(bd_nyukoCardHtml).join(''));
+    fillHtml('pcd-work', work.map(bd_workCardHtml).join(''));
+    fillHtml('pcd-done', done.map(bd_doneCardHtml).join(''));
+  }
+  var holdN=nyuko.filter(function(c){return c.onHold;}).length, partN=work.filter(function(c){return c.waitingParts;}).length;
+  var setTx=function(id,v){ var e=document.getElementById(id); if(e) e.textContent=v; };
+  setTx('pcd-c-yotei', yotei.length+'台');
+  setTx('pcd-c-nyuko', nyuko.length+'台'+(holdN?('（保留'+holdN+'）'):''));
+  setTx('pcd-c-work', work.length+'台'+(partN?('（部品待ち'+partN+'）'):''));
+  setTx('pcd-c-done', done.length+'台');
+  setTx('pcd-date', bd_pcDateStr());
+  var st=document.getElementById('pcd-store'); if(st) st.textContent=(state.store&&state.store.name)||'現場コントロール';
+  renderPcAchievement(); pcdApplyPanels(); bd_pcdUpdateExpandBtnLabel(); bd_pcdUpdateOverviewBtnLabel();
 }
 function seedStoreFromUser(){
   var u = (typeof userData!=='undefined' && userData) ? userData : {};
