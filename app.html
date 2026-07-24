@@ -1855,7 +1855,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = 'app202607240901';
+const APP_VERSION = 'app202607240913';
 // LINEログイン(LIFF) — LINEコンソールで作成したLIFFアプリのIDを入れる
 const LIFF_ID = '2010638896-vJtjkUOr';
 // 公式アカウント「カーコン工賃通知」友だち追加URL（ここに飛ばすとLINEアプリの友だち追加画面が直接開く）
@@ -6895,7 +6895,7 @@ function renderWork(work){
         var now = c.waitingParts ? '' : `この工程 ${fmtMin(cur)}　/　`;
         return `<div class="crew"><b>⏱</b> ${now}累計 ${fmtMin(tot)}</div>`;
       })()}
-      ${(function(){var cl=crewLine(c); return cl?`<div class="crew"><b>済</b> ${cl}</div>`:'';})()}
+      ${crewGauge(c)}
       <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:9px;">
         <button class="delbtn" onclick="backToNyuko('${c.id}')">↩ 入庫に戻す</button>
         <button class="delbtn" onclick="askDelete('${c.id}')">🗑 削除</button>
@@ -6972,7 +6972,7 @@ function renderDone(done){
           <div class="sub" style="color:var(--green)">🏁 ${c.doneAt?fmtDateTime(c.doneAt):''} 完成　${leadTxt}</div>
           <div class="times">${timesLine(c)}</div>
           ${(function(){var tot=totalMinutes(c); return tot>0?`<div class="crew"><b>作業時間</b> 累計 ${fmtMin(tot)}</div>`:'';})()}
-          ${(function(){var cl=crewLine(c); return cl?`<div class="crew"><b>工程担当</b> ${cl}</div>`:'';})()}
+          ${(function(){ var g=crewGauge(c); return g? g.replace(">済<",">工程担当<") : ""; })()}
         </div>
         <div class="row-actions">
           ${wageBtn(c)} ${insBtn(c)} ${photoBtn(c)}
@@ -7342,6 +7342,18 @@ function pcdTogglePanel(key, show){
 function pcDashSettingToggle(on){
   try{ if(typeof settings!=='undefined'&&settings){ settings.pcDash=!!on; if(typeof saveLocal==='function') saveLocal(); } }catch(e){}
   if(typeof updatePcDash==='function') updatePcDash();
+}
+/* ===== 段階11: 工程担当を「済ゲージ」チップ表示に(スマホの工程バーと同じ緑色系) ===== */
+function crewGauge(c){
+  var line=crewLine(c); if(!line) return '';
+  var groups=line.split('　/　');
+  var chips=groups.map(function(g){
+    var m=g.match(/^([①-⑳]+(?:–[①-⑳]+)?)(.*)$/);
+    var range=m?m[1]:''; var name=m?m[2]:g;
+    return '<span style="display:inline-flex;align-items:center;gap:5px;background:var(--green-bg);color:var(--green);border:1px solid #2c5648;border-radius:20px;padding:5px 12px;font-size:13px;font-weight:600;">'
+      + '<span style="background:var(--green);color:#0b2b20;border-radius:10px;padding:1px 7px;font-size:12px;font-weight:800;">'+range+'</span>'+esc(name)+'</span>';
+  }).join('');
+  return '<div style="display:flex;align-items:center;flex-wrap:wrap;gap:6px;margin-top:8px;"><span style="font-size:12px;color:var(--muted);font-weight:600;">済</span>'+chips+'</div>';
 }
 function seedStoreFromUser(){
   var u = (typeof userData!=='undefined' && userData) ? userData : {};
