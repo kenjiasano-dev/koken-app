@@ -585,7 +585,12 @@ input[type="date"].form-input::-webkit-calendar-picker-indicator { filter: inver
 #genba .car .crew b{ color:var(--text); font-weight:700; }
 #genba .car .deliv{ font-size:15px; font-weight:600; }
 #genba .car .nowstage{ font-size:22px; }
-#genba .car .stepcount{ font-size:15px; }</style>
+#genba .car .stepcount{ font-size:15px; }
+/* ===== 段階12: PCダッシュボードの車カードをスマホ版と同じ見た目に(工程ゲージ・ボタン込み) ===== */
+.pcd-list .car{ margin-bottom:10px; }
+.pcd-list .car:last-child{ margin-bottom:0; }
+.pcd-list .hname{ font-size:9px; }
+.pcd-list .htime{ font-size:11px; }</style>
 <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
@@ -1855,7 +1860,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = 'app202607240913';
+const APP_VERSION = 'app202607240930';
 // LINEログイン(LIFF) — LINEコンソールで作成したLIFFアプリのIDを入れる
 const LIFF_ID = '2010638896-vJtjkUOr';
 // 公式アカウント「カーコン工賃通知」友だち追加URL（ここに飛ばすとLINEアプリの友だち追加画面が直接開く）
@@ -7354,6 +7359,221 @@ function crewGauge(c){
       + '<span style="background:var(--green);color:#0b2b20;border-radius:10px;padding:1px 7px;font-size:12px;font-weight:800;">'+range+'</span>'+esc(name)+'</span>';
   }).join('');
   return '<div style="display:flex;align-items:center;flex-wrap:wrap;gap:6px;margin-top:8px;"><span style="font-size:12px;color:var(--muted);font-weight:600;">済</span>'+chips+'</div>';
+}
+/* ===== 段階12: 1台分カードHTML生成を関数化(スマホ版と共通化・PC側でも同じ物を使う) ===== */
+function bd_workCardHtml(c){
+  const S = getStages(c.kind);
+  let body, action, cardCls='car';
+  if(S.length===0){
+    c.stage = 0;
+    if(c.waitingParts){
+      cardCls='car waiting';
+      const d = c.partSince? daysBetween(c.partSince, nowISO()) : 0;
+      body = `
+      <div class="nowline waiting" style="margin:8px 0 4px;">
+        <span class="nowstage"><span class="nowlabel">状態</span>● 部品待ち</span>
+      </div>
+      <div class="sub danger" style="margin-top:2px;">⏸ 停止中・${d}日（部品が来たら🚩を押して再開）</div>`;
+      action = '';
+    }else{
+      body = `
+      <div class="nowline" style="margin:8px 0 4px;">
+        <span class="nowstage"><span class="nowlabel">状態</span><span class="livedot"></span>作業中</span>
+      </div>`;
+      action = `<div class="stepnav"><button class="pill green" onclick="finishCar('${c.id}')">✓ 完成</button></div>`;
+    }
+  }else{
+    if(c.stage > S.length-1) c.stage = S.length-1;
+    const steps = S.map((name,i)=>{
+      let cls='hstep todo', t='';
+      if(i<c.stage){
+        cls='hstep done';
+        const m=(c.stageDur&&c.stageDur[i])||0; if(m>0) t=Math.round(m)+'分';
+      }else if(i===c.stage){
+        if(c.waitingParts){ cls='hstep curw'; t='停止'; }
+        else { cls='hstep cur'; const m=curStageMinutes(c); if(m>0) t=Math.round(m)+'分'; }
+      }
+      let arr=byNames(c.stageBy&&c.stageBy[i]), whoStyle='color:var(--accent);';
+      if(!arr.length && i===c.stage && !c.waitingParts){ arr=c.assignee?[c.assignee]:[]; whoStyle='color:var(--muted2);'; }
+      const who = arr.length ? (arr.length>1 ? arr[0]+'+'+(arr.length-1) : arr[0]) : '';
+      const whoHtml = who
+        ? `<div class="hwho" style="font-size:11px;line-height:1.15;margin-top:1px;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;${whoStyle}">${esc(who)}</div>`
+        : (i<=c.stage ? `<div class="hwho" style="font-size:11px;line-height:1.15;margin-top:1px;text-align:center;color:var(--muted2);opacity:.45;">＋</div>` : '');
+      return `<div class="${cls}" style="cursor:pointer;" title="この工程の担当を選ぶ" onclick="openStageAssign('${c.id}',${i})"><div class="hbar"></div><div class="hname">${esc(name)}</div><div class="htime">${t}</div>${whoHtml}</div>`;
+    }).join('');
+    const isLast = c.stage===S.length-1;
+    const curName = `${mark(c.stage)} ${esc(S[c.stage])}`;
+    if(c.waitingParts){
+      cardCls='car waiting';
+      const d = c.partSince? daysBetween(c.partSince, nowISO()) : 0;
+      body = `
+      <div class="nowline waiting" style="margin:8px 0 6px;">
+        <span class="nowstage"><span class="nowlabel">部品待ち</span>${curName}</span>
+        <span class="stepcount">${c.stage+1} / ${S.length}</span>
+      </div>
+      <div class="hsteps">${steps}</div>
+      <div class="sub danger" style="margin-top:4px;">⏸ 停止中・${d}日（部品が来たら🚩を押して再開）</div>`;
+      action = '';
+    }else{
+      body = `
+      <div class="nowline">
+        <span class="nowstage"><span class="nowlabel">いま</span>${curName}</span>
+        <span class="stepcount">${c.stage+1} / ${S.length}工程</span>
+      </div>
+      <div class="hsteps">${steps}</div>`;
+      const back = c.stage>0 ? `<button class="pill" onclick="prevStage('${c.id}')">← 戻る</button>` : '';
+      const fwd = isLast
+        ? `<button class="pill green" onclick="finishCar('${c.id}')">✓ 完成</button>`
+        : `<button class="pill" onclick="nextStage('${c.id}')">次へ →</button>`;
+      action = `<div class="stepnav">${back}${fwd}</div>`;
+    }
+  }
+  return `
+  <div class="${cardCls} ${kindClass(c)}">
+    <div class="top">
+      <div>${kindBadge(c)}${insBadge(c)}<span class="name">${esc(c.cartype)}</span><span class="num">・${esc(c.number)}</span>${assignChip(c)}</div>
+      <div class="row-actions">
+        ${wageBtn(c)} ${insBtn(c)} ${photoBtn(c)}
+        <button class="flagbtn ${c.waitingParts?'on':''}" title="部品待ち" onclick="toggleParts('${c.id}')">${c.waitingParts?'🚩':'⚑'}</button>
+      </div>
+    </div>
+    ${deliveryLine(c)}
+    <div class="times">${timesLine(c)}</div>
+    ${body}
+    ${action}
+    ${(function(){
+      var cur=curStageMinutes(c), tot=totalMinutes(c);
+      if(tot<=0) return '';
+      var now = c.waitingParts ? '' : `この工程 ${fmtMin(cur)}　/　`;
+      return `<div class="crew"><b>⏱</b> ${now}累計 ${fmtMin(tot)}</div>`;
+    })()}
+    ${crewGauge(c)}
+    <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:9px;">
+      <button class="delbtn" onclick="backToNyuko('${c.id}')">↩ 入庫に戻す</button>
+      <button class="delbtn" onclick="askDelete('${c.id}')">🗑 削除</button>
+    </div>
+  </div>`;
+}
+function bd_nyukoCardHtml(c){
+  const d = daysBetween(c.nyukoAt, nowISO());
+  const long = d>=7;
+  const cardCls = c.onHold ? 'car bd-hold' : (long? 'car waiting':'car');
+  const subCls = long? 'sub danger':'sub';
+  return `
+  <div class="${cardCls} ${kindClass(c)}">
+    <div class="top">
+      <div>
+        <div>${kindBadge(c)}${insBadge(c)}<span class="name">${esc(c.cartype)}</span><span class="num">・${esc(c.number)}</span>${assignChip(c)}</div>
+        <div class="${subCls}">⏱ ${fmtDateTime(c.nyukoAt)} 入庫・${d}日待ち</div>
+        ${deliveryLine(c)}
+        ${holdBlock(c)}
+      </div>
+      <div class="row-actions">
+        ${wageBtn(c)} ${insBtn(c)} ${photoBtn(c)}
+        <button class="iconbtn" title="削除" onclick="askDelete('${c.id}')">🗑</button>
+        <button class="pill" onclick="startCar('${c.id}')">作業開始 →</button>
+      </div>
+    </div>
+  </div>`;
+}
+function bd_doneCardHtml(c){
+  const lead = (c.nyukoAt&&c.doneAt)? daysBetween(c.nyukoAt,c.doneAt) : null;
+  const leadTxt = lead==null? '' : `<span class="n" style="color:var(--muted2)">入庫→完成 ${lead}日</span>`;
+  return `
+  <div class="car done-card ${kindClass(c)}">
+    <div class="top">
+      <div>
+        <div>${kindBadge(c)}${insBadge(c)}<span class="name">${esc(c.cartype)}</span><span class="num">・${esc(c.number)}</span>${assignChip(c)}</div>
+        <div class="sub" style="color:var(--green)">🏁 ${c.doneAt?fmtDateTime(c.doneAt):''} 完成　${leadTxt}</div>
+        <div class="times">${timesLine(c)}</div>
+        ${(function(){var tot=totalMinutes(c); return tot>0?`<div class="crew"><b>作業時間</b> 累計 ${fmtMin(tot)}</div>`:'';})()}
+        ${(function(){ var g=crewGauge(c); return g? g.replace(">済<",">工程担当<") : ""; })()}
+      </div>
+      <div class="row-actions">
+        ${wageBtn(c)} ${insBtn(c)} ${photoBtn(c)}
+        <button class="iconbtn" title="作業中に戻す" onclick="reopenCar('${c.id}')">↩</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+/* ---------- スマホ版のrenderWork/renderNyuko/renderDoneを、上の共通カード関数を使うよう再定義 ---------- */
+function renderWork(work){
+  work = work.filter(matchQ);
+  document.getElementById('work-count').textContent = work.length+'台'
+    + (work.some(c=>c.waitingParts)? '（部品待ち'+work.filter(c=>c.waitingParts).length+'）':'');
+  const list=document.getElementById('work-list');
+  document.getElementById('work-empty').classList.toggle('hidden', work.length>0);
+  const me = (state.store && state.store.myName) || '';
+  work.sort((a,b)=>{
+    const aMine = (me && a.assignee===me) ? 0 : 1;
+    const bMine = (me && b.assignee===me) ? 0 : 1;
+    if(aMine!==bMine) return aMine-bMine;
+    const ad = a.deliveryDate ? daysUntil(a.deliveryDate) : Infinity;
+    const bd = b.deliveryDate ? daysUntil(b.deliveryDate) : Infinity;
+    return ad-bd;
+  });
+  list.innerHTML = work.map(bd_workCardHtml).join('');
+}
+function renderNyuko(nyuko){
+  nyuko = nyuko.filter(matchQ);
+  var _hn=nyuko.filter(function(x){return x.onHold;}).length; document.getElementById('nyuko-count').textContent = nyuko.length+'台'+(_hn?('（保留'+_hn+'台）'):'');
+  const list=document.getElementById('nyuko-list');
+  document.getElementById('nyuko-empty').classList.toggle('hidden', nyuko.length>0);
+  nyuko.sort((a,b)=> new Date(a.nyukoAt)-new Date(b.nyukoAt));
+  list.innerHTML = nyuko.map(bd_nyukoCardHtml).join('');
+}
+function renderDone(done){
+  const todayN = done.filter(c=>isSameDay(c.doneAt)).length;
+  const monthN = done.filter(c=>isSameMonth(c.doneAt)).length;
+  document.getElementById('done-today').innerHTML = todayN+'<small> 台</small>';
+  document.getElementById('done-month').innerHTML = monthN+'<small> 台</small>';
+  let shown = (doneFilter==='today') ? done.filter(c=>isSameDay(c.doneAt))
+            : (doneFilter==='month') ? done.filter(c=>isSameMonth(c.doneAt))
+            : done.slice();
+  shown = shown.filter(matchQ);
+  shown.sort((a,b)=> new Date(b.doneAt)-new Date(a.doneAt));
+  document.getElementById('done-count').textContent = shown.length+'台';
+  const empty=document.getElementById('done-empty');
+  empty.classList.toggle('hidden', shown.length>0);
+  empty.textContent = (doneFilter==='today') ? '今日の完成はまだありません。'
+                    : (doneFilter==='month') ? '今月の完成はまだありません。'
+                    : 'まだ完成した車はありません。';
+  const list=document.getElementById('done-list');
+  list.innerHTML = shown.map(bd_doneCardHtml).join('');
+}
+
+/* ---------- PCダッシュボードの4列を、スマホと全く同じカードHTML(同じボタン・同じ工程ゲージ)で描画 ---------- */
+function renderPcDash(){
+  var q=(_pcdQ||'').trim();
+  function mq(c){ return !q || (String(c.number||'').indexOf(q)>=0) || (String(c.cartype||'').indexOf(q)>=0); }
+  var cars=state.cars.filter(mq);
+  var yotei=cars.filter(function(c){return c.status==='yotei';}).sort(function(a,b){return bd_planMs(a)-bd_planMs(b);});
+  var nyuko=cars.filter(function(c){return c.status==='nyuko';}).sort(function(a,b){ return new Date(a.nyukoAt)-new Date(b.nyukoAt); });
+  var me=(state.store && state.store.myName) || '';
+  var work=cars.filter(function(c){return c.status==='work';}).sort(function(a,b){
+    var aMine=(me&&a.assignee===me)?0:1, bMine=(me&&b.assignee===me)?0:1;
+    if(aMine!==bMine) return aMine-bMine;
+    var ad=a.deliveryDate?daysUntil(a.deliveryDate):Infinity, bdd=b.deliveryDate?daysUntil(b.deliveryDate):Infinity;
+    return ad-bdd;
+  });
+  var doneAll=cars.filter(function(c){return c.status==='done';});
+  var f=_pcdDoneFilter||'today';
+  var done=doneAll.filter(function(c){ if(f==='all')return true; if(f==='today')return isSameDay(c.doneAt); if(f==='month')return isSameMonth(c.doneAt); if(f==='week'){var d=new Date(c.doneAt),n=new Date(),diff=(n-d)/86400000; return diff>=0&&diff<=7;} return true; }).sort(function(a,b){ return new Date(b.doneAt)-new Date(a.doneAt); });
+  function fillHtml(id, html){ var el=document.getElementById(id); if(el) el.innerHTML = html || '<div style="color:var(--muted2);font-size:12px;padding:12px 4px;">なし</div>'; }
+  fillHtml('pcd-yotei', yotei.map(bd_yoteiRow).join(''));
+  fillHtml('pcd-nyuko', nyuko.map(bd_nyukoCardHtml).join(''));
+  fillHtml('pcd-work', work.map(bd_workCardHtml).join(''));
+  fillHtml('pcd-done', done.map(bd_doneCardHtml).join(''));
+  var holdN=nyuko.filter(function(c){return c.onHold;}).length, partN=work.filter(function(c){return c.waitingParts;}).length;
+  var setTx=function(id,v){ var e=document.getElementById(id); if(e) e.textContent=v; };
+  setTx('pcd-c-yotei', yotei.length+'台');
+  setTx('pcd-c-nyuko', nyuko.length+'台'+(holdN?('（保留'+holdN+'）'):''));
+  setTx('pcd-c-work', work.length+'台'+(partN?('（部品待ち'+partN+'）'):''));
+  setTx('pcd-c-done', done.length+'台');
+  setTx('pcd-date', bd_pcDateStr());
+  var st=document.getElementById('pcd-store'); if(st) st.textContent=(state.store&&state.store.name)||'現場コントロール';
+  renderPcAchievement(); pcdApplyPanels();
 }
 function seedStoreFromUser(){
   var u = (typeof userData!=='undefined' && userData) ? userData : {};
