@@ -1893,7 +1893,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = 'app202607241057';
+const APP_VERSION = 'app202607241117';
 // LINEログイン(LIFF) — LINEコンソールで作成したLIFFアプリのIDを入れる
 const LIFF_ID = '2010638896-vJtjkUOr';
 // 公式アカウント「カーコン工賃通知」友だち追加URL（ここに飛ばすとLINEアプリの友だち追加画面が直接開く）
@@ -5446,8 +5446,7 @@ reclaimFromLineRedirect().then(function(reclaimed) {
       <label style="display:flex;align-items:center;gap:4px;cursor:pointer;"><input type="checkbox" id="pcd-show-store" checked onchange="pcdTogglePanel('store',this.checked)">達成率</label>
       <label style="display:flex;align-items:center;gap:4px;cursor:pointer;"><input type="checkbox" id="pcd-show-trend" checked onchange="pcdTogglePanel('trend',this.checked)">推移</label>
     </div>
-    <button id="pcd-overview-toggle" onclick="bd_pcdToggleOverview()" title="全体をタイルで概要表示します(混み具合が一目で分かります)">🔲 概要表示にする</button>
-    <button id="pcd-expand-toggle" onclick="bd_pcdToggleAllExpand()" title="作業中カードの簡潔/全部表示を切り替えます">▼ 簡潔表示にする</button>
+    <button id="pcd-view-toggle" onclick="bd_pcdCycleView()" title="表示モードを切り替えます(全部表示→簡潔表示→概要表示)">📋 全部表示</button>
     <button onclick="pcdHardRefresh()" title="最新版を確実に取得します">🔄 更新</button>
     <button onclick="pcDashToggleOff()">🔽 スマホ表示に戻す</button>
   </div>
@@ -7983,6 +7982,25 @@ function renderPcDash(){
   var st=document.getElementById('pcd-store'); if(st) st.textContent=(state.store&&state.store.name)||'現場コントロール';
   renderPcAchievement(); pcdApplyPanels(); bd_pcdUpdateExpandBtnLabel(); bd_pcdUpdateOverviewBtnLabel();
 }
+/* ===== 段階23: 表示モードボタンを1つに統合(クリックで循環) ===== */
+function bd_pcdCycleView(){
+  if(!_pcdOverviewMode && bd_workDefaultExpanded()){
+    bd_workStartExpandedToggle(false);      // 全部表示 → 簡潔表示
+  } else if(!_pcdOverviewMode && !bd_workDefaultExpanded()){
+    _pcdOverviewMode = true; renderPcDash(); // 簡潔表示 → 概要表示(タイル)
+  } else {
+    _pcdOverviewMode = false;
+    bd_workStartExpandedToggle(true);        // 概要表示 → 全部表示
+  }
+}
+function bd_pcdUpdateViewBtnLabel(){
+  var el=document.getElementById('pcd-view-toggle'); if(!el) return;
+  if(_pcdOverviewMode) el.textContent = '🔲 概要表示中';
+  else if(bd_workDefaultExpanded()) el.textContent = '📋 全部表示';
+  else el.textContent = '📇 簡潔表示';
+}
+function bd_pcdUpdateOverviewBtnLabel(){ bd_pcdUpdateViewBtnLabel(); }
+function bd_pcdUpdateExpandBtnLabel(){ bd_pcdUpdateViewBtnLabel(); }
 function seedStoreFromUser(){
   var u = (typeof userData!=='undefined' && userData) ? userData : {};
   state.store = Object.assign({}, state.store||{}, {
