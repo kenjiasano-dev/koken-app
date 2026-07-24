@@ -1904,7 +1904,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = 'app202607241711';
+const APP_VERSION = 'app202607241726';
 // LINEログイン(LIFF) — LINEコンソールで作成したLIFFアプリのIDを入れる
 const LIFF_ID = '2010638896-vJtjkUOr';
 // 公式アカウント「カーコン工賃通知」友だち追加URL（ここに飛ばすとLINEアプリの友だち追加画面が直接開く）
@@ -6508,7 +6508,7 @@ function onPhotoPicked(e){
         c.photos=c.photos||[];
         c.photos.push({id, stageIndex:ctx.idx, stageLabel:ctx.label, ts:rec.ts, isPdf});
         persist(c);
-        if(!isDoc && !isPdf) autoUploadPhoto(c.id, id);   // 見積書・PDFは現状ドライブ自動送信の対象外(工程写真のみ)
+        autoUploadPhoto(c.id, id);   // 見積書・PDFも工程写真と同様にドライブへ自動送信(店舗の全員が見られるように)
       });
     }).catch(()=>{}).then(()=>{
       if(++done===files.length){ toast(files.length+'件を保存しました'); render(); if(document.getElementById('gallery-body')) refreshGallery(c.id); }
@@ -6607,7 +6607,8 @@ async function uploadOnePhoto(c, photoId, token){
       if(!folderId) return false;
       c.gdriveFolderId=folderId; persist(c);
     }
-    const fileName='p_'+p.stageLabel+'_'+new Date(p.ts).toISOString().slice(0,16).replace(/[:T]/g,'-')+'.jpg';
+    const ext = p.isPdf ? '.pdf' : '.jpg';
+    const fileName='p_'+p.stageLabel+'_'+new Date(p.ts).toISOString().slice(0,16).replace(/[:T]/g,'-')+ext;
     const existing=await gdriveFindFile(fileName, c.gdriveFolderId, auth);
     if(existing){ p.gdriveId=existing; persist(c); return true; }   // 他の端末が先に送信済み
     let rec; try{ rec=await pdbGet(p.id); }catch(e){}
