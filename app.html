@@ -1904,7 +1904,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = 'app202607241658';
+const APP_VERSION = 'app202607241711';
 // LINEログイン(LIFF) — LINEコンソールで作成したLIFFアプリのIDを入れる
 const LIFF_ID = '2010638896-vJtjkUOr';
 // 公式アカウント「カーコン工賃通知」友だち追加URL（ここに飛ばすとLINEアプリの友だち追加画面が直接開く）
@@ -6811,10 +6811,10 @@ function openZoomViewer(url, caption, extraHtml){
   showSheet(`
     <h2 style="font-size:15px;">${caption||''}</h2>
     <div id="zoomv-wrap" style="position:relative;width:100%;height:64vh;overflow:hidden;background:#000;border-radius:8px;touch-action:none;margin-top:8px;">
-      <img id="zoomv-img" src="${url}" style="position:absolute;left:50%;top:50%;transform-origin:0 0;max-width:none;user-select:none;-webkit-user-drag:none;">
+      <img id="zoomv-img" src="${url}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:contain;user-select:none;-webkit-user-drag:none;">
     </div>
     ${extraHtml||''}
-    <div style="text-align:center;color:var(--muted);font-size:11px;margin-top:8px;">📱 ピンチで拡大・指1本で移動・ダブルタップでリセット</div>
+    <div style="text-align:center;color:var(--muted);font-size:11px;margin-top:8px;">📱 最初は全体表示・ピンチで拡大・指1本で移動・ダブルタップでリセット</div>
     <button class="btn ghost" style="margin-top:10px;" onclick="closeSheet()">閉じる</button>
   `, true);
   setTimeout(bd_initZoomViewer, 30);
@@ -6823,24 +6823,38 @@ function bd_initZoomViewer(){
   var wrap=document.getElementById('zoomv-wrap'), img=document.getElementById('zoomv-img');
   if(!wrap||!img) return;
   var scale=1, panX=0, panY=0, startDist=0, startScale=1, startX=0, startY=0, dragging=false, lastTap=0;
-  function apply(){ img.style.transform='translate('+panX+'px,'+panY+'px) translate(-50%,-50%) scale('+scale+')'; }
-  img.onload=function(){ scale=1; panX=0; panY=0; apply(); };
-  if(img.complete) apply();
+  function clampScale(){ scale=Math.min(6,Math.max(1,scale)); if(scale<=1.01){ scale=1; panX=0; panY=0; } }
+  function apply(){ img.style.transform='translate('+panX+'px,'+panY+'px) scale('+scale+')'; }
   function dist(t){ var dx=t[0].clientX-t[1].clientX, dy=t[0].clientY-t[1].clientY; return Math.sqrt(dx*dx+dy*dy); }
+  apply();
   wrap.addEventListener('touchstart', function(e){
-    if(e.touches.length===2){ startDist=dist(e.touches); startScale=scale; }
-    else if(e.touches.length===1){
-      dragging=true; startX=e.touches[0].clientX-panX; startY=e.touches[0].clientY-panY;
-      var now=Date.now(); if(now-lastTap<300){ scale=(scale>1?1:2.5); panX=0; panY=0; apply(); } lastTap=now;
+    if(e.touches.length===2){
+      startDist=dist(e.touches); startScale=scale; dragging=false;
+    } else if(e.touches.length===1){
+      dragging=false;   // 次のtouchmoveで移動の基準を取り直す(指の切替時のカクつき防止)
+      var now=Date.now();
+      if(now-lastTap<300){ scale=(scale>1.01?1:2.5); panX=0; panY=0; apply(); }
+      lastTap=now;
     }
   }, {passive:true});
   wrap.addEventListener('touchmove', function(e){
-    if(e.touches.length===2){ e.preventDefault(); var d=dist(e.touches); if(startDist>0){ scale=Math.min(6,Math.max(1,startScale*(d/startDist))); apply(); } }
-    else if(dragging && e.touches.length===1){ panX=e.touches[0].clientX-startX; panY=e.touches[0].clientY-startY; apply(); }
+    if(e.touches.length===2){
+      e.preventDefault();
+      var d=dist(e.touches);
+      if(startDist>0){ scale=startScale*(d/startDist); clampScale(); apply(); }
+    } else if(e.touches.length===1){
+      e.preventDefault();
+      var t=e.touches[0];
+      if(!dragging){ dragging=true; startX=t.clientX-panX; startY=t.clientY-panY; }
+      else { panX=t.clientX-startX; panY=t.clientY-startY; apply(); }
+    }
   }, {passive:false});
-  wrap.addEventListener('touchend', function(e){ if(e.touches.length<2) startDist=0; if(e.touches.length===0) dragging=false; });
+  wrap.addEventListener('touchend', function(e){
+    if(e.touches.length<2) startDist=0;
+    if(e.touches.length===0) dragging=false;
+  });
   // PC(マウス)でもダブルクリックでズーム
-  wrap.addEventListener('dblclick', function(){ scale=(scale>1?1:2.5); panX=0; panY=0; apply(); });
+  wrap.addEventListener('dblclick', function(){ scale=(scale>1.01?1:2.5); panX=0; panY=0; apply(); });
 }
 function delPhoto(carId,pid){
   if(!confirm('この写真を削除しますか？')) return;
