@@ -1904,7 +1904,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = 'app202607241732';
+const APP_VERSION = 'app202607241741';
 // LINEログイン(LIFF) — LINEコンソールで作成したLIFFアプリのIDを入れる
 const LIFF_ID = '2010638896-vJtjkUOr';
 // 公式アカウント「カーコン工賃通知」友だち追加URL（ここに飛ばすとLINEアプリの友だち追加画面が直接開く）
@@ -6769,12 +6769,46 @@ function loadGalleryThumbs(){
   });
 }
 function refreshGallery(carId){ const c=findCar(carId); if(!c) return; const b=document.getElementById('gallery-body'); if(b){ b.innerHTML=galleryHTML(c); loadGalleryThumbs(); } }
+function bd_findPhotoMeta(pid){
+  for(const c of state.cars){
+    const p=(c.photos||[]).find(x=>x.id===pid);
+    if(p) return {car:c, meta:p};
+  }
+  return null;
+}
+async function bd_fetchPhotoFromDrive(car, meta){
+  if(!meta.gdriveId) return null;
+  const token=await requestGDriveToken(false);
+  if(!token) return null;
+  const ok=await ensureGDriveConsent(token);
+  if(!ok) return null;
+  try{
+    const r=await fetch('https://www.googleapis.com/drive/v3/files/'+meta.gdriveId+'?alt=media', {headers:{'Authorization':'Bearer '+token}});
+    if(!r.ok) return null;
+    const blob=await r.blob();
+    try{ await pdbPut({id:meta.id, carId:car.id, stageIndex:meta.stageIndex, stageLabel:meta.stageLabel, ts:meta.ts, blob, isPdf:meta.isPdf}); }catch(e){}   // 次回から端末内キャッシュで即表示できるように保存
+    return blob;
+  }catch(e){ return null; }
+}
 function viewPhoto(pid){
   pdbGet(pid).then(rec=>{
-    if(!rec||!rec.blob) return;
-    if(rec.isPdf){ openPdfViewer(rec); return; }
-    const u=URL.createObjectURL(rec.blob); _gUrls.push(u);
-    openZoomViewer(u, esc(rec.stageLabel)+'・'+fmtDateTime(new Date(rec.ts).toISOString()));
+    if(rec && rec.blob){
+      if(rec.isPdf){ openPdfViewer(rec); return; }
+      const u=URL.createObjectURL(rec.blob); _gUrls.push(u);
+      openZoomViewer(u, esc(rec.stageLabel)+'・'+fmtDateTime(new Date(rec.ts).toISOString()));
+      return;
+    }
+    // この端末には無い(他の人が撮った等)→ドライブから取得を試みる
+    const found=bd_findPhotoMeta(pid);
+    if(!found){ toast('写真が見つかりませんでした'); return; }
+    if(!found.meta.gdriveId){ toast('まだドライブへの送信が完了していません。少し待ってからもう一度お試しください'); return; }
+    toast('☁️ ドライブから読み込み中…');
+    bd_fetchPhotoFromDrive(found.car, found.meta).then(blob=>{
+      if(!blob){ toast('⚠️ 取得できませんでした（⚙設定のGoogleドライブ連携をご確認ください）'); return; }
+      if(found.meta.isPdf){ openPdfViewer({blob:blob, stageLabel:found.meta.stageLabel, ts:found.meta.ts}); return; }
+      const u=URL.createObjectURL(blob); _gUrls.push(u);
+      openZoomViewer(u, esc(found.meta.stageLabel)+'・'+fmtDateTime(new Date(found.meta.ts).toISOString()));
+    });
   }).catch(()=>{});
 }
 var _pdfDoc=null, _pdfCaption='';
