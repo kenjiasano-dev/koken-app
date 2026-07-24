@@ -1904,7 +1904,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = 'app202607241642';
+const APP_VERSION = 'app202607241658';
 // LINEログイン(LIFF) — LINEコンソールで作成したLIFFアプリのIDを入れる
 const LIFF_ID = '2010638896-vJtjkUOr';
 // 公式アカウント「カーコン工賃通知」友だち追加URL（ここに飛ばすとLINEアプリの友だち追加画面が直接開く）
@@ -6699,9 +6699,8 @@ function shrinkImage(file, max=1600, q=0.82){
 /* 各カードの写真ボタン（0枚なら即カメラ・1枚以上ならギャラリー） */
 function photoBtn(c){
   const n=(c.photos&&c.photos.length)||0;
-  const act = n ? `openGallery('${c.id}')` : `addPhoto('${c.id}')`;
   const hi = n ? 'color:var(--accent);border-color:var(--accent);' : '';
-  return `<button class="iconbtn" title="工程写真" style="${hi}" onclick="event.stopPropagation();${act}">📷${n?'<span style=\"font-size:15px;margin-left:2px;font-weight:600;\">'+n+'</span>':''}</button>`;
+  return `<button class="iconbtn" title="工程写真・見積書" style="${hi}" onclick="event.stopPropagation();openGallery('${c.id}')">📷${n?'<span style=\"font-size:15px;margin-left:2px;font-weight:600;\">'+n+'</span>':''}</button>`;
 }
 
 /* 写真ギャラリー（工程別に表示・拡大・削除・追加・ZIP） */
