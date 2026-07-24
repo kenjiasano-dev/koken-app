@@ -1415,6 +1415,17 @@ input[type="time"]::-webkit-calendar-picker-indicator { filter: invert(1); opaci
           </li>
         </ul>
       </div>
+      <!-- Work Card Expand Default -->
+      <div class="card">
+        <div class="card-title">📇 作業中カードの表示</div>
+        <ul class="settings-list" style="margin:0;box-shadow:none;">
+          <li class="setting-item">
+            <div class="setting-icon" style="background:#2c2c2c;">📇</div>
+            <div><div class="setting-label">最初から全部表示する</div><div class="setting-sub">OFFにすると普段は車種・番号・納車日時だけ表示し、▼ボタンで工程や操作ボタンを開けます</div></div>
+            <label class="toggle"><input type="checkbox" id="work-expand-default-toggle" onchange="bd_workStartExpandedToggle(this.checked)"><span class="toggle-slider"></span></label>
+          </li>
+        </ul>
+      </div>
       <!-- Notifications -->
       <div class="card">
         <div class="card-title">🔔 通知設定</div>
@@ -1867,7 +1878,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = 'app202607240954';
+const APP_VERSION = 'app202607241013';
 // LINEログイン(LIFF) — LINEコンソールで作成したLIFFアプリのIDを入れる
 const LIFF_ID = '2010638896-vJtjkUOr';
 // 公式アカウント「カーコン工賃通知」友だち追加URL（ここに飛ばすとLINEアプリの友だち追加画面が直接開く）
@@ -3696,6 +3707,7 @@ function initSettings() {
   renderFollowedStores();
   document.getElementById('ninja-mode-toggle').checked = userData.ninjaMode === true;
   var _pt=document.getElementById('pc-dash-toggle'); if(_pt) _pt.checked = (typeof settings!=='undefined'&&settings) ? (settings.pcDash!==false) : true;
+  var _wt=document.getElementById('work-expand-default-toggle'); if(_wt && typeof bd_workDefaultExpanded==='function') _wt.checked = bd_workDefaultExpanded();
   document.getElementById('notif-rankup').checked = settings.notifRankup !== false;
   document.getElementById('notif-goal').checked = settings.notifGoal !== false;
   document.getElementById('notif-rocket').checked = settings.notifRocket !== false;
@@ -7604,6 +7616,115 @@ function bd_pickTime(inputId, hhmm){
   document.querySelectorAll('[onclick*="bd_pickTime(\'' + inputId + '\'"]').forEach(function(b){
     b.classList.toggle('on', b.getAttribute('onclick').indexOf("'"+hhmm+"'")>=0);
   });
+}
+/* ===== 段階17: 作業中カードの簡潔/全体表示切替(スマホ・PC共通) ===== */
+var _expandedWork = {};
+function bd_workDefaultExpanded(){ return !(typeof settings!=='undefined'&&settings&&settings.workStartExpanded===false); }
+function bd_isWorkExpanded(id){ return _expandedWork.hasOwnProperty(id) ? _expandedWork[id] : bd_workDefaultExpanded(); }
+function bd_toggleCardExpand(id){ _expandedWork[id] = !bd_isWorkExpanded(id); render(); }
+function bd_workStartExpandedToggle(on){
+  try{ if(typeof settings!=='undefined'&&settings){ settings.workStartExpanded = !!on; if(typeof saveLocal==='function') saveLocal(); } }catch(e){}
+  _expandedWork = {};
+  render();
+}
+function bd_workCardHtml(c){
+  const S = getStages(c.kind);
+  let body, action, cardCls='car';
+  if(S.length===0){
+    c.stage = 0;
+    if(c.waitingParts){
+      cardCls='car waiting';
+      const d = c.partSince? daysBetween(c.partSince, nowISO()) : 0;
+      body = `
+      <div class="nowline waiting" style="margin:8px 0 4px;">
+        <span class="nowstage"><span class="nowlabel">状態</span>● 部品待ち</span>
+      </div>
+      <div class="sub danger" style="margin-top:2px;">⏸ 停止中・${d}日（部品が来たら🚩を押して再開）</div>`;
+      action = '';
+    }else{
+      body = `
+      <div class="nowline" style="margin:8px 0 4px;">
+        <span class="nowstage"><span class="nowlabel">状態</span><span class="livedot"></span>作業中</span>
+      </div>`;
+      action = `<div class="stepnav"><button class="pill green" onclick="finishCar('${c.id}')">✓ 完成</button></div>`;
+    }
+  }else{
+    if(c.stage > S.length-1) c.stage = S.length-1;
+    const steps = S.map((name,i)=>{
+      let cls='hstep todo', t='';
+      if(i<c.stage){
+        cls='hstep done';
+        const m=(c.stageDur&&c.stageDur[i])||0; if(m>0) t=Math.round(m)+'分';
+      }else if(i===c.stage){
+        if(c.waitingParts){ cls='hstep curw'; t='停止'; }
+        else { cls='hstep cur'; const m=curStageMinutes(c); if(m>0) t=Math.round(m)+'分'; }
+      }
+      let arr=byNames(c.stageBy&&c.stageBy[i]), whoStyle='color:var(--accent);';
+      if(!arr.length && i===c.stage && !c.waitingParts){ arr=c.assignee?[c.assignee]:[]; whoStyle='color:var(--muted2);'; }
+      const who = arr.length ? (arr.length>1 ? arr[0]+'+'+(arr.length-1) : arr[0]) : '';
+      const whoHtml = who
+        ? `<div class="hwho" style="font-size:11px;line-height:1.15;margin-top:1px;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;${whoStyle}">${esc(who)}</div>`
+        : (i<=c.stage ? `<div class="hwho" style="font-size:11px;line-height:1.15;margin-top:1px;text-align:center;color:var(--muted2);opacity:.45;">＋</div>` : '');
+      return `<div class="${cls}" style="cursor:pointer;" title="この工程の担当を選ぶ" onclick="openStageAssign('${c.id}',${i})"><div class="hbar"></div><div class="hname">${esc(name)}</div><div class="htime">${t}</div>${whoHtml}</div>`;
+    }).join('');
+    const isLast = c.stage===S.length-1;
+    const curName = `${mark(c.stage)} ${esc(S[c.stage])}`;
+    if(c.waitingParts){
+      cardCls='car waiting';
+      const d = c.partSince? daysBetween(c.partSince, nowISO()) : 0;
+      body = `
+      <div class="nowline waiting" style="margin:8px 0 6px;">
+        <span class="nowstage"><span class="nowlabel">部品待ち</span>${curName}</span>
+        <span class="stepcount">${c.stage+1} / ${S.length}</span>
+      </div>
+      <div class="hsteps">${steps}</div>
+      <div class="sub danger" style="margin-top:4px;">⏸ 停止中・${d}日（部品が来たら🚩を押して再開）</div>`;
+      action = '';
+    }else{
+      body = `
+      <div class="nowline">
+        <span class="nowstage"><span class="nowlabel">いま</span>${curName}</span>
+        <span class="stepcount">${c.stage+1} / ${S.length}工程</span>
+      </div>
+      <div class="hsteps">${steps}</div>`;
+      const back = c.stage>0 ? `<button class="pill" onclick="prevStage('${c.id}')">← 戻る</button>` : '';
+      const fwd = isLast
+        ? `<button class="pill green" onclick="finishCar('${c.id}')">✓ 完成</button>`
+        : `<button class="pill" onclick="nextStage('${c.id}')">次へ →</button>`;
+      action = `<div class="stepnav">${back}${fwd}</div>`;
+    }
+  }
+  var expanded = bd_isWorkExpanded(c.id);
+  var toggleBtn = '<button class="iconbtn" title="'+(expanded?'閉じる':'工程・操作を見る')+'" onclick="bd_toggleCardExpand(\''+c.id+'\')">'+(expanded?'▲':'▼')+'</button>';
+  var compactPart = `
+    <div class="top">
+      <div>${kindBadge(c)}${insBadge(c)}<span class="name">${esc(c.cartype)}</span><span class="num">・${esc(c.number)}</span>${assignChip(c)}</div>
+      <div class="row-actions">${toggleBtn}</div>
+    </div>
+    ${deliveryLine(c)}
+    <div class="times">${timesLine(c)}</div>`;
+  if(!expanded){
+    return `<div class="${cardCls} ${kindClass(c)}">${compactPart}</div>`;
+  }
+  var expandedPart = `
+    <div class="row-actions" style="display:flex;gap:8px;margin-top:9px;flex-wrap:wrap;">
+      ${wageBtn(c)} ${insBtn(c)} ${photoBtn(c)}
+      <button class="flagbtn ${c.waitingParts?'on':''}" title="部品待ち" onclick="toggleParts('${c.id}')">${c.waitingParts?'🚩':'⚑'}</button>
+    </div>
+    ${body}
+    ${action}
+    ${(function(){
+      var cur=curStageMinutes(c), tot=totalMinutes(c);
+      if(tot<=0) return '';
+      var now = c.waitingParts ? '' : `この工程 ${fmtMin(cur)}　/　`;
+      return `<div class="crew"><b>⏱</b> ${now}累計 ${fmtMin(tot)}</div>`;
+    })()}
+    ${crewGauge(c)}
+    <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:9px;">
+      <button class="delbtn" onclick="backToNyuko('${c.id}')">↩ 入庫に戻す</button>
+      <button class="delbtn" onclick="askDelete('${c.id}')">🗑 削除</button>
+    </div>`;
+  return `<div class="${cardCls} ${kindClass(c)}">${compactPart}${expandedPart}</div>`;
 }
 function seedStoreFromUser(){
   var u = (typeof userData!=='undefined' && userData) ? userData : {};
