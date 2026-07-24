@@ -590,7 +590,9 @@ input[type="date"].form-input::-webkit-calendar-picker-indicator { filter: inver
 .pcd-list .car{ margin-bottom:10px; }
 .pcd-list .car:last-child{ margin-bottom:0; }
 .pcd-list .hname{ font-size:9px; }
-.pcd-list .htime{ font-size:11px; }</style>
+.pcd-list .htime{ font-size:11px; }
+/* ===== 段階15: 時刻クイックチップの選択強調 ===== */
+.dv-chip.on{ border-color:var(--accent); background:var(--accent-bg); color:var(--accent); font-weight:700; }</style>
 <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
@@ -1860,7 +1862,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = 'app202607240943';
+const APP_VERSION = 'app202607240948';
 // LINEログイン(LIFF) — LINEコンソールで作成したLIFFアプリのIDを入れる
 const LIFF_ID = '2010638896-vJtjkUOr';
 // 公式アカウント「カーコン工賃通知」友だち追加URL（ここに飛ばすとLINEアプリの友だち追加画面が直接開く）
@@ -5853,6 +5855,15 @@ function openAddCar(){
     </div>
     <div class="field">
       <label>納車時刻（任意）</label>
+      <div class="dv-chips" style="margin-bottom:10px;">
+        <button type="button" class="dv-chip" onclick="bd_pickTime('c-deliv-time','09:00')">9:00</button>
+        <button type="button" class="dv-chip" onclick="bd_pickTime('c-deliv-time','10:00')">10:00</button>
+        <button type="button" class="dv-chip" onclick="bd_pickTime('c-deliv-time','12:00')">12:00</button>
+        <button type="button" class="dv-chip" onclick="bd_pickTime('c-deliv-time','14:00')">14:00</button>
+        <button type="button" class="dv-chip" onclick="bd_pickTime('c-deliv-time','15:00')">15:00</button>
+        <button type="button" class="dv-chip" onclick="bd_pickTime('c-deliv-time','17:00')">17:00</button>
+        <button type="button" class="dv-chip" onclick="bd_pickTime('c-deliv-time','18:00')">18:00</button>
+      </div>
       <input type="time" id="c-deliv-time" style="width:auto;background:var(--bg);border:0.5px solid var(--line2);color:var(--text);font-size:16px;padding:11px 14px;border-radius:10px;">
     </div>
     <div class="field">
@@ -7580,6 +7591,14 @@ function renderPcDash(){
 function pcdHardRefresh(){
   var url = location.pathname + '?t=' + Date.now();
   location.href = url;
+}
+/* ===== 段階15: 時刻入力をワンタップチップで簡単に(PCでも使いやすく) ===== */
+function bd_pickTime(inputId, hhmm){
+  var el=document.getElementById(inputId); if(!el) return;
+  el.value = hhmm;
+  document.querySelectorAll('[onclick*="bd_pickTime(\'' + inputId + '\'"]').forEach(function(b){
+    b.classList.toggle('on', b.getAttribute('onclick').indexOf("'"+hhmm+"'")>=0);
+  });
 }
 function seedStoreFromUser(){
   var u = (typeof userData!=='undefined' && userData) ? userData : {};
