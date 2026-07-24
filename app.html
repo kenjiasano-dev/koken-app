@@ -1903,7 +1903,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = 'app202607241357';
+const APP_VERSION = 'app202607241625';
 // LINEログイン(LIFF) — LINEコンソールで作成したLIFFアプリのIDを入れる
 const LIFF_ID = '2010638896-vJtjkUOr';
 // 公式アカウント「カーコン工賃通知」友だち追加URL（ここに飛ばすとLINEアプリの友だち追加画面が直接開く）
@@ -7305,13 +7305,14 @@ function bd_openCarDetail(id){
 }
 window.addEventListener('resize', function(){ if(typeof updatePcDash==='function') updatePcDash(); });
 /* ===== 段階4b: お店ライブ合計 + 個人の推移（メンバー選択/現在作業/月別・日別ミニグラフ） ===== */
-var _pcdRank=null, _pcdTrend=null, _pcdMember=null, _pcdTrendMode='month', _pcdLastFetch=0;
+var _pcdRank=null, _pcdTrend=null, _pcdMember=null, _pcdTrendMode='month', _pcdLastFetch=0, _pcdEstMap={};
 async function pcdFetchData(){
   var code=(typeof userData!=='undefined'&&userData)?(userData.activeGroupCode||userData.groupCode):'';
   if(!code || typeof fetchFromGAS!=='function') return;
   var now=new Date(); var ym=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0');
   try{ var r=await fetchFromGAS('getStoreRanking',{groupCode:code, month:ym}); if(r&&r.data){ _pcdRank=r.data.slice(); _pcdStoreTotal=r.data.reduce(function(s,m){return s+(Number(m.amount)||0);},0); } }catch(e){}
   try{ var tr=await fetchFromGAS('getStoreTrend',{groupCode:code}); if(tr&&tr.months){ _pcdTrend=tr.months; } }catch(e){}
+  try{ var est=await fetchFromGAS('getEstimateRanking',{groupCode:code, month:ym}); if(est&&est.data){ var em={}; est.data.forEach(function(m){ if(m.name) em[m.name]=m; }); _pcdEstMap=em; } }catch(e){}
   var pd=document.getElementById('pc-dash'); if(pd && pd.style.display==='flex') renderPcDash();
 }
 function pcAchievementHTML(title, total, goal){
@@ -7322,10 +7323,36 @@ function pcAchievementHTML(title, total, goal){
     + '<div style="font-size:21px;font-weight:700;">¥'+man(total)+'万 <span style="font-size:14px;color:var(--muted);font-weight:500;">／ 目標 ¥'+man(goal)+'万</span></div>'
     + (goal>0&&rem>0?('<div style="font-size:15px;color:var(--amber);font-weight:700;margin-top:6px;">あと ¥'+man(rem)+'万で達成</div>'):(goal>0?'<div style="font-size:15px;color:var(--green);font-weight:700;margin-top:6px;">🎉 達成！</div>':'<div style="font-size:12px;color:var(--muted2);margin-top:6px;">目標未設定</div>'));
 }
+function pcdMemberCardsHtml(){
+  if(!_pcdRank || !_pcdRank.length) return '';
+  var me=(typeof userData!=='undefined'&&userData&&userData.name)||'';
+  var list=_pcdRank.slice().sort(function(a,b){ return (Number(b.amount)||0)-(Number(a.amount)||0); });
+  var rows=list.map(function(m){
+    var amt=Number(m.amount)||0, g=(Number(m.goal)||0)*10000;
+    var rate=g>0?Math.min(Math.round(amt/g*100),100):0;
+    var isMe=m.name===me; var cnt=Number(m.count)||0;
+    var e=(_pcdEstMap||{})[m.name]||{};
+    var estCount=Number(e.count)||0, estRate=Number(e.rate)||0, estOrder=Number(e.orderAmount)||0;
+    var wageLine=g>0?('💴 '+Math.round(amt/10000)+'万 / 目標 '+Math.round(g/10000)+'万（'+rate+'%）'):('💴 '+Math.round(amt/10000)+'万');
+    var estLine=estCount>0?('📋 成約率 '+estRate+'% ・ '+estCount+'件 ・ 受注 '+Math.round(estOrder/10000)+'万'):'📋 受付 なし';
+    return '<div style="padding:9px 11px;background:var(--card2);border-radius:10px;margin-bottom:7px;'+(isMe?'border:1px solid var(--green);':'border:1px solid var(--line2);')+'">'
+      + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">'
+      +   '<span style="font-size:12px;font-weight:700;'+(isMe?'color:var(--green);':'')+'">'+esc(m.name||'')+(isMe?'（あなた）':'')+'</span>'
+      +   '<span style="font-size:10px;color:var(--muted);">🚗 '+cnt+'台</span>'
+      + '</div>'
+      + '<div style="font-size:11px;margin-bottom:3px;">'+wageLine+'</div>'
+      + (g>0?'<div style="height:6px;background:var(--line2);border-radius:3px;overflow:hidden;margin-bottom:5px;"><div style="height:100%;width:'+rate+'%;background:'+(isMe?'var(--green)':'var(--accent)')+';border-radius:3px;"></div></div>':'')
+      + '<div style="font-size:10px;color:var(--muted);">'+estLine+'</div>'
+      + '</div>';
+  }).join('');
+  return '<div style="border-top:1px solid var(--line2);margin-top:12px;padding-top:11px;">'
+    + '<div style="font-size:12px;font-weight:700;color:var(--muted);margin-bottom:8px;">👥 メンバー別（今月）</div>'
+    + rows + '</div>';
+}
 function renderPcStorePanel(){
   var sp=document.getElementById('pcd-store-panel'); if(!sp) return;
   var sgoal=((typeof adminGoals!=='undefined'&&adminGoals&&adminGoals.storeWageGoal)||0)*10000;
-  sp.innerHTML=pcAchievementHTML('🏪 お店の達成率', _pcdStoreTotal||0, sgoal)+((_pcdStoreTotal==null)?'<div style="font-size:11px;color:var(--muted2);margin-top:8px;">読込中…</div>':'');
+  sp.innerHTML=pcAchievementHTML('🏪 お店の達成率', _pcdStoreTotal||0, sgoal)+((_pcdStoreTotal==null)?'<div style="font-size:11px;color:var(--muted2);margin-top:8px;">読込中…</div>':'')+pcdMemberCardsHtml();
 }
 function pcdMembers(){
   var names=[]; if(_pcdRank) _pcdRank.forEach(function(m){ if(m.name) names.push(m.name); });
