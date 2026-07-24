@@ -1878,7 +1878,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = 'app202607241013';
+const APP_VERSION = 'app202607241026';
 // LINEログイン(LIFF) — LINEコンソールで作成したLIFFアプリのIDを入れる
 const LIFF_ID = '2010638896-vJtjkUOr';
 // 公式アカウント「カーコン工賃通知」友だち追加URL（ここに飛ばすとLINEアプリの友だち追加画面が直接開く）
@@ -5431,6 +5431,7 @@ reclaimFromLineRedirect().then(function(reclaimed) {
       <label style="display:flex;align-items:center;gap:4px;cursor:pointer;"><input type="checkbox" id="pcd-show-store" checked onchange="pcdTogglePanel('store',this.checked)">達成率</label>
       <label style="display:flex;align-items:center;gap:4px;cursor:pointer;"><input type="checkbox" id="pcd-show-trend" checked onchange="pcdTogglePanel('trend',this.checked)">推移</label>
     </div>
+    <button id="pcd-expand-toggle" onclick="bd_pcdToggleAllExpand()" title="作業中カードの簡潔/全部表示を切り替えます">▼ 簡潔表示にする</button>
     <button onclick="pcdHardRefresh()" title="最新版を確実に取得します">🔄 更新</button>
     <button onclick="pcDashToggleOff()">🔽 スマホ表示に戻す</button>
   </div>
@@ -7235,7 +7236,7 @@ function renderPcDash(){
   setTx('pcd-c-done', done.length+'台');
   setTx('pcd-date', bd_pcDateStr());
   var st=document.getElementById('pcd-store'); if(st) st.textContent=(state.store&&state.store.name)||'現場コントロール';
-  renderPcAchievement(); pcdApplyPanels();
+  renderPcAchievement(); pcdApplyPanels(); bd_pcdUpdateExpandBtnLabel();
 }
 function bd_openCarDetail(id){
   var c=findCar(id); if(!c) return;
@@ -7602,7 +7603,7 @@ function renderPcDash(){
   setTx('pcd-c-done', done.length+'台');
   setTx('pcd-date', bd_pcDateStr());
   var st=document.getElementById('pcd-store'); if(st) st.textContent=(state.store&&state.store.name)||'現場コントロール';
-  renderPcAchievement(); pcdApplyPanels();
+  renderPcAchievement(); pcdApplyPanels(); bd_pcdUpdateExpandBtnLabel();
 }
 /* ===== 段階14: PC画面の手動更新ボタン(キャッシュを無視して確実に最新化) ===== */
 function pcdHardRefresh(){
@@ -7725,6 +7726,14 @@ function bd_workCardHtml(c){
       <button class="delbtn" onclick="askDelete('${c.id}')">🗑 削除</button>
     </div>`;
   return `<div class="${cardCls} ${kindClass(c)}">${compactPart}${expandedPart}</div>`;
+}
+/* ===== 段階18: PC画面から直接、簡潔/全部表示をワンクリック切替 ===== */
+function bd_pcdToggleAllExpand(){
+  bd_workStartExpandedToggle(!bd_workDefaultExpanded());
+}
+function bd_pcdUpdateExpandBtnLabel(){
+  var el=document.getElementById('pcd-expand-toggle'); if(!el) return;
+  el.textContent = bd_workDefaultExpanded() ? '▼ 簡潔表示にする' : '▲ 全部表示にする';
 }
 function seedStoreFromUser(){
   var u = (typeof userData!=='undefined' && userData) ? userData : {};
