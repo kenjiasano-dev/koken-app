@@ -1893,7 +1893,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = 'app202607241117';
+const APP_VERSION = 'app202607241124';
 // LINEログイン(LIFF) — LINEコンソールで作成したLIFFアプリのIDを入れる
 const LIFF_ID = '2010638896-vJtjkUOr';
 // 公式アカウント「カーコン工賃通知」友だち追加URL（ここに飛ばすとLINEアプリの友だち追加画面が直接開く）
@@ -5443,6 +5443,9 @@ reclaimFromLineRedirect().then(function(reclaimed) {
     <div style="display:flex;align-items:center;gap:12px;font-size:12px;color:var(--muted);">
       <span>表示:</span>
       <label style="display:flex;align-items:center;gap:4px;cursor:pointer;"><input type="checkbox" id="pcd-show-yotei" checked onchange="pcdTogglePanel('yotei',this.checked)">予定</label>
+      <label style="display:flex;align-items:center;gap:4px;cursor:pointer;"><input type="checkbox" id="pcd-show-nyuko" checked onchange="pcdTogglePanel('nyuko',this.checked)">入庫</label>
+      <label style="display:flex;align-items:center;gap:4px;cursor:pointer;"><input type="checkbox" id="pcd-show-work" checked onchange="pcdTogglePanel('work',this.checked)">作業中</label>
+      <label style="display:flex;align-items:center;gap:4px;cursor:pointer;"><input type="checkbox" id="pcd-show-done" checked onchange="pcdTogglePanel('done',this.checked)">完成</label>
       <label style="display:flex;align-items:center;gap:4px;cursor:pointer;"><input type="checkbox" id="pcd-show-store" checked onchange="pcdTogglePanel('store',this.checked)">達成率</label>
       <label style="display:flex;align-items:center;gap:4px;cursor:pointer;"><input type="checkbox" id="pcd-show-trend" checked onchange="pcdTogglePanel('trend',this.checked)">推移</label>
     </div>
@@ -5454,9 +5457,9 @@ reclaimFromLineRedirect().then(function(reclaimed) {
     <div class="pcd-genba">
       <div class="pcd-cols">
         <div class="pcd-col" id="pcd-col-yotei"><h3>📅 入庫予定 <span class="n" id="pcd-c-yotei">0</span><button class="addbtn" style="margin-left:auto;padding:5px 12px;font-size:12px;" onclick="openAddCar()">＋ 追加</button></h3><div class="pcd-list" id="pcd-yotei"></div></div>
-        <div class="pcd-col"><h3>🚙 入庫中 <span class="n" id="pcd-c-nyuko">0</span><button class="addbtn" style="margin-left:auto;padding:5px 12px;font-size:12px;" onclick="openAddCar()">＋ 追加</button></h3><div class="pcd-list" id="pcd-nyuko"></div></div>
-        <div class="pcd-col"><h3>🔧 作業中 <span class="n" id="pcd-c-work">0</span></h3><div class="pcd-list" id="pcd-work"></div></div>
-        <div class="pcd-col"><h3>🏁 完成 <select id="pcd-done-filter" onchange="pcdSetDoneFilter(this.value)"><option value="today">今日</option><option value="week">今週</option><option value="month">今月</option><option value="all">すべて</option></select> <span class="n" id="pcd-c-done">0</span></h3><div class="pcd-list" id="pcd-done"></div></div>
+        <div class="pcd-col" id="pcd-col-nyuko"><h3>🚙 入庫中 <span class="n" id="pcd-c-nyuko">0</span><button class="addbtn" style="margin-left:auto;padding:5px 12px;font-size:12px;" onclick="openAddCar()">＋ 追加</button></h3><div class="pcd-list" id="pcd-nyuko"></div></div>
+        <div class="pcd-col" id="pcd-col-work"><h3>🔧 作業中 <span class="n" id="pcd-c-work">0</span></h3><div class="pcd-list" id="pcd-work"></div></div>
+        <div class="pcd-col" id="pcd-col-done"><h3>🏁 完成 <select id="pcd-done-filter" onchange="pcdSetDoneFilter(this.value)"><option value="today">今日</option><option value="week">今週</option><option value="month">今月</option><option value="all">すべて</option></select> <span class="n" id="pcd-c-done">0</span></h3><div class="pcd-list" id="pcd-done"></div></div>
       </div>
     </div>
     <div class="pcd-side">
@@ -8001,6 +8004,33 @@ function bd_pcdUpdateViewBtnLabel(){
 }
 function bd_pcdUpdateOverviewBtnLabel(){ bd_pcdUpdateViewBtnLabel(); }
 function bd_pcdUpdateExpandBtnLabel(){ bd_pcdUpdateViewBtnLabel(); }
+/* ===== 段階24: 入庫中・作業中・完成の列も個別ON/OFF可能に(4列自由選択) ===== */
+function pcdApplyPanels(){
+  var h=(typeof settings!=='undefined'&&settings&&settings.pcdHide)||{};
+  var sp=document.getElementById('pcd-store-panel'); if(sp) sp.style.display=h.store?'none':'';
+  var tp=document.getElementById('pcd-me-panel'); if(tp) tp.style.display=h.trend?'none':'';
+  var yc=document.getElementById('pcd-col-yotei'); if(yc) yc.style.display=h.yotei?'none':'';
+  var nc=document.getElementById('pcd-col-nyuko'); if(nc) nc.style.display=h.nyuko?'none':'';
+  var wc=document.getElementById('pcd-col-work'); if(wc) wc.style.display=h.work?'none':'';
+  var dc=document.getElementById('pcd-col-done'); if(dc) dc.style.display=h.done?'none':'';
+  var side=document.querySelector('.pcd-side'); if(side) side.style.display=(h.store&&h.trend)?'none':'flex';
+  var g=document.querySelector('.pcd-grid'); if(g) g.style.gridTemplateColumns=(h.store&&h.trend)?'1fr':'2.3fr 1fr';
+  var visibleCount = ['yotei','nyuko','work','done'].filter(function(k){ return !h[k]; }).length;
+  var cols=document.querySelector('.pcd-cols'); if(cols) cols.style.gridTemplateColumns='repeat('+Math.max(visibleCount,1)+',1fr)';
+  var cs=document.getElementById('pcd-show-store'); if(cs) cs.checked=!h.store;
+  var ct=document.getElementById('pcd-show-trend'); if(ct) ct.checked=!h.trend;
+  var cy=document.getElementById('pcd-show-yotei'); if(cy) cy.checked=!h.yotei;
+  var cn=document.getElementById('pcd-show-nyuko'); if(cn) cn.checked=!h.nyuko;
+  var cw=document.getElementById('pcd-show-work'); if(cw) cw.checked=!h.work;
+  var cd=document.getElementById('pcd-show-done'); if(cd) cd.checked=!h.done;
+}
+function pcdTogglePanel(key, show){
+  if(typeof settings==='undefined'||!settings) return;
+  if(!settings.pcdHide) settings.pcdHide={};
+  settings.pcdHide[key]=!show;
+  if(typeof saveLocal==='function') saveLocal();
+  pcdApplyPanels();
+}
 function seedStoreFromUser(){
   var u = (typeof userData!=='undefined' && userData) ? userData : {};
   state.store = Object.assign({}, state.store||{}, {
