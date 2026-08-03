@@ -1917,7 +1917,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = 'app202608031120';
+const APP_VERSION = 'app202608031257';
 // LINEログイン(LIFF) — LINEコンソールで作成したLIFFアプリのIDを入れる
 const LIFF_ID = '2010638896-vJtjkUOr';
 // 公式アカウント「カーコン工賃通知」友だち追加URL（ここに飛ばすとLINEアプリの友だち追加画面が直接開く）
@@ -2209,7 +2209,8 @@ async function renderCategoryBudget() {
   if (code) {
     try {
       var d = await fetchFromGAS('getStoreRanking', { groupCode: code, month: ym });
-      if (d && d.data) { members = d.data.slice(); teamTotal = members.reduce(function(s, r){ return s + (Number(r.amount) || 0); }, 0); }
+      // 今月工賃を1件も入力していないメンバー(フロント専任者など)は「工賃メンバー別」に0円で出すとノイズになるため除外
+      if (d && d.data) { members = d.data.filter(function(r){ return (Number(r.count) || 0) > 0; }); teamTotal = d.data.reduce(function(s, r){ return s + (Number(r.amount) || 0); }, 0); }
     } catch(e) {}
     try {
       var est = await fetchFromGAS('getEstimateRanking', { groupCode: code, month: ym });
@@ -7583,7 +7584,7 @@ async function pcdFetchData(){
   var code=(typeof userData!=='undefined'&&userData)?(userData.activeGroupCode||userData.groupCode):'';
   if(!code || typeof fetchFromGAS!=='function') return;
   var now=new Date(); var ym=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0');
-  try{ var r=await fetchFromGAS('getStoreRanking',{groupCode:code, month:ym}); if(r&&r.data){ _pcdRank=r.data.slice(); _pcdStoreTotal=r.data.reduce(function(s,m){return s+(Number(m.amount)||0);},0); } }catch(e){}
+  try{ var r=await fetchFromGAS('getStoreRanking',{groupCode:code, month:ym}); if(r&&r.data){ _pcdRank=r.data.filter(function(m){return (Number(m.count)||0)>0;}); _pcdStoreTotal=r.data.reduce(function(s,m){return s+(Number(m.amount)||0);},0); } }catch(e){}
   try{ var tr=await fetchFromGAS('getStoreTrend',{groupCode:code}); if(tr&&tr.months){ _pcdTrend=tr.months; } }catch(e){}
   try{ var est=await fetchFromGAS('getEstimateRanking',{groupCode:code, month:ym}); if(est&&est.data){ var em={}; est.data.forEach(function(m){ if(m.name) em[m.name]=m; }); _pcdEstMap=em; } }catch(e){}
   var pd=document.getElementById('pc-dash'); if(pd && pd.style.display==='flex') renderPcDash();
