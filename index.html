@@ -1473,7 +1473,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = '20260803b';
+const APP_VERSION = '20260803c';
 // LINEログイン(LIFF) — LINEコンソールで作成したLIFFアプリのIDを入れる
 const LIFF_ID = '2010638896-vJtjkUOr';
 // 公式アカウント「カーコン工賃通知」友だち追加URL（ここに飛ばすとLINEアプリの友だち追加画面が直接開く）
@@ -2420,22 +2420,19 @@ async function renderStoreYearTrend() {
     var memberColors = {};
     memberList.forEach(function(name, i){ memberColors[name] = colors[i % colors.length]; });
 
-    // 折れ線グラフの座標計算
-    var maxVal = 0;
-    sortedMonths.forEach(function(m){
-      var mem = months[m].members || {};
-      memberList.forEach(function(n){ maxVal = Math.max(maxVal, mem[n]||0); });
-    });
-    maxVal = maxVal || 1;
-    // 見やすいキリのいい上限に切り上げ（10万円単位）
-    maxVal = Math.ceil(maxVal / 100000) * 100000;
+    // 店舗合計（全メンバー分を月ごとに合算）の棒グラフ ※人数が増えても線が重ならず読みやすい
+    var monthTotals = sortedMonths.map(function(m){ return months[m].total || 0; });
+    var maxVal = Math.max.apply(null, monthTotals) || 1;
+    maxVal = Math.ceil(maxVal / 100000) * 100000; // 10万円単位に切り上げ
 
     var leftM = 46, rightM = 12, topM = 16, bottomM = 26;
     var chartW = 300, chartH = 170;
     var svgW = leftM + chartW + rightM;
     var svgH = topM + chartH + bottomM;
     var n = sortedMonths.length;
-    var xAt = function(i){ return n > 1 ? leftM + (chartW * i / (n-1)) : leftM + chartW/2; };
+    var barGap = 6;
+    var barW = (chartW / n) - barGap;
+    var xAt = function(i){ return leftM + (chartW * i / n) + barGap/2; };
     var yAt = function(v){ return topM + chartH - (v / maxVal * chartH); };
 
     var svg = '<svg viewBox="0 0 '+svgW+' '+svgH+'" style="width:100%;max-width:400px;display:block;">';
@@ -2447,33 +2444,19 @@ async function renderStoreYearTrend() {
       svg += '<text x="'+(leftM-6)+'" y="'+(y+4)+'" font-size="10" text-anchor="end" fill="var(--text-sub)">¥'+Math.round(maxVal*f/10000)+'万</text>';
     });
 
-    // 月ラベル（X軸）
+    // 月ラベル（X軸）+ 棒
     sortedMonths.forEach(function(m, i){
       var mo = parseInt(m.slice(5));
-      svg += '<text x="'+xAt(i)+'" y="'+(topM+chartH+18)+'" font-size="10" text-anchor="middle" fill="var(--text-sub)">'+mo+'月</text>';
-    });
-
-    // メンバーごとの折れ線
-    memberList.forEach(function(name){
-      var pts = sortedMonths.map(function(m, i){
-        var v = (months[m].members || {})[name] || 0;
-        return xAt(i) + ',' + yAt(v);
-      }).join(' ');
-      svg += '<polyline points="'+pts+'" fill="none" stroke="'+memberColors[name]+'" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>';
-      sortedMonths.forEach(function(m, i){
-        var v = (months[m].members || {})[name] || 0;
-        svg += '<circle cx="'+xAt(i)+'" cy="'+yAt(v)+'" r="3" fill="'+memberColors[name]+'"/>';
-      });
+      var v = monthTotals[i];
+      var bx = xAt(i), by = yAt(v), bh = (topM+chartH) - by;
+      var isCur = (m === storeTrendCurMonthStr());
+      svg += '<rect x="'+bx+'" y="'+by+'" width="'+barW+'" height="'+bh+'" rx="3" fill="'+(isCur?'#4A9ECC':'var(--green)')+'" opacity="'+(isCur?'0.6':'1')+'"/>';
+      svg += '<text x="'+(bx+barW/2)+'" y="'+(topM+chartH+18)+'" font-size="10" text-anchor="middle" fill="var(--text-sub)">'+mo+'月</text>';
     });
 
     svg += '</svg>';
 
-    // 凡例
-    var legend = '<div style="padding:4px 12px 12px;display:flex;flex-wrap:wrap;gap:10px 14px;font-size:12px;">';
-    memberList.forEach(function(name) {
-      legend += '<div style="display:flex;align-items:center;gap:5px;"><span style="width:10px;height:10px;background:'+memberColors[name]+';border-radius:50%;"></span>'+escapeHtml(name)+'</div>';
-    });
-    legend += '</div>';
+    var legend = '<div style="padding:4px 12px 12px;font-size:11px;color:var(--text-sub);">棒＝店舗全体の月合計（水色は集計中の今月）</div>';
 
     // 下段：個人工賃合計（年間合計・降順）
     var totalsRows = memberList.map(function(name){
@@ -2486,7 +2469,7 @@ async function renderStoreYearTrend() {
 
     var fyLabel = fiscalStart <= 1 ? (curFiscalYear+'年') : (curFiscalYear+'年度');
     el.innerHTML = ''
-      + '<div style="padding:12px 12px 0;font-size:13px;font-weight:700;color:var(--text-sub);">メンバー別 月次工賃推移（'+fyLabel+'）</div>'
+      + '<div style="padding:12px 12px 0;font-size:13px;font-weight:700;color:var(--text-sub);">店舗合計 月次推移（'+fyLabel+'）</div>'
       + '<div style="padding:8px 8px 0;overflow-x:auto;">'+svg+'</div>'
       + legend
       + '<div style="height:8px;"></div>'
