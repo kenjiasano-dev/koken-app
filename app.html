@@ -1925,7 +1925,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = 'app202608031544';
+const APP_VERSION = 'app202608031549';
 // LINEログイン(LIFF) — LINEコンソールで作成したLIFFアプリのIDを入れる
 const LIFF_ID = '2010638896-vJtjkUOr';
 // 公式アカウント「カーコン工賃通知」友だち追加URL（ここに飛ばすとLINEアプリの友だち追加画面が直接開く）
@@ -5893,6 +5893,10 @@ function postToBoardGAS(action, data){
   _boardSaveQueue(q);
   flushBoardQueue();
 }
+/* 工賃側の送信キューと同じ方針：応答を確認できるまで消さない。
+   以前は mode:'no-cors' で応答を見ずに削除していたため、サーバーがエラーを返した分が
+   送れたつもりで消えていた（2026-08-03修正）。回数を区切って諦めることでキューは詰まらせない。 */
+const BOARD_MAX_TRIES = 3;
 async function flushBoardQueue(){
   if(_boardGasFlushing) return;
   _boardGasFlushing = true;
@@ -5900,10 +5904,31 @@ async function flushBoardQueue(){
     while(true){
       let q=_boardLoadQueue();
       if(q.length===0) break;
+      const item=q[0];
+      let outcome;
       try{
-        await fetch(BOARD_GAS_URL, {method:'POST', mode:'no-cors', headers:{'Content-Type':'text/plain'}, body:JSON.stringify(q[0])});
-      }catch(e){ break; } // オフライン等：順序維持のため中断、次回に再送
-      q=_boardLoadQueue(); q.shift(); _boardSaveQueue(q);
+        const res=await fetch(BOARD_GAS_URL, {method:'POST', headers:{'Content-Type':'text/plain'}, body:JSON.stringify(item)});
+        const text=await res.text();
+        let json=null; try{ json=JSON.parse(text); }catch(e){}
+        if(json && json.success) outcome='confirmed';
+        else if(json && json.error) outcome='rejected';
+        else outcome='unreadable';
+      }catch(e){ outcome='offline'; }
+
+      if(outcome==='offline') break;   // 順序維持のため中断、次回に再送
+
+      if(outcome==='confirmed'){ if(typeof _markGasReadable==='function') _markGasReadable(); q=_boardLoadQueue(); q.shift(); _boardSaveQueue(q); continue; }
+      if(outcome==='rejected'){ if(typeof _markGasReadable==='function') _markGasReadable(); }
+
+      // 応答を読めた実績が無い端末では、読めないこと自体が普通の可能性がある
+      if(outcome==='unreadable' && !(typeof _gasCanReadResponse==='function' && _gasCanReadResponse())){
+        q=_boardLoadQueue(); q.shift(); _boardSaveQueue(q); continue;
+      }
+      item._try=(item._try||0)+1;
+      q=_boardLoadQueue();
+      if(item._try>=BOARD_MAX_TRIES){ q.shift(); _boardSaveQueue(q); continue; }
+      if(q.length){ q[0]=item; _boardSaveQueue(q); }
+      break;   // 次の定期実行（60秒後）で再送
     }
   } finally { _boardGasFlushing = false; }
 }
