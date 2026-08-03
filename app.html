@@ -1917,7 +1917,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = 'app202608031257';
+const APP_VERSION = 'app202608031400';
 // LINEログイン(LIFF) — LINEコンソールで作成したLIFFアプリのIDを入れる
 const LIFF_ID = '2010638896-vJtjkUOr';
 // 公式アカウント「カーコン工賃通知」友だち追加URL（ここに飛ばすとLINEアプリの友だち追加画面が直接開く）
@@ -6653,11 +6653,62 @@ function gdriveInit(){
 }
 /* トークンを取得。interactive=false は同意画面なしのサイレント取得（未連携なら黙って失敗＝null）。
    interactive=true は「🔗 Googleドライブ連携」ボタンなど、ユーザー操作から呼ぶ想定（同意画面が出てよい）。 */
+/* ホーム画面に追加した単独表示(PWA standalone)かどうか。この状態だとGoogleの同意ポップアップが
+   出しどころが無くサイレントに失敗するため、interactive要求時はポップアップではなくページ遷移(リダイレクト)に切り替える。 */
+function isStandalonePwa(){
+  try{
+    return (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || window.navigator.standalone === true;
+  }catch(e){ return false; }
+}
+/* リダイレクト方式のGoogle同意画面URL(暗黙的フロー)。Google Cloud ConsoleでこのURLを
+   「承認済みのリダイレクトURI」に登録しておく必要がある(1回だけの設定、コード側では不可)。 */
+function gdriveRedirectAuthUrl(){
+  var redirectUri = location.origin + location.pathname;
+  var params = new URLSearchParams({
+    client_id: GDRIVE_CLIENT_ID,
+    redirect_uri: redirectUri,
+    response_type: 'token',
+    scope: 'https://www.googleapis.com/auth/drive.file',
+    include_granted_scopes: 'true',
+    state: 'gdrive_redirect',
+    prompt: 'consent'
+  });
+  return 'https://accounts.google.com/o/oauth2/v2/auth?' + params.toString();
+}
+/* リダイレクトで戻ってきた時にURLのハッシュからトークンを回収する。init()から呼ぶ。 */
+function handleGDriveRedirect(){
+  if (location.hash.indexOf('access_token=') < 0) return;
+  var params = new URLSearchParams(location.hash.slice(1));
+  if (params.get('state') !== 'gdrive_redirect') return;
+  var token = params.get('access_token');
+  var expiresIn = Number(params.get('expires_in')) || 3300;
+  history.replaceState(null, '', location.pathname + location.search);
+  if (!token) { toast('Google連携に失敗しました'); return; }
+  // モバイルは現場タブを開くまでstate(store情報)が読み込まれないため、ここで明示的に読み込む
+  if (typeof loadState === 'function') loadState();
+  _gdriveToken = token;
+  _gdriveTokenExp = Date.now() + (expiresIn * 1000);
+  ensureGDriveConsent(token).then(function(ok){
+    if (!ok) return;
+    toast('Googleドライブに接続しました');
+    retryPendingGDriveUploads(false);
+    if (localStorage.getItem('gdrive_redirect_reopen_settings')) {
+      localStorage.removeItem('gdrive_redirect_reopen_settings');
+      openSettings();
+    }
+  });
+}
+handleGDriveRedirect();
 function requestGDriveToken(interactive){
   return new Promise(res=>{
+    if(_gdriveToken && Date.now() < _gdriveTokenExp - 60000){ res(_gdriveToken); return; }
+    if(interactive && isStandalonePwa()){
+      localStorage.setItem('gdrive_redirect_pending', '1');
+      location.href = gdriveRedirectAuthUrl();
+      return; // ページ遷移するのでここでは何もresolveしない
+    }
     gdriveInit();
     if(!_gdriveTokenClient){ res(null); return; }
-    if(_gdriveToken && Date.now() < _gdriveTokenExp - 60000){ res(_gdriveToken); return; }
     const inFlight=_gdriveTokenResolvers.length>0;
     _gdriveTokenResolvers.push(res);
     if(inFlight) return;
@@ -6766,6 +6817,7 @@ window.addEventListener('online', ()=>retryPendingGDriveUploads(false));
 setInterval(()=>retryPendingGDriveUploads(false), 20000);
 /* 設定ページ「🔗 Googleドライブ連携」用（初回連携・アカウント切り替え） */
 function connectGDrive(){
+  localStorage.setItem('gdrive_redirect_reopen_settings', '1');
   requestGDriveToken(true).then(async token=>{
     if(!token){ toast('Google連携がキャンセルされました'); return; }
     const ok=await ensureGDriveConsent(token);
@@ -6777,6 +6829,7 @@ function uploadPhotosToGDrive(carId){
   const c=findCar(carId); if(!c) return;
   const photos=(c.photos||[]).filter(p=>!p.gdriveId);
   if(!photos.length){ toast('未送信の写真はありません（自動送信済み）'); return; }
+  localStorage.removeItem('gdrive_redirect_reopen_settings');
   requestGDriveToken(true).then(async token=>{
     if(!token){ toast('Google連携がキャンセルされました'); return; }
     const ok=await ensureGDriveConsent(token);
