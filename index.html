@@ -345,8 +345,17 @@ input[type="date"].form-input::-webkit-calendar-picker-indicator { filter: inver
           <ul class="rank-list" id="front-rank-list2"></ul>
         </div>
       </div>
-      <!-- 店舗の1年推移 -->
+      <!-- 店舗の月別メンバー状況・1年推移 -->
       <div id="sstab-trend" style="display:none;">
+        <div style="display:flex;align-items:center;justify-content:center;gap:14px;padding:12px 12px 0;">
+          <button onclick="changeStoreTrendMonth(-1)" style="width:36px;height:36px;border-radius:50%;background:var(--card);border:1px solid var(--border);color:var(--text);font-size:16px;cursor:pointer;">◀</button>
+          <div style="font-size:13px;font-weight:700;color:var(--text-sub);">月を選んで振り返り</div>
+          <button id="store-month-next-btn" onclick="changeStoreTrendMonth(1)" style="width:36px;height:36px;border-radius:50%;background:var(--card);border:1px solid var(--border);color:var(--text);font-size:16px;cursor:pointer;">▶</button>
+        </div>
+        <div id="store-month-content" style="padding:8px 12px 0;">
+          <div style="text-align:center;padding:32px;color:var(--text-sub);font-size:13px;">読み込み中...</div>
+        </div>
+        <div style="padding:16px 12px 4px;border-top:2px solid var(--border);margin-top:12px;font-size:12px;font-weight:700;color:var(--text-sub);">📊 年間の流れ（参考）</div>
         <div id="store-trend-content">
           <div style="text-align:center;padding:32px;color:var(--text-sub);font-size:13px;">読み込み中...</div>
         </div>
@@ -1464,7 +1473,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = '20260803a';
+const APP_VERSION = '20260803b';
 // LINEログイン(LIFF) — LINEコンソールで作成したLIFFアプリのIDを入れる
 const LIFF_ID = '2010638896-vJtjkUOr';
 // 公式アカウント「カーコン工賃通知」友だち追加URL（ここに飛ばすとLINEアプリの友だち追加画面が直接開く）
@@ -2302,9 +2311,87 @@ function renderMyBadge() {
 }
 
 // ============================================================
+// 店舗の月別メンバー状況（当月デフォルト・過去月も◀▶で振り返り可能）2026-08-03
+// ============================================================
+var storeTrendMonth = null; // 'yyyy-MM'。nullなら今月
+
+function storeTrendCurMonthStr() {
+  var d = new Date();
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0');
+}
+
+function changeStoreTrendMonth(delta) {
+  var base = storeTrendMonth || storeTrendCurMonthStr();
+  var parts = base.split('-');
+  var d = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1 + delta, 1);
+  var next = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0');
+  // 未来月には進めない
+  if (next > storeTrendCurMonthStr()) return;
+  storeTrendMonth = next;
+  renderStoreMonthMembers();
+}
+
+async function renderStoreMonthMembers() {
+  var el = document.getElementById('store-month-content');
+  if (!el) return;
+  var code = userData.activeGroupCode || userData.groupCode;
+  if (!code) { el.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text-sub);">グループコードを設定してください</div>'; return; }
+  var month = storeTrendMonth || storeTrendCurMonthStr();
+  var isCurMonth = month === storeTrendCurMonthStr();
+  var monthLabel = parseInt(month.slice(5)) + '月' + (isCurMonth ? '（今月・集計中）' : '');
+  el.innerHTML = '<div style="text-align:center;padding:30px;color:var(--text-sub);font-size:13px;">読み込み中...</div>';
+  try {
+    var data = await fetchFromGAS('getStoreRanking', { groupCode: code, month: month });
+    var rows = (data && data.data) || [];
+    // 未来月に進めないようボタンの状態を更新
+    var nextBtn = document.getElementById('store-month-next-btn');
+    if (nextBtn) nextBtn.disabled = isCurMonth;
+
+    if (rows.length === 0) {
+      el.innerHTML = '<div style="padding:12px 0;text-align:center;font-weight:700;color:var(--text-sub);">'+monthLabel+'</div>'
+        + '<div style="padding:20px;text-align:center;color:var(--text-sub);font-size:13px;">この月のメンバーデータはありません</div>';
+      return;
+    }
+    // 達成率降順（目標未設定は末尾）で並べる
+    rows.sort(function(a,b){
+      var ra = a.goal>0 ? a.amount/(a.goal*10000) : -1;
+      var rb = b.goal>0 ? b.amount/(b.goal*10000) : -1;
+      return rb - ra;
+    });
+    var cardsHtml = rows.map(function(r){
+      var isMe = r.name === userData.name;
+      var goalYen = (r.goal||0) * 10000;
+      var hasGoal = goalYen > 0;
+      var rate = hasGoal ? Math.min(Math.round(r.amount / goalYen * 100), 999) : null;
+      var achieved = hasGoal && r.amount >= goalYen;
+      var barColor = achieved ? 'var(--green)' : (rate!==null && rate>=70 ? '#f39c12' : '#4A9ECC');
+      return '<div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px 14px;margin-bottom:8px;'+(isMe?'border-color:var(--green);border-width:2px;':'')+'">'
+        + '<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px;">'
+        +   '<span style="font-size:14px;font-weight:700;">'+escapeHtml(r.name)+(isMe?' <span style="color:var(--green);font-size:11px;">(あなた)</span>':'')+(achieved?' 🏆':'')+'</span>'
+        +   '<span style="font-size:16px;font-weight:900;color:var(--green);">¥'+Math.round(r.amount).toLocaleString()+'</span>'
+        + '</div>'
+        + '<div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text-sub);margin-bottom:4px;">'
+        +   '<span>目標 '+(hasGoal ? '¥'+goalYen.toLocaleString() : '未設定') +'</span>'
+        +   (hasGoal ? '<span style="font-weight:700;color:'+barColor+';">達成率 '+rate+'%</span>' : '<span>—</span>')
+        + '</div>'
+        + (hasGoal ? '<div style="background:var(--border);border-radius:6px;height:8px;overflow:hidden;"><div style="width:'+Math.min(rate,100)+'%;height:100%;background:'+barColor+';"></div></div>' : '')
+        + '</div>';
+    }).join('');
+    el.innerHTML = ''
+      + '<div style="padding:2px 0 12px;text-align:center;font-weight:700;color:var(--text-sub);">'+monthLabel+'</div>'
+      + cardsHtml;
+  } catch(e) {
+    console.error('renderStoreMonthMembers:', e);
+    el.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text-sub);">読み込みエラー</div>';
+  }
+}
+
+// ============================================================
 // 店舗の1年推移（メンバー別・色分け折れ線グラフ + 個人合計）2026-07-21
 // ============================================================
 async function renderStoreYearTrend() {
+  storeTrendMonth = null; // タブを開き直したら当月に戻す
+  renderStoreMonthMembers();
   var el = document.getElementById('store-trend-content');
   if (!el) return;
   var code = userData.activeGroupCode || userData.groupCode;
@@ -2388,13 +2475,6 @@ async function renderStoreYearTrend() {
     });
     legend += '</div>';
 
-    // 当月（進行中の月）の集計 ※未確定であることが分かるよう別枠で表示
-    var curMonthStr = todayStr.slice(0,7);
-    var curMonthLabel = parseInt(curMonthStr.slice(5)) + '月';
-    var curMonthData = months[curMonthStr] || { members: {} };
-    var curMonthTotals = {};
-    memberList.forEach(function(name){ curMonthTotals[name] = (curMonthData.members || {})[name] || 0; });
-
     // 下段：個人工賃合計（年間合計・降順）
     var totalsRows = memberList.map(function(name){
       var isMe = name === userData.name;
@@ -2404,23 +2484,12 @@ async function renderStoreYearTrend() {
         + '</div>';
     }).join('');
 
-    // 当月分の行（年間合計と同じ並び順で、今月だけの金額を表示）
-    var curMonthRows = memberList.map(function(name){
-      var isMe = name === userData.name;
-      return '<div style="display:flex;justify-content:space-between;align-items:center;padding:9px 14px;'+(isMe?'background:var(--green-light);border-radius:8px;':'')+'">'
-        + '<span style="font-size:13px;font-weight:'+(isMe?'700':'400')+';display:flex;align-items:center;gap:6px;"><span style="width:9px;height:9px;border-radius:50%;background:'+memberColors[name]+';display:inline-block;"></span>'+escapeHtml(name)+(isMe?' (あなた)':'')+'</span>'
-        + '<span style="font-size:14px;font-weight:700;color:var(--accent2, #3d8bff);">¥'+Math.round(curMonthTotals[name]).toLocaleString()+'</span>'
-        + '</div>';
-    }).join('');
-
     var fyLabel = fiscalStart <= 1 ? (curFiscalYear+'年') : (curFiscalYear+'年度');
     el.innerHTML = ''
       + '<div style="padding:12px 12px 0;font-size:13px;font-weight:700;color:var(--text-sub);">メンバー別 月次工賃推移（'+fyLabel+'）</div>'
       + '<div style="padding:8px 8px 0;overflow-x:auto;">'+svg+'</div>'
       + legend
       + '<div style="height:8px;"></div>'
-      + '<div style="padding:12px 0 4px;margin:0 12px;border-top:2px solid var(--border);font-size:13px;font-weight:700;color:var(--text-sub);">📅 '+curMonthLabel+'（今月・集計中）の工賃</div>'
-      + '<div style="padding:4px 4px 16px;">'+curMonthRows+'</div>'
       + '<div style="padding:12px 0 4px;margin:0 12px;border-top:2px solid var(--border);font-size:13px;font-weight:700;color:var(--text-sub);">📊 '+fyLabel+' 年間合計（1月〜今月まで）</div>'
       + '<div style="padding:4px 4px 16px;">'+totalsRows+'</div>';
   } catch(e) {
