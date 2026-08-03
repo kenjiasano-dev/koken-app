@@ -1473,7 +1473,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = '20260803d';
+const APP_VERSION = '20260803e';
 // LINEログイン(LIFF) — LINEコンソールで作成したLIFFアプリのIDを入れる
 const LIFF_ID = '2010638896-vJtjkUOr';
 // 公式アカウント「カーコン工賃通知」友だち追加URL（ここに飛ばすとLINEアプリの友だち追加画面が直接開く）
@@ -1778,20 +1778,20 @@ async function renderCategoryBudget() {
     return;
   }
   var html = '<div class="card" style="margin-bottom:0;">' +
-    '<div class="card-title">💴 今月の工賃 進捗</div>' +
+    '<div class="card-title" style="font-size:16px;font-weight:800;color:var(--text);margin-bottom:16px;">💴 今月の工賃 進捗</div>' +
     bars.map(function(c) {
       var rate = c.goal > 0 ? Math.min(Math.round(c.total / c.goal * 100), 100) : 0;
       var rightTxt = c.pending ? 'グループ未設定' : (c.goal > 0 ? (Math.round(c.total/10000) + '万 / 目標 ' + Math.round(c.goal/10000) + '万円') : ('今月 ' + Math.round(c.total/10000) + '万円'));
-      return '<div style="margin-bottom:12px;">' +
-        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">' +
-          '<span style="font-size:13px;font-weight:700;">' + c.label + '</span>' +
-          '<span style="font-size:12px;color:var(--text-sub);">' + rightTxt + '</span>' +
+      return '<div style="margin-bottom:16px;">' +
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">' +
+          '<span style="font-size:16px;font-weight:700;">' + c.label + '</span>' +
+          '<span style="font-size:15px;font-weight:700;color:var(--text-sub);">' + rightTxt + '</span>' +
         '</div>' +
         (c.goal > 0 ?
-          ('<div style="height:10px;background:var(--border);border-radius:5px;overflow:hidden;">' +
-            '<div style="height:100%;width:' + rate + '%;background:' + c.color + ';border-radius:5px;transition:width .6s;"></div>' +
+          ('<div style="height:14px;background:var(--border);border-radius:7px;overflow:hidden;">' +
+            '<div style="height:100%;width:' + rate + '%;background:' + c.color + ';border-radius:7px;transition:width .6s;"></div>' +
           '</div>' +
-          '<div style="text-align:right;font-size:11px;color:' + c.color + ';margin-top:2px;">' + rate + '%' + (rate>=100?' 🎉':'') + '</div>')
+          '<div style="text-align:right;font-size:14px;font-weight:700;color:' + c.color + ';margin-top:3px;">' + rate + '%' + (rate>=100?' 🎉':'') + '</div>')
         : '') +
       '</div>';
     }).join('');
