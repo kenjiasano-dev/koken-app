@@ -1125,6 +1125,14 @@ input[type="date"].form-input::-webkit-calendar-picker-indicator { filter: inver
         <div style="font-size:11px;color:var(--text-sub);margin:-4px 0 8px;line-height:1.6;">※ プロフィールの「月間目標」と同じ値です。</div>
         <button class="submit-btn" onclick="saveStoreGoals()">🎯 目標を保存</button>
       </div>
+      <!-- 保存できなかったデータ（あるときだけ表示） -->
+      <div class="card" id="failed-log-card" style="display:none;border:1px solid #e74c3c;">
+        <div class="card-title" style="color:#e74c3c;">⚠️ サーバーに保存できなかったデータ</div>
+        <div style="font-size:12px;color:var(--text-sub);margin-bottom:10px;line-height:1.7;">通信の不調などで、サーバーに保存できなかったデータです。<b style="color:var(--text);">この端末には残っています。</b>下のボタンでもう一度送信できます。</div>
+        <div id="failed-log-list" style="margin-bottom:10px;"></div>
+        <button onclick="retryFailedLog()" style="width:100%;padding:12px;background:var(--green);color:#fff;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;border:none;">🔄 もう一度サーバーへ送る</button>
+        <div style="margin-top:8px;"><button onclick="if(confirm('この記録を消します。データはサーバーに保存されないままになります。よろしいですか？')) clearFailedLog();" style="width:100%;padding:10px;background:var(--card);color:var(--text-sub);border-radius:10px;font-size:13px;cursor:pointer;border:1px solid var(--border);">記録を消す</button></div>
+      </div>
       <!-- データ復元（常時表示） -->
       <div class="card">
         <div class="card-title">☁️ データのバックアップ・復元</div>
@@ -1473,7 +1481,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = '20260803g';
+const APP_VERSION = '20260803h';
 // LINEログイン(LIFF) — LINEコンソールで作成したLIFFアプリのIDを入れる
 const LIFF_ID = '2010638896-vJtjkUOr';
 // 公式アカウント「カーコン工賃通知」友だち追加URL（ここに飛ばすとLINEアプリの友だち追加画面が直接開く）
@@ -1628,6 +1636,7 @@ function switchTab(tab) {
   const titles = { settings:'⚙️ 設定', front:'📋 受付入力', input:'✏️ 工賃入力', 'store-status':'🏪 店舗状況', my:'👤 マイ', ranking:'🏪 社内ランキング', mypage:'👤 マイページ', summary:'📊 月間サマリー', trend:'📈 年間推移' };
   document.getElementById('header-title').textContent = titles[tab] || 'カーコン工賃管理';
 
+  if (tab === 'settings' && typeof renderFailedLogCard === 'function') renderFailedLogCard();
   if (tab === 'input') renderInputHistory();
   if (tab === 'front') initFrontPage();
   if (tab === 'store-status') initStoreStatusPage();
@@ -3352,7 +3361,29 @@ function renderLineRegisterStatus() {
   }
 }
 
+// 保存できなかったデータのカード（あるときだけ設定画面に出す）
+function renderFailedLogCard() {
+  const card = document.getElementById('failed-log-card');
+  const list = document.getElementById('failed-log-list');
+  if (!card || !list) return;
+  const log = loadFailedLog();
+  if (!log.length) { card.style.display = 'none'; return; }
+  card.style.display = '';
+  const label = { addWage: '工賃', addEstimate: '見積り', updateWage: '工賃の修正', deleteWage: '工賃の削除', updateEstimate: '見積りの修正', deleteEstimate: '見積りの削除' };
+  list.innerHTML = log.slice().reverse().map(function(e) {
+    const it = e.item || {};
+    const name = label[it.action] || it.action || 'データ';
+    const amount = it.amount ? ('¥' + Number(it.amount).toLocaleString()) : '';
+    const date = it.date || '';
+    return '<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 10px;background:var(--bg);border-radius:8px;margin-bottom:6px;font-size:13px;">' +
+      '<span>' + escapeHtml(name) + (date ? ('　' + escapeHtml(date)) : '') + '</span>' +
+      '<span style="font-weight:700;">' + escapeHtml(amount) + '</span>' +
+    '</div>';
+  }).join('');
+}
+
 function initSettings() {
+  renderFailedLogCard();
   renderLineRegisterStatus();
   // Prefecture dropdown
   const sel = document.getElementById('set-pref');
@@ -4072,6 +4103,9 @@ async function postToGAS(data) {
 // localStorageに残り、オンライン復帰時／定期／次回起動時に順序を保って自動再送する。
 // ============================================================
 const GAS_QUEUE_KEY = 'gasSendQueue';
+const GAS_FAILED_KEY = 'gasFailedLog';        // 何度送ってもサーバーに保存できなかった分の記録
+const GAS_CAN_READ_KEY = 'gasCanReadResponse'; // この端末でサーバーの応答を読めるかの学習結果
+const GAS_MAX_TRIES = 3;
 let _gasFlushing = false;
 let _gasWasOffline = false;
 
@@ -4082,7 +4116,54 @@ function _loadQueue() {
 function _saveQueue(q) {
   try { localStorage.setItem(GAS_QUEUE_KEY, JSON.stringify(q)); } catch(e) {}
 }
+// 送信中に追加された分を取りこぼさないよう、その都度読み直してから先頭だけを操作する
+function _dequeueFirst() {
+  const q = _loadQueue(); q.shift(); _saveQueue(q);
+}
+function _updateFirst(item) {
+  const q = _loadQueue(); if (q.length) { q[0] = item; _saveQueue(q); }
+}
+// 応答を読めた実績があるか。読めない環境(一部のアプリ内ブラウザ等)で再送を繰り返さないための判定材料
+function _gasCanReadResponse() { return localStorage.getItem(GAS_CAN_READ_KEY) === '1'; }
+function _markGasReadable() { try { localStorage.setItem(GAS_CAN_READ_KEY, '1'); } catch(e) {} }
 
+function loadFailedLog() {
+  try { return JSON.parse(localStorage.getItem(GAS_FAILED_KEY) || '[]'); }
+  catch(e) { return []; }
+}
+function _recordFailure(item) {
+  try {
+    const log = loadFailedLog();
+    log.push({ item: item, at: Date.now() });
+    if (log.length > 50) log.splice(0, log.length - 50);
+    localStorage.setItem(GAS_FAILED_KEY, JSON.stringify(log));
+  } catch(e) {}
+  if (typeof showToast === 'function') showToast('⚠️ サーバーに保存できなかったデータがあります。設定画面から再送できます', 6000);
+}
+function clearFailedLog() {
+  try { localStorage.removeItem(GAS_FAILED_KEY); } catch(e) {}
+  if (typeof renderFailedLogCard === 'function') renderFailedLogCard();
+}
+// 保存できなかった分をキューに戻して再送する（設定画面のボタンから呼ぶ）
+async function retryFailedLog() {
+  const log = loadFailedLog();
+  if (!log.length) { if (typeof showToast === 'function') showToast('再送するデータはありません'); return; }
+  const q = _loadQueue();
+  log.forEach(function(e) { const it = Object.assign({}, e.item); delete it._try; q.push(it); });
+  _saveQueue(q);
+  try { localStorage.removeItem(GAS_FAILED_KEY); } catch(e) {}
+  if (typeof showToast === 'function') showToast('🔄 ' + log.length + '件を再送しています…');
+  await flushQueue();
+  const remaining = loadFailedLog().length;
+  if (typeof showToast === 'function') {
+    showToast(remaining ? ('⚠️ ' + remaining + '件はまだ保存できていません') : '✅ すべて保存できました');
+  }
+  if (typeof renderFailedLogCard === 'function') renderFailedLogCard();
+}
+
+// 送信キューを1件ずつ「サーバーが保存できたと answered するまで」責任をもって送る。
+// 以前は mode:'no-cors' で応答を一切見ずに削除していたため、GAS側がエラーを返しても
+// 保存できたつもりで消えてしまい、工賃が静かに失われることがあった（2026-08-03修正）。
 async function flushQueue() {
   if (_gasFlushing) return;
   if (!GAS_URL || GAS_URL === 'YOUR_GAS_WEB_APP_URL_HERE') return;
@@ -4091,14 +4172,25 @@ async function flushQueue() {
     while (true) {
       let q = _loadQueue();
       if (q.length === 0) break;
+      const item = q[0];
+      let outcome;   // 'confirmed'(保存確認) / 'rejected'(サーバーがエラー) / 'unreadable'(応答が壊れている) / 'offline'
       try {
-        await fetch(GAS_URL, {
+        const res = await fetch(GAS_URL, {
           method: 'POST',
-          mode: 'no-cors',
           headers: { 'Content-Type': 'text/plain' },
-          body: JSON.stringify(q[0]),
+          body: JSON.stringify(item),
         });
+        const text = await res.text();
+        let json = null;
+        try { json = JSON.parse(text); } catch(e) {}
+        if (json && json.success) outcome = 'confirmed';
+        else if (json && json.error) outcome = 'rejected';
+        else outcome = 'unreadable';
       } catch(e) {
+        outcome = 'offline';
+      }
+
+      if (outcome === 'offline') {
         // ネットワーク不通 → 送信待ちのまま残し、順序維持のため中断
         if (!_gasWasOffline) {
           _gasWasOffline = true;
@@ -4106,9 +4198,24 @@ async function flushQueue() {
         }
         break;
       }
-      q = _loadQueue();   // 送信中に追加された分を取りこぼさない
-      q.shift();          // 送信成功した先頭を除去
-      _saveQueue(q);
+
+      if (outcome === 'confirmed') { _markGasReadable(); _dequeueFirst(); continue; }
+      if (outcome === 'rejected')  { _markGasReadable(); }
+
+      // 応答を読めた実績がまだ無い端末では、読めないこと自体が普通の可能性がある
+      // （応答を読めない環境で再送を繰り返すと、サーバーに無駄な負荷をかけるだけになるため）
+      if (outcome === 'unreadable' && !_gasCanReadResponse()) { _dequeueFirst(); continue; }
+
+      // ここに来たら「本当に保存できていない可能性が高い」。回数を区切って再送する。
+      // 同じentryIdの二重登録はGAS側で弾かれるので、再送しても重複はしない。
+      item._try = (item._try || 0) + 1;
+      if (item._try >= GAS_MAX_TRIES) {
+        _recordFailure(item);
+        _dequeueFirst();   // キューを詰まらせないよう、記録した上で先へ進む
+        continue;
+      }
+      _updateFirst(item);
+      break;   // 今回はここまで。次の定期実行（60秒後）で再送する
     }
     if (_loadQueue().length === 0 && _gasWasOffline) {
       _gasWasOffline = false;
