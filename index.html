@@ -1473,7 +1473,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = '20260803c';
+const APP_VERSION = '20260803d';
 // LINEログイン(LIFF) — LINEコンソールで作成したLIFFアプリのIDを入れる
 const LIFF_ID = '2010638896-vJtjkUOr';
 // 公式アカウント「カーコン工賃通知」友だち追加URL（ここに飛ばすとLINEアプリの友だち追加画面が直接開く）
@@ -2422,10 +2422,11 @@ async function renderStoreYearTrend() {
 
     // 店舗合計（全メンバー分を月ごとに合算）の棒グラフ ※人数が増えても線が重ならず読みやすい
     var monthTotals = sortedMonths.map(function(m){ return months[m].total || 0; });
-    var maxVal = Math.max.apply(null, monthTotals) || 1;
+    var storeGoal = (adminGoals.storeWageGoal || 0) * 10000;
+    var maxVal = Math.max.apply(null, monthTotals.concat([storeGoal])) || 1;
     maxVal = Math.ceil(maxVal / 100000) * 100000; // 10万円単位に切り上げ
 
-    var leftM = 46, rightM = 12, topM = 16, bottomM = 26;
+    var leftM = 46, rightM = 12, topM = 34, bottomM = 26;
     var chartW = 300, chartH = 170;
     var svgW = leftM + chartW + rightM;
     var svgH = topM + chartH + bottomM;
@@ -2435,7 +2436,7 @@ async function renderStoreYearTrend() {
     var xAt = function(i){ return leftM + (chartW * i / n) + barGap/2; };
     var yAt = function(v){ return topM + chartH - (v / maxVal * chartH); };
 
-    var svg = '<svg viewBox="0 0 '+svgW+' '+svgH+'" style="width:100%;max-width:400px;display:block;">';
+    var svg = '<svg viewBox="0 0 '+svgW+' '+svgH+'" style="width:100%;max-width:400px;display:block;overflow:visible;">';
 
     // 横グリッド線 + Y軸ラベル（0/50%/100%）
     [0, 0.5, 1].forEach(function(f){
@@ -2444,19 +2445,33 @@ async function renderStoreYearTrend() {
       svg += '<text x="'+(leftM-6)+'" y="'+(y+4)+'" font-size="10" text-anchor="end" fill="var(--text-sub)">¥'+Math.round(maxVal*f/10000)+'万</text>';
     });
 
-    // 月ラベル（X軸）+ 棒
+    // 店舗目標ライン（設定されている場合）
+    if (storeGoal > 0) {
+      var gy = yAt(storeGoal);
+      svg += '<line x1="'+leftM+'" y1="'+gy+'" x2="'+(leftM+chartW)+'" y2="'+gy+'" stroke="#e0a800" stroke-width="1.5" stroke-dasharray="4,3"/>';
+      svg += '<text x="'+(leftM+chartW)+'" y="'+(gy-4)+'" font-size="9" text-anchor="end" fill="#e0a800">目標 ¥'+Math.round(storeGoal/10000)+'万</text>';
+    }
+
+    // 月ラベル（X軸）+ 棒 + 金額 + 達成🏆
     sortedMonths.forEach(function(m, i){
       var mo = parseInt(m.slice(5));
       var v = monthTotals[i];
       var bx = xAt(i), by = yAt(v), bh = (topM+chartH) - by;
       var isCur = (m === storeTrendCurMonthStr());
+      var achieved = storeGoal > 0 && v >= storeGoal;
       svg += '<rect x="'+bx+'" y="'+by+'" width="'+barW+'" height="'+bh+'" rx="3" fill="'+(isCur?'#4A9ECC':'var(--green)')+'" opacity="'+(isCur?'0.6':'1')+'"/>';
+      if (v > 0) {
+        svg += '<text x="'+(bx+barW/2)+'" y="'+(by-14)+'" font-size="9" text-anchor="middle" fill="var(--text)">'+Math.round(v/10000)+'万</text>';
+      }
+      if (achieved) {
+        svg += '<text x="'+(bx+barW/2)+'" y="'+(by-3)+'" font-size="11" text-anchor="middle">🏆</text>';
+      }
       svg += '<text x="'+(bx+barW/2)+'" y="'+(topM+chartH+18)+'" font-size="10" text-anchor="middle" fill="var(--text-sub)">'+mo+'月</text>';
     });
 
     svg += '</svg>';
 
-    var legend = '<div style="padding:4px 12px 12px;font-size:11px;color:var(--text-sub);">棒＝店舗全体の月合計（水色は集計中の今月）</div>';
+    var legend = '<div style="padding:4px 12px 12px;font-size:11px;color:var(--text-sub);">棒＝店舗全体の月合計（水色は集計中の今月）'+(storeGoal>0?'・点線=店舗目標・🏆=目標達成月':'')+'</div>';
 
     // 下段：個人工賃合計（年間合計・降順）
     var totalsRows = memberList.map(function(name){
