@@ -260,6 +260,16 @@ function themeSuite() {
       }
     });
 
+    test(f + ': 明るいテーマで現場ボードの色（--card2等）も明るく上書きされている', () => {
+      const html = readFile(f);
+      if (!html.includes('進捗ボード由来')) return;   // ボードを持たないファイル(index.html)は対象外
+      for (const t of themes.filter(x => x.mode === 'light')) {
+        const block = html.slice(html.indexOf('[data-theme="' + t.key + '"]'));
+        assert.ok(/--card2/.test(block.slice(0, 700)),
+          t.key + ' はボードの色(--card2等)を上書きしておらず、現場タブだけ暗いまま残る');
+      }
+    });
+
     test(f + ': 以前のテーマを選んでいた人の画面が壊れない', () => {
       assert.ok(sandbox.themeDef('crimson').grad, '廃止したcrimsonの配色が失われている');
       assert.ok(sandbox.themeDef('存在しない名前').grad, '未知の値でも既定テーマに落ちるべき');

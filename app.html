@@ -62,10 +62,18 @@
 [data-theme="samurai-light"] {
   --green: #B8912F; --green-dark: #96741f; --green-light: #f6efda;
   --bg: #f7f4ec; --card: #ffffff; --text: #201b10; --text-sub: #7a6c50; --border: #e8e0cc; --input-bg: #ffffff; --outer-bg: #e9e3d3;
+  /* 進捗ボード由来(samurai-light) */
+  --card2:#f2ecdc; --line:#e8e0cc; --line2:#dcd0b4; --muted:#8a7c62; --muted2:#a89878;
+  --accent:#B8912F; --accent-bg:#f6efda; --green-bg:#e5f3ea; --amber:#b8760c; --amber-bg:#faf0d8;
+  --red-bg:#fbebea; --nav-bg:#ffffff; --toast-bg:#2a2318; --radius:12px; --shadow:0 2px 8px rgba(60,50,20,.12);
 }
 [data-theme="ocean-light"] {
   --green: #2E86B8; --green-dark: #226a94; --green-light: #e2eef6;
   --bg: #eef4f8; --card: #ffffff; --text: #12222c; --text-sub: #647f8f; --border: #d8e3ec; --input-bg: #ffffff; --outer-bg: #dde8f0;
+  /* 進捗ボード由来(ocean-light) */
+  --card2:#e4edf3; --line:#d8e3ec; --line2:#c5d5e2; --muted:#5d7688; --muted2:#8199a8;
+  --accent:#2E86B8; --accent-bg:#e2eef6; --green-bg:#e2f5ee; --amber:#c07d0c; --amber-bg:#fbf0d9;
+  --red-bg:#fdeceb; --nav-bg:#ffffff; --toast-bg:#122230; --radius:12px; --shadow:0 2px 8px rgba(20,40,55,.12);
 }
 html, body { height: 100%; overflow: hidden; font-family: 'Hiragino Sans', 'Meiryo', sans-serif; background: var(--outer-bg); color: var(--text); }
 button { cursor: pointer; border: none; background: none; font-family: inherit; }
@@ -1772,7 +1780,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = 'app202608031635';
+const APP_VERSION = 'app202608031712';
 // LINEログイン(LIFF) — LINEコンソールで作成したLIFFアプリのIDを入れる
 const LIFF_ID = '2010638896-vJtjkUOr';
 // 公式アカウント「カーコン工賃通知」友だち追加URL（ここに飛ばすとLINEアプリの友だち追加画面が直接開く）
