@@ -557,6 +557,13 @@ function postToBoardGAS(action, data){
   _boardSaveQueue(q);
   flushBoardQueue();
 }
+/* 応答を確認できるまでキューから消さない。
+   以前は mode:'no-cors' で応答を見ずに削除していたため、サーバーがエラーを返した分が
+   送れたつもりで消えていた（2026-08-03修正）。回数を区切って諦めることでキューは詰まらせない。 */
+const BOARD_MAX_TRIES = 3;
+const BOARD_CAN_READ_KEY = 'gasCanReadResponse';   // 工賃アプリと同じ端末・同じオリジンなので学習結果を共有する
+function _boardCanReadResponse(){ return localStorage.getItem(BOARD_CAN_READ_KEY) === '1'; }
+function _boardMarkReadable(){ try{ localStorage.setItem(BOARD_CAN_READ_KEY, '1'); }catch(e){} }
 async function flushBoardQueue(){
   if(_boardGasFlushing) return;
   _boardGasFlushing = true;
@@ -564,10 +571,31 @@ async function flushBoardQueue(){
     while(true){
       let q=_boardLoadQueue();
       if(q.length===0) break;
+      const item=q[0];
+      let outcome;
       try{
-        await fetch(BOARD_GAS_URL, {method:'POST', mode:'no-cors', headers:{'Content-Type':'text/plain'}, body:JSON.stringify(q[0])});
-      }catch(e){ break; } // オフライン等：順序維持のため中断、次回に再送
-      q=_boardLoadQueue(); q.shift(); _boardSaveQueue(q);
+        const res=await fetch(BOARD_GAS_URL, {method:'POST', headers:{'Content-Type':'text/plain'}, body:JSON.stringify(item)});
+        const text=await res.text();
+        let json=null; try{ json=JSON.parse(text); }catch(e){}
+        if(json && json.success) outcome='confirmed';
+        else if(json && json.error) outcome='rejected';
+        else outcome='unreadable';
+      }catch(e){ outcome='offline'; }
+
+      if(outcome==='offline') break;   // 順序維持のため中断、次回に再送
+
+      if(outcome==='confirmed'){ _boardMarkReadable(); q=_boardLoadQueue(); q.shift(); _boardSaveQueue(q); continue; }
+      if(outcome==='rejected'){ _boardMarkReadable(); }
+
+      // 応答を読めた実績が無い端末では、読めないこと自体が普通の可能性がある
+      if(outcome==='unreadable' && !_boardCanReadResponse()){
+        q=_boardLoadQueue(); q.shift(); _boardSaveQueue(q); continue;
+      }
+      item._try=(item._try||0)+1;
+      q=_boardLoadQueue();
+      if(item._try>=BOARD_MAX_TRIES){ q.shift(); _boardSaveQueue(q); continue; }
+      if(q.length){ q[0]=item; _boardSaveQueue(q); }
+      break;   // 次の定期実行（60秒後）で再送
     }
   } finally { _boardGasFlushing = false; }
 }
