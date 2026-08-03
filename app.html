@@ -28,6 +28,7 @@
   --tab-h: 60px;
   --header-h: 56px;
   --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --outer-bg: #000;
   /* 進捗ボード由来 */
   --card2:#242529; --line:#33343a; --line2:#44454c; --muted:#9b9da5; --muted2:#6d6f77;
   --accent:#3d8bff; --accent-bg:#16233a; --green-bg:#123028; --amber:#f0a020; --amber-bg:#33280e;
@@ -36,7 +37,7 @@
 /* ===== THEMES ===== */
 [data-theme="light"] {
   --green: #2e9b5b; --green-dark: #24814a; --green-light: #e3f3ea;
-  --bg: #f1f3f6; --card: #ffffff; --text: #1a1a1a; --text-sub: #707883; --border: #e2e6ec; --input-bg: #ffffff;
+  --bg: #f1f3f6; --card: #ffffff; --text: #1a1a1a; --text-sub: #707883; --border: #e2e6ec; --input-bg: #ffffff; --outer-bg: #dfe3e9;
   /* 進捗ボード由来(light) */
   --card2:#eef0f3; --line:#e3e5ea; --line2:#d3d6dc; --muted:#6a6d75; --muted2:#9aa0a8;
   --accent:#2f7ae0; --accent-bg:#e7f0fd; --green-bg:#e2f5ee; --amber:#c07d0c; --amber-bg:#fbf0d9;
@@ -58,7 +59,15 @@
   --green: #4ACC7A; --green-dark: #3aaa5a; --green-light: #0d2a15;
   --bg: #080d0a; --card: #101a12; --text: #d0f5dd; --text-sub: #5a8a65; --border: #1a2e1e;
 }
-html, body { height: 100%; overflow: hidden; font-family: 'Hiragino Sans', 'Meiryo', sans-serif; background: #000; color: var(--text); }
+[data-theme="samurai-light"] {
+  --green: #B8912F; --green-dark: #96741f; --green-light: #f6efda;
+  --bg: #f7f4ec; --card: #ffffff; --text: #201b10; --text-sub: #7a6c50; --border: #e8e0cc; --input-bg: #ffffff; --outer-bg: #e9e3d3;
+}
+[data-theme="ocean-light"] {
+  --green: #2E86B8; --green-dark: #226a94; --green-light: #e2eef6;
+  --bg: #eef4f8; --card: #ffffff; --text: #12222c; --text-sub: #647f8f; --border: #d8e3ec; --input-bg: #ffffff; --outer-bg: #dde8f0;
+}
+html, body { height: 100%; overflow: hidden; font-family: 'Hiragino Sans', 'Meiryo', sans-serif; background: var(--outer-bg); color: var(--text); }
 button { cursor: pointer; border: none; background: none; font-family: inherit; }
 input, select, textarea { font-family: inherit; }
 
@@ -1265,169 +1274,7 @@ input[type="time"]::-webkit-calendar-picker-indicator { filter: invert(1); opaci
       <!-- Theme Selector -->
       <div class="card">
         <div class="card-title">🎨 テーマカラー</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-
-          <!-- 侍ブラック -->
-          <div id="theme-wrap-samurai" onclick="setTheme('samurai')" style="cursor:pointer;border-radius:12px;border:3px solid transparent;overflow:hidden;transition:border-color .2s;">
-            <div style="background:#0d0d0d;padding:10px 8px 6px;">
-              <div style="background:#1a1a1a;border-radius:8px;overflow:hidden;">
-                <div style="background:linear-gradient(135deg,#0d0d0d,#1a1208);border-bottom:2px solid #C9A84C;padding:5px 8px;display:flex;align-items:center;gap:4px;">
-                  <span style="font-size:11px;color:#fff;font-weight:700;">⚔️ 社内</span>
-                </div>
-                <div style="padding:4px 6px;">
-                  <div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid #2e2e2e;">
-                    <span style="font-size:10px;color:#f0e6cc;font-weight:700;">田中 誠</span>
-                    <span style="font-size:10px;color:#C9A84C;font-weight:700;">168万</span>
-                  </div>
-                  <div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid #2e2e2e;border-left:2px solid #C9A84C;padding-left:4px;">
-                    <span style="font-size:10px;color:#f0e6cc;">あなた</span>
-                    <span style="font-size:10px;color:#C9A84C;font-weight:700;">92万</span>
-                  </div>
-                  <div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;">
-                    <span style="font-size:10px;color:#f0e6cc;">鈴木 光</span>
-                    <span style="font-size:10px;color:#8a7a5a;">65万</span>
-                  </div>
-                </div>
-                <div style="background:#111;border-top:1px solid #2a2208;display:flex;justify-content:space-around;padding:5px 0;">
-                  <span style="font-size:8px;color:#C9A84C;">⚔️ 社内</span>
-                  <span style="font-size:8px;color:#8a7a5a;">✏️ 入力</span>
-                  <span style="font-size:8px;color:#8a7a5a;">👤 マイ</span>
-                  <span style="font-size:8px;color:#8a7a5a;">⚙️ 設定</span>
-                </div>
-              </div>
-            </div>
-            <button style="width:100%;padding:8px;background:#C9A84C;color:#000;font-size:12px;font-weight:700;border:none;">🖤 侍ブラック</button>
-          </div>
-
-          <!-- カーコンレッド -->
-          <div id="theme-wrap-crimson" onclick="setTheme('crimson')" style="cursor:pointer;border-radius:12px;border:3px solid transparent;overflow:hidden;transition:border-color .2s;">
-            <div style="background:#0d0808;padding:10px 8px 6px;">
-              <div style="background:#1a1010;border-radius:8px;overflow:hidden;">
-                <div style="background:linear-gradient(135deg,#0d0808,#2a0d0d);border-bottom:2px solid #CC4444;padding:5px 8px;display:flex;align-items:center;gap:4px;">
-                  <span style="font-size:11px;color:#fff;font-weight:700;">⚔️ 社内</span>
-                </div>
-                <div style="padding:4px 6px;">
-                  <div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid #2e1a1a;">
-                    <span style="font-size:10px;color:#f5d0d0;font-weight:700;">田中 誠</span>
-                    <span style="font-size:10px;color:#CC4444;font-weight:700;">168万</span>
-                  </div>
-                  <div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid #2e1a1a;border-left:2px solid #CC4444;padding-left:4px;">
-                    <span style="font-size:10px;color:#f5d0d0;">あなた</span>
-                    <span style="font-size:10px;color:#CC4444;font-weight:700;">92万</span>
-                  </div>
-                  <div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;">
-                    <span style="font-size:10px;color:#f5d0d0;">鈴木 光</span>
-                    <span style="font-size:10px;color:#8a5a5a;">65万</span>
-                  </div>
-                </div>
-                <div style="background:#111;border-top:1px solid #2a1010;display:flex;justify-content:space-around;padding:5px 0;">
-                  <span style="font-size:8px;color:#CC4444;">⚔️ 社内</span>
-                  <span style="font-size:8px;color:#8a5a5a;">✏️ 入力</span>
-                  <span style="font-size:8px;color:#8a5a5a;">👤 マイ</span>
-                  <span style="font-size:8px;color:#8a5a5a;">⚙️ 設定</span>
-                </div>
-              </div>
-            </div>
-            <button style="width:100%;padding:8px;background:#CC4444;color:#fff;font-size:12px;font-weight:700;border:none;">🔥 カーコンレッド</button>
-          </div>
-
-          <!-- 蒼海ブルー -->
-          <div id="theme-wrap-ocean" onclick="setTheme('ocean')" style="cursor:pointer;border-radius:12px;border:3px solid transparent;overflow:hidden;transition:border-color .2s;">
-            <div style="background:#0a0f14;padding:10px 8px 6px;">
-              <div style="background:#141e27;border-radius:8px;overflow:hidden;">
-                <div style="background:linear-gradient(135deg,#0a0f14,#0d1e2a);border-bottom:2px solid #4A9ECC;padding:5px 8px;display:flex;align-items:center;gap:4px;">
-                  <span style="font-size:11px;color:#fff;font-weight:700;">⚔️ 社内</span>
-                </div>
-                <div style="padding:4px 6px;">
-                  <div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid #1e2e3a;">
-                    <span style="font-size:10px;color:#d0e8f5;font-weight:700;">田中 誠</span>
-                    <span style="font-size:10px;color:#4A9ECC;font-weight:700;">168万</span>
-                  </div>
-                  <div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid #1e2e3a;border-left:2px solid #4A9ECC;padding-left:4px;">
-                    <span style="font-size:10px;color:#d0e8f5;">あなた</span>
-                    <span style="font-size:10px;color:#4A9ECC;font-weight:700;">92万</span>
-                  </div>
-                  <div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;">
-                    <span style="font-size:10px;color:#d0e8f5;">鈴木 光</span>
-                    <span style="font-size:10px;color:#5a7a8a;">65万</span>
-                  </div>
-                </div>
-                <div style="background:#0d1520;border-top:1px solid #1e2e3a;display:flex;justify-content:space-around;padding:5px 0;">
-                  <span style="font-size:8px;color:#4A9ECC;">⚔️ 社内</span>
-                  <span style="font-size:8px;color:#5a7a8a;">✏️ 入力</span>
-                  <span style="font-size:8px;color:#5a7a8a;">👤 マイ</span>
-                  <span style="font-size:8px;color:#5a7a8a;">⚙️ 設定</span>
-                </div>
-              </div>
-            </div>
-            <button style="width:100%;padding:8px;background:#4A9ECC;color:#fff;font-size:12px;font-weight:700;border:none;">🌊 蒼海ブルー</button>
-          </div>
-
-          <!-- 深緑グリーン -->
-          <div id="theme-wrap-forest" onclick="setTheme('forest')" style="cursor:pointer;border-radius:12px;border:3px solid transparent;overflow:hidden;transition:border-color .2s;">
-            <div style="background:#080d0a;padding:10px 8px 6px;">
-              <div style="background:#101a12;border-radius:8px;overflow:hidden;">
-                <div style="background:linear-gradient(135deg,#080d0a,#0d2a15);border-bottom:2px solid #4ACC7A;padding:5px 8px;display:flex;align-items:center;gap:4px;">
-                  <span style="font-size:11px;color:#fff;font-weight:700;">⚔️ 社内</span>
-                </div>
-                <div style="padding:4px 6px;">
-                  <div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid #1a2e1e;">
-                    <span style="font-size:10px;color:#d0f5dd;font-weight:700;">田中 誠</span>
-                    <span style="font-size:10px;color:#4ACC7A;font-weight:700;">168万</span>
-                  </div>
-                  <div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid #1a2e1e;border-left:2px solid #4ACC7A;padding-left:4px;">
-                    <span style="font-size:10px;color:#d0f5dd;">あなた</span>
-                    <span style="font-size:10px;color:#4ACC7A;font-weight:700;">92万</span>
-                  </div>
-                  <div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;">
-                    <span style="font-size:10px;color:#d0f5dd;">鈴木 光</span>
-                    <span style="font-size:10px;color:#5a8a65;">65万</span>
-                  </div>
-                </div>
-                <div style="background:#0a130c;border-top:1px solid #1a2e1e;display:flex;justify-content:space-around;padding:5px 0;">
-                  <span style="font-size:8px;color:#4ACC7A;">⚔️ 社内</span>
-                  <span style="font-size:8px;color:#5a8a65;">✏️ 入力</span>
-                  <span style="font-size:8px;color:#5a8a65;">👤 マイ</span>
-                  <span style="font-size:8px;color:#5a8a65;">⚙️ 設定</span>
-                </div>
-              </div>
-            </div>
-            <button style="width:100%;padding:8px;background:#4ACC7A;color:#000;font-size:12px;font-weight:700;border:none;">🌿 深緑グリーン</button>
-          </div>
-
-          <!-- ライト -->
-          <div id="theme-wrap-light" onclick="setTheme(&#39;light&#39;)" style="cursor:pointer;border-radius:12px;border:3px solid transparent;overflow:hidden;transition:border-color .2s;">
-            <div style="background:#f1f3f6;padding:10px 8px 6px;">
-              <div style="background:#ffffff;border-radius:8px;overflow:hidden;border:1px solid #e2e6ec;">
-                <div style="background:linear-gradient(135deg,#2e9b5b,#1f8048);border-bottom:2px solid #2e9b5b;padding:5px 8px;display:flex;align-items:center;gap:4px;">
-                  <span style="font-size:11px;color:#fff;font-weight:700;">⚔️ 社内</span>
-                </div>
-                <div style="padding:4px 6px;">
-                  <div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid #e2e6ec;">
-                    <span style="font-size:10px;color:#1a1a1a;font-weight:700;">田中 誠</span>
-                    <span style="font-size:10px;color:#2e9b5b;font-weight:700;">168万</span>
-                  </div>
-                  <div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid #e2e6ec;border-left:2px solid #2e9b5b;padding-left:4px;">
-                    <span style="font-size:10px;color:#1a1a1a;">あなた</span>
-                    <span style="font-size:10px;color:#2e9b5b;font-weight:700;">92万</span>
-                  </div>
-                  <div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;">
-                    <span style="font-size:10px;color:#1a1a1a;">鈴木 光</span>
-                    <span style="font-size:10px;color:#707883;">65万</span>
-                  </div>
-                </div>
-                <div style="background:#ffffff;border-top:1px solid #e2e6ec;display:flex;justify-content:space-around;padding:5px 0;">
-                  <span style="font-size:8px;color:#2e9b5b;">⚔️ 社内</span>
-                  <span style="font-size:8px;color:#707883;">✏️ 入力</span>
-                  <span style="font-size:8px;color:#707883;">👤 マイ</span>
-                  <span style="font-size:8px;color:#707883;">⚙️ 設定</span>
-                </div>
-              </div>
-            </div>
-            <button style="width:100%;padding:8px;background:#2e9b5b;color:#fff;font-size:12px;font-weight:700;border:none;">☀️ ライト</button>
-          </div>
-
-        </div>
+        <div id="theme-picker-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;"></div>
       </div>
       <!-- Ninja Mode -->
       <div class="card">
@@ -1925,7 +1772,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = 'app202608031549';
+const APP_VERSION = 'app202608031635';
 // LINEログイン(LIFF) — LINEコンソールで作成したLIFFアプリのIDを入れる
 const LIFF_ID = '2010638896-vJtjkUOr';
 // 公式アカウント「カーコン工賃通知」友だち追加URL（ここに飛ばすとLINEアプリの友だち追加画面が直接開く）
@@ -3831,6 +3678,7 @@ function renderFailedLogCard() {
 }
 
 function initSettings() {
+  renderThemePicker();
   renderFailedLogCard();
   renderLineRegisterStatus();
   // Prefecture dropdown
@@ -4128,32 +3976,86 @@ function toggleGuide() {
   a.textContent = open ? '▲' : '▼';
 }
 
+/* テーマ定義（暗い3・明るい3）。ここに1つ足すだけで選択画面にも自動で並ぶ。 */
+const THEMES = [
+  { key:'samurai',       label:'🖤 侍ブラック',   mode:'dark',  accent:'#C9A84C', btnText:'#000', bg:'#0d0d0d', card:'#1a1a1a', text:'#f0e6cc', sub:'#8a7a5a', border:'#2e2e2e', grad:'135deg, #0d0d0d 0%, #1a1208 100%' },
+  { key:'ocean',         label:'🌊 蒼海ブルー',   mode:'dark',  accent:'#4A9ECC', btnText:'#000', bg:'#0a0f14', card:'#141e27', text:'#d0e8f5', sub:'#5a7a8a', border:'#1e2e3a', grad:'135deg, #0a0f14 0%, #0d1e2a 100%' },
+  { key:'forest',        label:'🌿 深緑グリーン', mode:'dark',  accent:'#4ACC7A', btnText:'#000', bg:'#080d0a', card:'#101a12', text:'#d0f5dd', sub:'#5a8a65', border:'#1a2e1e', grad:'135deg, #080d0a 0%, #0d2a15 100%' },
+  { key:'samurai-light', label:'🌾 侍ライト',     mode:'light', accent:'#B8912F', btnText:'#fff', bg:'#f7f4ec', card:'#ffffff', text:'#201b10', sub:'#7a6c50', border:'#e8e0cc', grad:'135deg, #B8912F 0%, #96741f 100%' },
+  { key:'ocean-light',   label:'🌤 蒼海ライト',   mode:'light', accent:'#2E86B8', btnText:'#fff', bg:'#eef4f8', card:'#ffffff', text:'#12222c', sub:'#647f8f', border:'#d8e3ec', grad:'135deg, #2E86B8 0%, #226a94 100%' },
+  { key:'light',         label:'🌱 新緑ライト',   mode:'light', accent:'#2e9b5b', btnText:'#fff', bg:'#f1f3f6', card:'#ffffff', text:'#1a1a1a', sub:'#707883', border:'#e2e6ec', grad:'135deg, #2e9b5b 0%, #1f8048 100%' },
+];
+/* 選択肢からは外したが、以前選んでいた人の画面が壊れないように配色だけ残す */
+const LEGACY_THEMES = { crimson: { accent:'#CC4444', grad:'135deg, #0d0808 0%, #2a0d0d 100%' } };
+
+function themeDef(key) {
+  return THEMES.find(function(x){ return x.key === key; }) || LEGACY_THEMES[key] || THEMES[0];
+}
+
+/* 選択画面に出す小さなプレビュー（実際の画面の縮小版） */
+function themePreviewHTML(t) {
+  var isLight = t.mode === 'light';
+  var navBg = isLight ? t.card : t.bg;
+  var row = function(name, amount, strong, active) {
+    return '<div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid ' + t.border + ';' + (active ? 'border-left:2px solid ' + t.accent + ';padding-left:4px;' : '') + '">' +
+      '<span style="font-size:10px;color:' + t.text + ';' + (strong ? 'font-weight:700;' : '') + '">' + name + '</span>' +
+      '<span style="font-size:10px;color:' + (strong ? t.accent : t.sub) + ';font-weight:700;">' + amount + '</span>' +
+    '</div>';
+  };
+  return '<div id="theme-wrap-' + t.key + '" onclick="setTheme(\'' + t.key + '\')" style="cursor:pointer;border-radius:12px;border:3px solid transparent;overflow:hidden;transition:border-color .2s;">' +
+    '<div style="background:' + t.bg + ';padding:10px 8px 6px;">' +
+      '<div style="background:' + t.card + ';border-radius:8px;overflow:hidden;' + (isLight ? 'border:1px solid ' + t.border + ';' : '') + '">' +
+        '<div style="background:linear-gradient(' + t.grad + ');border-bottom:2px solid ' + t.accent + ';padding:5px 8px;display:flex;align-items:center;gap:4px;">' +
+          '<span style="font-size:11px;color:#fff;font-weight:700;">⚔️ 社内</span>' +
+        '</div>' +
+        '<div style="padding:4px 6px;">' +
+          row('田中 誠', '168万', true, false) +
+          row('あなた', '92万', true, true) +
+          '<div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;">' +
+            '<span style="font-size:10px;color:' + t.text + ';">鈴木 光</span>' +
+            '<span style="font-size:10px;color:' + t.sub + ';">65万</span>' +
+          '</div>' +
+        '</div>' +
+        '<div style="background:' + navBg + ';border-top:1px solid ' + t.border + ';display:flex;justify-content:space-around;padding:5px 0;">' +
+          '<span style="font-size:8px;color:' + t.accent + ';">⚔️ 社内</span>' +
+          '<span style="font-size:8px;color:' + t.sub + ';">✏️ 入力</span>' +
+          '<span style="font-size:8px;color:' + t.sub + ';">👤 マイ</span>' +
+          '<span style="font-size:8px;color:' + t.sub + ';">⚙️ 設定</span>' +
+        '</div>' +
+      '</div>' +
+    '</div>' +
+    '<button style="width:100%;padding:8px;background:' + t.accent + ';color:' + t.btnText + ';font-size:12px;font-weight:700;border:none;">' + t.label + '</button>' +
+  '</div>';
+}
+
+function renderThemePicker() {
+  var el = document.getElementById('theme-picker-grid');
+  if (!el) return;
+  var heading = function(text) {
+    return '<div style="grid-column:1/-1;font-size:12px;font-weight:700;color:var(--text-sub);">' + text + '</div>';
+  };
+  var byMode = function(m) { return THEMES.filter(function(t){ return t.mode === m; }).map(themePreviewHTML).join(''); };
+  el.innerHTML = heading('🌙 暗い画面') + byMode('dark') + heading('☀️ 明るい画面') + byMode('light');
+  applyTheme();
+}
+
 function setTheme(name) {
   userData.theme = name;
   saveLocal();
   applyTheme();
-  const labels = { light:'☀️ ライト', samurai:'🖤 侍ブラック', ocean:'🌊 蒼海ブルー', crimson:'🔥 紅蓮レッド', forest:'🌿 深緑グリーン' };
-  showToast('テーマを変更しました: ' + (labels[name] || name));
+  showToast('テーマを変更しました: ' + themeDef(name).label);
 }
 
 function applyTheme() {
   const t = userData.theme || 'samurai';
   document.documentElement.setAttribute('data-theme', t);
-  // header gradient
-  const hdrGrads = {
-    light:   '135deg, #2e9b5b 0%, #1f8048 100%',
-    samurai: '135deg, #0d0d0d 0%, #1a1208 100%',
-    ocean:   '135deg, #0a0f14 0%, #0d1e2a 100%',
-    crimson: '135deg, #0d0808 0%, #2a0d0d 100%',
-    forest:  '135deg, #080d0a 0%, #0d2a15 100%',
-  };
+  const def = themeDef(t);
   const hdr = document.getElementById('header');
-  if (hdr) hdr.style.background = 'linear-gradient(' + (hdrGrads[t] || hdrGrads.samurai) + ')';
-  // highlight active preview
-  const accentColors = { light:'#2e9b5b', samurai:'#C9A84C', ocean:'#4A9ECC', crimson:'#CC4444', forest:'#4ACC7A' };
-  ['light','samurai','ocean','crimson','forest'].forEach(k => {
-    const wrap = document.getElementById('theme-wrap-' + k);
-    if (wrap) wrap.style.borderColor = k === t ? (accentColors[k] || '#fff') : 'transparent';
+  if (hdr) hdr.style.background = 'linear-gradient(' + def.grad + ')';
+  // 選択中のテーマに枠を付ける
+  document.querySelectorAll('[id^="theme-wrap-"]').forEach(function(w) {
+    const key = w.id.replace('theme-wrap-', '');
+    w.style.borderColor = (key === t) ? (themeDef(key).accent || '#fff') : 'transparent';
   });
 }
 

@@ -88,6 +88,11 @@ function loadFunctions(html, names, { consts = [], prelude = '', context = {} } 
 
   vm.createContext(sandbox);
   vm.runInContext(prelude + '\n' + parts.join('\n'), sandbox, { filename: 'extracted.js' });
+  // const/let で宣言した値は sandbox のプロパティにならないため、テストから読めるよう取り出しておく
+  // （function 宣言は自動でプロパティになるので対象外）
+  for (const c of consts) {
+    try { sandbox[c] = vm.runInContext(c, sandbox); } catch (e) { /* 参照できない値は無視 */ }
+  }
   return sandbox;
 }
 

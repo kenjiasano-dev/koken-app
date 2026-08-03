@@ -206,6 +206,7 @@ function paritySuite() {
     'loadFailedLog', '_recordFailure', 'clearFailedLog', 'retryFailedLog', 'renderFailedLogCard',
     'postToGAS', 'fetchFromGAS',
     'renderCategoryBudget', 'renderStoreYearTrend', 'renderStoreMonthMembers',
+    'setTheme', 'applyTheme', 'renderThemePicker', 'themePreviewHTML', 'themeDef',
   ];
   for (const name of shared) {
     test('両方で同じ: ' + name, () => {
@@ -214,6 +215,54 @@ function paritySuite() {
       assert.ok(a, 'index.html に ' + name + ' が無い');
       assert.ok(b, 'app.html に ' + name + ' が無い');
       assert.strictEqual(a, b, '片方だけ直して、もう片方が古いままになっている');
+    });
+  }
+}
+
+/* ============================================================
+   3.5) テーマ（暗い3・明るい3のバランス）
+   ============================================================ */
+function themeSuite() {
+  section('【テーマ】暗い3・明るい3が揃っていること');
+  for (const f of ['index.html', 'app.html']) {
+    const src = extractInlineScripts(readFile(f));
+    const sandbox = loadFunctions('<script>' + src + '</script>', ['themeDef'], { consts: ['THEMES', 'LEGACY_THEMES'] });
+    const themes = sandbox.THEMES;
+
+    test(f + ': 暗い画面が3つ、明るい画面が3つ', () => {
+      const dark = themes.filter(t => t.mode === 'dark');
+      const light = themes.filter(t => t.mode === 'light');
+      assert.strictEqual(dark.length, 3, '暗いテーマが3つではない（' + dark.length + '個）');
+      assert.strictEqual(light.length, 3, '明るいテーマが3つではない（' + light.length + '個）');
+    });
+
+    test(f + ': 各テーマに必要な色がすべて揃っている', () => {
+      for (const t of themes) {
+        for (const key of ['key', 'label', 'mode', 'accent', 'btnText', 'bg', 'card', 'text', 'sub', 'border', 'grad']) {
+          assert.ok(t[key], t.key + ' の ' + key + ' が未設定');
+        }
+      }
+    });
+
+    test(f + ': 全テーマのCSSが定義されている', () => {
+      const html = readFile(f);
+      for (const t of themes) {
+        if (t.key === 'samurai') continue;   // samuraiは:rootの既定値なので個別指定不要
+        assert.ok(html.includes('[data-theme="' + t.key + '"]'), t.key + ' のCSSが無い');
+      }
+    });
+
+    test(f + ': 明るいテーマで外側の背景が黒く残らない', () => {
+      const html = readFile(f);
+      for (const t of themes.filter(x => x.mode === 'light')) {
+        const block = html.slice(html.indexOf('[data-theme="' + t.key + '"]'));
+        assert.ok(/--outer-bg/.test(block.slice(0, 400)), t.key + ' に --outer-bg が無い（PCで黒帯が出る）');
+      }
+    });
+
+    test(f + ': 以前のテーマを選んでいた人の画面が壊れない', () => {
+      assert.ok(sandbox.themeDef('crimson').grad, '廃止したcrimsonの配色が失われている');
+      assert.ok(sandbox.themeDef('存在しない名前').grad, '未知の値でも既定テーマに落ちるべき');
     });
   }
 }
@@ -258,6 +307,7 @@ function gasSuite() {
   await queueSuite('app.html');
   regressionSuite();
   paritySuite();
+  themeSuite();
   gasSuite();
 
   console.log('\n' + '─'.repeat(50));
