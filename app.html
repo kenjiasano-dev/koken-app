@@ -1780,7 +1780,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = 'app202608041030';
+const APP_VERSION = 'app202608041045';
 // LINEログイン(LIFF) — LINEコンソールで作成したLIFFアプリのIDを入れる
 const LIFF_ID = '2010638896-vJtjkUOr';
 // 公式アカウント「カーコン工賃通知」友だち追加URL（ここに飛ばすとLINEアプリの友だち追加画面が直接開く）
@@ -7448,11 +7448,11 @@ function bd_openWageInput(carId){
   if(!me){ toast('先に⚙️設定でお名前を登録してください'); return; }
   var cat = bd_wageCategory(c);
   var today = (new Date()).toISOString().slice(0,10);
-  // 誰の工賃として登録するか（代理入力）は、店舗を作成した管理者だけに見せる。
-  // 普段の作業者は今まで通り「自分の分を即入力」だけのシンプルな画面のまま。
-  var isOwner = !!userData.groupCode && String(userData.groupCode) === String(userData.activeGroupCode||userData.groupCode);
+  // 誰の工賃として登録するか（代理入力）は、PC画面（コントロールルーム＝管理者側の想定）でだけ見せる。
+  // 現場のスマホで押す普段の作業者は、今まで通り「自分の分を即入力」だけのシンプルな画面のまま。
+  var isPcScreen = window.innerWidth >= 1100;
   var nameField;
-  if (isOwner) {
+  if (isPcScreen) {
     var members = (typeof getMembers==='function') ? getMembers() : [];
     var names = members.slice(); if(names.indexOf(me)<0) names.unshift(me);
     var nameOptions = names.map(function(n){ return '<option value="'+esc(n)+'"'+(n===me?' selected':'')+'>'+esc(n)+(n===me?'（自分）':'')+'</option>'; }).join('');

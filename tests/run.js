@@ -215,15 +215,15 @@ function regressionSuite() {
       'wageData.push が自分名義チェックの外にある（代理入力が自分の合計を汚染する）');
   });
 
-  test('代理入力の名前選択欄は、普段の作業者には出さない（管理者のみ）', () => {
+  test('代理入力の名前選択欄は、普段の作業者には出さない（PC画面のみ）', () => {
     const html = readFile('app.html');
     const open = extractFunction(html, 'bd_openWageInput');
-    assert.ok(/isOwner/.test(open),
-      '管理者かどうかの判定が無い（全員に選択欄が出てしまい、普段の作業者に余計な操作が増える）');
-    const ifIdx = open.indexOf('if (isOwner)');
+    assert.ok(/isPcScreen/.test(open),
+      'PC画面かどうかの判定が無い（全員に選択欄が出てしまい、普段の作業者に余計な操作が増える）');
+    const ifIdx = open.indexOf('if (isPcScreen)');
     const selectIdx = open.indexOf('bd-wage-name');
     assert.ok(ifIdx > 0 && selectIdx > ifIdx,
-      '名前選択欄がisOwnerの分岐の外にある（全員に出てしまう）');
+      '名前選択欄がisPcScreenの分岐の外にある（全員に出てしまう）');
   });
 }
 
