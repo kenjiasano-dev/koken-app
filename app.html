@@ -1780,7 +1780,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = 'app202608031712';
+const APP_VERSION = 'app202608041000';
 // LINEログイン(LIFF) — LINEコンソールで作成したLIFFアプリのIDを入れる
 const LIFF_ID = '2010638896-vJtjkUOr';
 // 公式アカウント「カーコン工賃通知」友だち追加URL（ここに飛ばすとLINEアプリの友だち追加画面が直接開く）
@@ -1863,6 +1863,13 @@ const DEMO_STORE = [
 // UTILITY
 // ============================================================
 function newEid() { return Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8); }
+/* 同じ車のナンバーに、この端末から今日すでに工賃を入れていないか調べる。
+   現場ボードの💰ボタンと工賃入力タブは別々の画面だが、どちらもこの端末のwageDataに積むため、
+   ここを共通の窓口にすることで「ボードで入れた後にタブでも入れて二重登録」を検知できる。 */
+function findExistingWageForNumber(number, date) {
+  if (!number || typeof wageData === 'undefined' || !wageData) return [];
+  return wageData.filter(function(w) { return w.number === number && w.date === date; });
+}
 function saveLocal() {
   localStorage.setItem('userData', JSON.stringify(userData));
   localStorage.setItem('wageData', JSON.stringify(wageData));
@@ -3488,7 +3495,16 @@ function submitWage() {
 
   const cartype = document.getElementById('input-cartype').value.trim();
   const category = document.getElementById('input-category') ? document.getElementById('input-category').value || '鈑金塗装' : '鈑金塗装';
-  const wid = newEid(); wageData.push({ date, amount, number: number === '0000' ? '' : number, cartype, category, entryId: wid });
+  const number4 = number === '0000' ? '' : number;
+  if (number4) {
+    const already = findExistingWageForNumber(number4, date);
+    if (already.length) {
+      const sum = already.reduce((s, w) => s + (Number(w.amount) || 0), 0);
+      const ok = confirm('⚠️ ナンバー' + number4 + 'の車には本日すでに¥' + sum.toLocaleString() + '入力済みです（現場ボードからの分も含みます）。\n（鈑金→塗装など分担の場合はこのまま追加できます）\n\n続けて登録しますか？');
+      if (!ok) return;
+    }
+  }
+  const wid = newEid(); wageData.push({ date, amount, number: number4, cartype, category, entryId: wid });
   saveLocal();
   document.getElementById('input-amount').value = '';
   document.getElementById('input-number').value = '';
@@ -7430,21 +7446,19 @@ function bd_openWageInput(carId){
   var c = findCar(carId); if(!c) return;
   var me = (typeof userData!=='undefined'&&userData&&userData.name)||'';
   if(!me){ toast('先に⚙️設定でお名前を登録してください'); return; }
-  var mine = (c.wageLogged||[]).filter(function(w){ return w.name===me; });
-  var warn = '';
-  if(mine.length){
-    var sum = mine.reduce(function(s,w){return s+(w.amount||0);},0);
-    warn = '<div style="background:var(--amber-bg);border:1px solid var(--amber);color:var(--amber);border-radius:10px;padding:10px 12px;margin-bottom:14px;font-size:13px;line-height:1.5;">⚠️ あなたは既にこの車に ¥'+sum.toLocaleString()+' 入力済みです。<br>鈑金→塗装など分担の場合はこのまま追加で登録できます。</div>';
-  }
   var cat = bd_wageCategory(c);
   var today = (new Date()).toISOString().slice(0,10);
+  // 誰の工賃として登録するか。既定は自分（今まで通り即入力）。他の人を選べば代理入力になる。
+  var members = (typeof getMembers==='function') ? getMembers() : [];
+  var names = members.slice(); if(names.indexOf(me)<0) names.unshift(me);
+  var nameOptions = names.map(function(n){ return '<option value="'+esc(n)+'"'+(n===me?' selected':'')+'>'+esc(n)+(n===me?'（自分）':'')+'</option>'; }).join('');
   var html = ''
     + '<h2>💰 工賃を入力</h2>'
-    + warn
     + '<div style="background:var(--card2);border-radius:10px;padding:12px 14px;margin-bottom:16px;">'
     +   '<div style="font-size:17px;font-weight:600;">'+esc(c.cartype)+' <span style="color:var(--muted);font-size:14px;">・'+esc(c.number)+'</span></div>'
-    +   '<div style="font-size:12px;color:var(--muted);margin-top:4px;">担当: '+esc(me)+'　／　区分: '+cat+'</div>'
+    +   '<div style="font-size:12px;color:var(--muted);margin-top:4px;">区分: '+cat+'</div>'
     + '</div>'
+    + '<div class="field"><label>誰の工賃として登録するか</label><select id="bd-wage-name" style="width:100%;background:var(--card);border:0.5px solid var(--line2);color:var(--text);font-size:16px;padding:12px;border-radius:10px;">'+nameOptions+'</select></div>'
     + '<div class="field"><label>金額（円）</label><input id="bd-wage-amount" inputmode="numeric" autocomplete="off" placeholder="例）50000"></div>'
     + '<div class="field"><label>日付</label><input id="bd-wage-date" type="date" value="'+today+'"></div>'
     + '<button class="btn" onclick="bd_saveWageInput(\''+c.id+'\')">この工賃を登録</button>';
@@ -7455,6 +7469,8 @@ function bd_saveWageInput(carId){
   var c = findCar(carId); if(!c) return;
   var me = (typeof userData!=='undefined'&&userData&&userData.name)||'';
   if(!me){ toast('お名前が未登録です'); return; }
+  var nameEl = document.getElementById('bd-wage-name');
+  var creditTo = (nameEl && nameEl.value) ? nameEl.value : me;   // 実際にこの工賃を計上する相手（既定=自分）
   var el = document.getElementById('bd-wage-amount');
   var amt = parseInt(String((el&&el.value)||'').replace(/[^0-9]/g,''),10)||0;
   if(!amt || amt<=0){ toast('金額を入力してください'); return; }
@@ -7462,20 +7478,39 @@ function bd_saveWageInput(carId){
   var date = (de&&de.value) || (new Date()).toISOString().slice(0,10);
   var cat = bd_wageCategory(c);
   var num = (c.number==null?'':String(c.number));
+
+  // 重複チェック1: 同じ名義の人が、この車に今日すでに入れていないか（分担での別名義入力は許容）
+  var mineToday = (c.wageLogged||[]).filter(function(w){ return w.name===creditTo && w.date===date; });
+  if (mineToday.length) {
+    var sum1 = mineToday.reduce(function(s,w){return s+(w.amount||0);},0);
+    if (!confirm('⚠️ '+creditTo+'さんは既にこの車に¥'+sum1.toLocaleString()+'入力済みです。\n（鈑金→塗装など分担の場合はこのまま追加できます）\n\n続けて登録しますか？')) return;
+  }
+  // 重複チェック2: 自分名義の場合、工賃入力タブからこの端末で既に入れていないか
+  if (creditTo===me && num && typeof findExistingWageForNumber==='function') {
+    var already = findExistingWageForNumber(num, date);
+    if (already.length) {
+      var sum2 = already.reduce(function(s,w){return s+(Number(w.amount)||0);},0);
+      if (!confirm('⚠️ ナンバー'+num+'の車には本日すでに¥'+sum2.toLocaleString()+'入力済みです（工賃入力タブからの分も含みます）。\n\n続けて登録しますか？')) return;
+    }
+  }
+
   var wid = (typeof newEid==='function') ? newEid() : (Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,8));
-  if(typeof wageData!=='undefined'&&wageData){ wageData.push({ date:date, amount:amt, number:num, cartype:(c.cartype||''), category:cat, entryId:wid }); }
+  if (creditTo===me) {
+    // 自分名義の時だけ、この端末の「自分の工賃」ローカル記録にも積む（代理入力で他人の総額が自分に混ざらないように）
+    if(typeof wageData!=='undefined'&&wageData){ wageData.push({ date:date, amount:amt, number:num, cartype:(c.cartype||''), category:cat, entryId:wid }); }
+  }
   if(typeof saveLocal==='function') saveLocal();
   if(typeof userData!=='undefined'&&userData && !userData.ninjaMode && typeof postToGAS==='function'){
-    postToGAS({ action:'addWage', name:userData.name, store:userData.store, pref:userData.pref, date:date, amount:amt, number:num, cartype:(c.cartype||''), category:cat, groupCode:(userData.activeGroupCode||userData.groupCode||''), uuid:(userData.uuid||''), entryId:wid });
+    postToGAS({ action:'addWage', name:creditTo, store:userData.store, pref:userData.pref, date:date, amount:amt, number:num, cartype:(c.cartype||''), category:cat, groupCode:(userData.activeGroupCode||userData.groupCode||''), uuid:(creditTo===me?(userData.uuid||''):''), entryId:wid });
   }
   if(!Array.isArray(c.wageLogged)) c.wageLogged=[];
-  c.wageLogged.push({ name:me, amount:amt, date:date, entryId:wid });
+  c.wageLogged.push({ name:creditTo, amount:amt, date:date, entryId:wid });
   c.updatedAt = Date.now();
   bd_saveLocal();
   try{ if(state.store && state.store.group) boardSyncNow(); }catch(e){}
   closeSheet();
-  toast('💰 '+amt.toLocaleString()+'円 登録しました');
-  if(typeof checkGoalAndRank==='function'){ try{ checkGoalAndRank(); }catch(e){} }
+  toast('💰 '+creditTo+'さん　'+amt.toLocaleString()+'円 登録しました');
+  if(creditTo===me && typeof checkGoalAndRank==='function'){ try{ checkGoalAndRank(); }catch(e){} }
   render();
 }
 /* ===== 段階3: 保険作業マーク + 納車時刻 ===== */

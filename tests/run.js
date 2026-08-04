@@ -192,6 +192,28 @@ function regressionSuite() {
       assert.ok(/function\s+renderFailedLogCard/.test(html), f + ' に表示処理がない');
     }
   });
+
+  test('現場ボードと工賃入力タブが、互いの入力を見て二重登録を警告する', () => {
+    const html = readFile('app.html');
+    const helper = extractFunction(html, 'findExistingWageForNumber');
+    assert.ok(helper, 'findExistingWageForNumber が無い（ボードとタブが互いを見ていない）');
+    const submit = extractFunction(html, 'submitWage');
+    assert.ok(/findExistingWageForNumber/.test(submit), '工賃入力タブがボード側の入力をチェックしていない');
+    const save = extractFunction(html, 'bd_saveWageInput');
+    assert.ok(/findExistingWageForNumber/.test(save), 'ボード側が工賃入力タブの入力をチェックしていない');
+  });
+
+  test('代理入力（他の人の名義で登録）が、自分の工賃合計に混ざらない', () => {
+    const html = readFile('app.html');
+    const save = extractFunction(html, 'bd_saveWageInput');
+    assert.ok(/creditTo\s*===\s*me/.test(save),
+      '代理入力の判定が無い、または壊れている（他人の工賃が自分のwageDataに混入する恐れ）');
+    // wageData.push は「自分名義の時だけ」のブロック内にあるべき
+    const pushIdx = save.indexOf('wageData.push');
+    const guardIdx = save.lastIndexOf('creditTo===me', pushIdx);
+    assert.ok(pushIdx > 0 && guardIdx > 0 && (pushIdx - guardIdx) < 150,
+      'wageData.push が自分名義チェックの外にある（代理入力が自分の合計を汚染する）');
+  });
 }
 
 /* ============================================================
