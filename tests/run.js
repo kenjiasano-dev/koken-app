@@ -225,6 +225,30 @@ function regressionSuite() {
     assert.ok(ifIdx > 0 && selectIdx > ifIdx,
       '名前選択欄がisPcScreenの分岐の外にある（全員に出てしまう）');
   });
+
+  test('使う機能（作業ボード・受付・工賃）を店舗ごとにON/OFFできる', () => {
+    const html = readFile('app.html');
+    assert.ok(html.includes('id="feature-use-board"'), '作業ボードのON/OFFスイッチが無い');
+    assert.ok(html.includes('id="feature-use-front"'), 'フロント受付のON/OFFスイッチが無い');
+    assert.ok(html.includes('id="feature-use-wage"'), '工賃入力のON/OFFスイッチが無い');
+
+    const apply = extractFunction(html, 'applyFeatureToggles');
+    assert.ok(/useBoard/.test(apply) && /data-tab="genba"/.test(apply), '作業ボードOFF時にタブを隠す処理が無い');
+    assert.ok(/useWage/.test(apply) && /data-tab="input"/.test(apply), '工賃入力OFF時にタブを隠す処理が無い');
+
+    const save = extractFunction(html, 'saveFeatureToggles');
+    assert.ok(/useBoard/.test(save) && /useWage/.test(save), '保存時にuseBoard/useWageがサーバーへ送られていない');
+  });
+
+  test('GASのグループ設定に作業ボード・工賃のON/OFF列がある', () => {
+    const gas = readFile('../koken-gas-clone/code.js');
+    assert.ok(/作業ボード利用/.test(gas), 'GROUP_SETTINGS_COLSに作業ボード利用列が無い');
+    assert.ok(/工賃利用/.test(gas), 'GROUP_SETTINGS_COLSに工賃利用列が無い');
+    const get = extractFunction(gas, 'getGroupGoal');
+    assert.ok(/useBoard/.test(get) && /useWage/.test(get), 'getGroupGoalがuseBoard/useWageを返していない');
+    const set = extractFunction(gas, 'setGroupGoal');
+    assert.ok(/useBoard/.test(set) && /useWage/.test(set), 'setGroupGoalがuseBoard/useWageを保存していない');
+  });
 }
 
 /* ============================================================
