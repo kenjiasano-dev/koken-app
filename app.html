@@ -1780,7 +1780,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = 'app202608041000';
+const APP_VERSION = 'app202608041030';
 // LINEログイン(LIFF) — LINEコンソールで作成したLIFFアプリのIDを入れる
 const LIFF_ID = '2010638896-vJtjkUOr';
 // 公式アカウント「カーコン工賃通知」友だち追加URL（ここに飛ばすとLINEアプリの友だち追加画面が直接開く）
@@ -7448,17 +7448,25 @@ function bd_openWageInput(carId){
   if(!me){ toast('先に⚙️設定でお名前を登録してください'); return; }
   var cat = bd_wageCategory(c);
   var today = (new Date()).toISOString().slice(0,10);
-  // 誰の工賃として登録するか。既定は自分（今まで通り即入力）。他の人を選べば代理入力になる。
-  var members = (typeof getMembers==='function') ? getMembers() : [];
-  var names = members.slice(); if(names.indexOf(me)<0) names.unshift(me);
-  var nameOptions = names.map(function(n){ return '<option value="'+esc(n)+'"'+(n===me?' selected':'')+'>'+esc(n)+(n===me?'（自分）':'')+'</option>'; }).join('');
+  // 誰の工賃として登録するか（代理入力）は、店舗を作成した管理者だけに見せる。
+  // 普段の作業者は今まで通り「自分の分を即入力」だけのシンプルな画面のまま。
+  var isOwner = !!userData.groupCode && String(userData.groupCode) === String(userData.activeGroupCode||userData.groupCode);
+  var nameField;
+  if (isOwner) {
+    var members = (typeof getMembers==='function') ? getMembers() : [];
+    var names = members.slice(); if(names.indexOf(me)<0) names.unshift(me);
+    var nameOptions = names.map(function(n){ return '<option value="'+esc(n)+'"'+(n===me?' selected':'')+'>'+esc(n)+(n===me?'（自分）':'')+'</option>'; }).join('');
+    nameField = '<div class="field"><label>誰の工賃として登録するか</label><select id="bd-wage-name" style="width:100%;background:var(--card);border:0.5px solid var(--line2);color:var(--text);font-size:16px;padding:12px;border-radius:10px;">'+nameOptions+'</select></div>';
+  } else {
+    nameField = '<div style="font-size:12px;color:var(--muted);margin:-10px 0 14px;">担当: '+esc(me)+'</div>';
+  }
   var html = ''
     + '<h2>💰 工賃を入力</h2>'
     + '<div style="background:var(--card2);border-radius:10px;padding:12px 14px;margin-bottom:16px;">'
     +   '<div style="font-size:17px;font-weight:600;">'+esc(c.cartype)+' <span style="color:var(--muted);font-size:14px;">・'+esc(c.number)+'</span></div>'
     +   '<div style="font-size:12px;color:var(--muted);margin-top:4px;">区分: '+cat+'</div>'
     + '</div>'
-    + '<div class="field"><label>誰の工賃として登録するか</label><select id="bd-wage-name" style="width:100%;background:var(--card);border:0.5px solid var(--line2);color:var(--text);font-size:16px;padding:12px;border-radius:10px;">'+nameOptions+'</select></div>'
+    + nameField
     + '<div class="field"><label>金額（円）</label><input id="bd-wage-amount" inputmode="numeric" autocomplete="off" placeholder="例）50000"></div>'
     + '<div class="field"><label>日付</label><input id="bd-wage-date" type="date" value="'+today+'"></div>'
     + '<button class="btn" onclick="bd_saveWageInput(\''+c.id+'\')">この工賃を登録</button>';

@@ -214,6 +214,17 @@ function regressionSuite() {
     assert.ok(pushIdx > 0 && guardIdx > 0 && (pushIdx - guardIdx) < 150,
       'wageData.push が自分名義チェックの外にある（代理入力が自分の合計を汚染する）');
   });
+
+  test('代理入力の名前選択欄は、普段の作業者には出さない（管理者のみ）', () => {
+    const html = readFile('app.html');
+    const open = extractFunction(html, 'bd_openWageInput');
+    assert.ok(/isOwner/.test(open),
+      '管理者かどうかの判定が無い（全員に選択欄が出てしまい、普段の作業者に余計な操作が増える）');
+    const ifIdx = open.indexOf('if (isOwner)');
+    const selectIdx = open.indexOf('bd-wage-name');
+    assert.ok(ifIdx > 0 && selectIdx > ifIdx,
+      '名前選択欄がisOwnerの分岐の外にある（全員に出てしまう）');
+  });
 }
 
 /* ============================================================
