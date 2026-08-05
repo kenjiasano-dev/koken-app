@@ -313,6 +313,31 @@ function regressionSuite() {
     assert.ok(/openStageAssign/.test(card), '工程マスから担当を選ぶ機能が消えている');
   });
 
+  test('PC画面で「作業中」の列が広く、カードが読める幅を保っている', () => {
+    // 2026/8/5計測: 4列を等分していたため、車が集中する「作業中」のカードが1440px画面で
+    // 幅207pxまで潰れていた（設計書の目標は360px）。作業中に2倍の幅を与えて343pxまで回復。
+    const html = readFile('app.html');
+    const m = html.match(/\.pcd-cols\{[^}]*grid-template-columns:\s*([^;]+);/);
+    assert.ok(m, '.pcd-cols のグリッド指定が見つからない');
+    assert.ok(/2fr/.test(m[1]), '作業中の列に広い幅が割り当てられていない（等分に戻ると207pxまで潰れる）: ' + m[1]);
+
+    const apply = extractFunction(html, 'pcdApplyPanels');
+    assert.ok(!/repeat\(/.test(apply),
+      '列を等分するrepeat()が復活している（作業中だけ広くする指定が失われる）');
+    assert.ok(/k==='work'\s*\?\s*'2fr'/.test(apply), '作業中の列を2倍にする分岐が無い');
+  });
+
+  test('カードの初期表示が、スマホは開く・PCはたたむで分かれている', () => {
+    // 作業者は自分の車の「次へ」をすぐ押したい／店長は台数を一望したい、と要求が逆のため。
+    const html = readFile('app.html');
+    const fn = extractFunction(html, 'bd_workDefaultExpanded');
+    assert.ok(fn, 'bd_workDefaultExpandedが無い');
+    assert.ok(/innerWidth\s*<\s*1100/.test(fn),
+      '画面幅で初期表示を分けていない（PCで展開のままだと4台中1.5台しか見えない）');
+    assert.ok(/typeof\s+settings\.workStartExpanded\s*===\s*'boolean'/.test(fn),
+      '設定で明示的に選んだ場合にそれを優先していない');
+  });
+
   test('招待リンクの参加確認が、素のconfirm()ではなく専用モーダルになっている', () => {
     const html = readFile('index.html');
     assert.ok(html.includes('id="invite-join-modal-overlay"'), '招待参加モーダルのHTMLが無い');
