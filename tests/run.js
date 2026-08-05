@@ -267,6 +267,31 @@ function regressionSuite() {
     assert.ok(/addEventListener\(\s*['"]fetch['"]/.test(sw), 'sw.jsにfetchハンドラが無い（Chromeのインストール要件を満たせない）');
   });
 
+  test('同名の関数が二重に定義されていない（直しても画面が変わらない事故の防止）', () => {
+    // 2026/8/5: app.htmlに「末尾追記」時代の死んだ二重定義が700行たまっていた。
+    // JavaScriptは同名関数の最後の1つだけが効くため、手前のコピーを直すと無反応になる。
+    // 桁0の定義だけを数える（字下げされた関数は別関数の中のローカル関数で、同名でも衝突しない）。
+    for (const f of ['index.html', 'app.html', 'board.html']) {
+      const js = extractInlineScripts(readFile(f));
+      const counts = {};
+      for (const line of js.split(/\r?\n/)) {
+        const m = line.match(/^function\s+([A-Za-z0-9_]+)\s*\(/);
+        if (m) counts[m[1]] = (counts[m[1]] || 0) + 1;
+      }
+      const dupes = Object.entries(counts).filter(([, n]) => n > 1);
+      assert.strictEqual(dupes.length, 0,
+        f + ' に二重定義: ' + dupes.map(([n, c]) => n + '(' + c + '回)').join(', '));
+    }
+  });
+
+  test('デプロイ前チェックが index.html だけでなく app.html も見ている', () => {
+    const ps = readFile('deploy.ps1');
+    assert.ok(/\$targets\s*=.*app\.html/.test(ps),
+      'deploy.ps1の構文・重複チェックがapp.htmlを対象にしていない（app.htmlの不具合を素通しする）');
+    assert.ok(/git add[^\r\n]*app\.html/.test(ps),
+      'deploy.ps1のgit addにapp.htmlが無い（app.htmlを直してもpushされず、反映済みと誤表示される）');
+  });
+
   test('招待リンクの参加確認が、素のconfirm()ではなく専用モーダルになっている', () => {
     const html = readFile('index.html');
     assert.ok(html.includes('id="invite-join-modal-overlay"'), '招待参加モーダルのHTMLが無い');
