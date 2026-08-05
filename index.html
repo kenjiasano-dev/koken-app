@@ -763,7 +763,7 @@ input[type="date"].form-input::-webkit-calendar-picker-indicator { filter: inver
     <!-- ===== PAGE: SETTINGS ===== -->
     <div class="page" id="page-settings">
       <div class="section-header">⚙️ 設定</div>
-      <!-- Profile -->
+      <!-- Profile（最初はこれだけ。詳しい項目は下の「詳細設定」へ） -->
       <div class="card">
         <div class="card-title">プロフィール</div>
         <div class="form-group">
@@ -771,12 +771,55 @@ input[type="date"].form-input::-webkit-calendar-picker-indicator { filter: inver
           <input type="text" class="form-input" id="set-name" placeholder="山田 太郎">
         </div>
         <div class="form-group">
-          <label class="form-label">都道府県</label>
-          <select class="form-input" id="set-pref"></select>
-        </div>
-        <div class="form-group">
           <label class="form-label">店舗名</label>
           <input type="text" class="form-input" id="set-store" placeholder="カーコン○○店">
+          <div style="font-size:11px;color:var(--text-sub);margin-top:4px;">※ 招待から参加すると自動で入ります</div>
+        </div>
+        <button class="submit-btn" onclick="saveProfile()">💾 保存する</button>
+        <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border);">
+          <div style="font-size:12px;color:var(--text-sub);margin-bottom:6px;">📱 端末ID（機種変更時にメモしてください）</div>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <div id="uuid-display" style="flex:1;font-size:11px;color:var(--text-sub);background:var(--border);padding:8px 10px;border-radius:8px;word-break:break-all;font-family:monospace;"></div>
+            <button onclick="copyUUID()" style="padding:8px 12px;background:var(--card);border:1px solid var(--border);border-radius:8px;font-size:12px;cursor:pointer;white-space:nowrap;">📋 コピー</button></div>
+          <button onclick="registerWithLINE()" style="width:100%;margin-top:8px;padding:10px;background:#00b900;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;">🔔 LINE通知を受け取る（機種変更対策にも）</button>
+          <div style="font-size:11px;color:var(--text-sub);margin-top:4px;">※ 上の「保存する」を先に押してから使えます</div>
+          <div id="line-register-status" style="margin-top:6px;font-size:12px;text-align:center;"></div>
+        </div>
+      </div>
+      <!-- Group -->
+      <div class="card">
+        <div class="card-title">🏪 フォロー中の店舗</div>
+        <div style="font-size:13px;color:var(--text-sub);margin-bottom:12px;">複数の店舗コードを登録して切り替えて見られます</div>
+        <!-- フォロー中リスト -->
+        <div id="followed-stores-list" style="margin-bottom:12px;"></div>
+        <!-- 新規追加 -->
+        <div style="display:flex;gap:8px;margin-bottom:8px;">
+          <input type="text" class="form-input" id="set-group-name" placeholder="店舗名（例: 研修センター）" style="flex:1;">
+        </div>
+        <div style="display:flex;gap:8px;">
+          <input type="text" class="form-input" id="set-group" placeholder="コード（例: KOKEN-001）" style="flex:1;letter-spacing:2px;font-weight:700;text-transform:uppercase;">
+          <button onclick="joinGroup()" style="padding:12px 16px;background:var(--green);color:#fff;border-radius:10px;font-size:13px;font-weight:700;white-space:nowrap;">追加</button>
+        </div>
+        <div style="margin-top:8px;">
+          <button onclick="generateGroupCode()" style="width:100%;padding:12px;background:var(--green-light);color:var(--green);border-radius:10px;font-size:13px;font-weight:700;">🔑 新しいコードを発行</button>
+        </div>
+        <div id="group-code-display" style="display:none;margin-top:12px;">
+          <div class="card-title">発行されたコード</div>
+          <div class="group-code-display" id="group-code-text"></div>
+          <button onclick="copyGroupCode()" style="width:100%;padding:10px;background:var(--border);border-radius:8px;font-size:13px;font-weight:600;">📋 コピーする</button>
+        </div>
+      </div>
+      <!-- 詳細設定トグル -->
+      <div style="padding:0 4px;">
+        <button onclick="toggleAdvancedSettings()" id="advanced-settings-btn" style="width:100%;padding:11px;background:var(--card);color:var(--text-sub);border:1px solid var(--border);border-radius:10px;font-size:13px;cursor:pointer;">⚙️ 詳細設定</button>
+      </div>
+      <div id="advanced-settings-block" style="display:none;">
+      <!-- Profile詳細（都道府県・職種・経験年数・年度開始月）任意項目なのでここに退避 -->
+      <div class="card">
+        <div class="card-title">🧑 詳しいプロフィール（任意）</div>
+        <div class="form-group">
+          <label class="form-label">都道府県</label>
+          <select class="form-input" id="set-pref"></select>
         </div>
         <div class="form-group">
           <label class="form-label">職種 <span style="font-size:11px;color:var(--text-sub);font-weight:400;">（複数選択可）</span></label>
@@ -818,40 +861,7 @@ input[type="date"].form-input::-webkit-calendar-picker-indicator { filter: inver
           </select>
         </div>
         <button class="submit-btn" onclick="saveProfile()">💾 保存する</button>
-        <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border);">
-          <div style="font-size:12px;color:var(--text-sub);margin-bottom:6px;">📱 端末ID（機種変更時にメモしてください）</div>
-          <div style="display:flex;gap:8px;align-items:center;">
-            <div id="uuid-display" style="flex:1;font-size:11px;color:var(--text-sub);background:var(--border);padding:8px 10px;border-radius:8px;word-break:break-all;font-family:monospace;"></div>
-            <button onclick="copyUUID()" style="padding:8px 12px;background:var(--card);border:1px solid var(--border);border-radius:8px;font-size:12px;cursor:pointer;white-space:nowrap;">📋 コピー</button></div><button onclick="registerWithLINE()" style="width:100%;margin-top:8px;padding:10px;background:#00b900;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;">📲 LINEで登録</button><div id="line-register-status" style="margin-top:6px;font-size:12px;text-align:center;"></div></div>
       </div>
-      <!-- Group -->
-      <div class="card">
-        <div class="card-title">🏪 フォロー中の店舗</div>
-        <div style="font-size:13px;color:var(--text-sub);margin-bottom:12px;">複数の店舗コードを登録して切り替えて見られます</div>
-        <!-- フォロー中リスト -->
-        <div id="followed-stores-list" style="margin-bottom:12px;"></div>
-        <!-- 新規追加 -->
-        <div style="display:flex;gap:8px;margin-bottom:8px;">
-          <input type="text" class="form-input" id="set-group-name" placeholder="店舗名（例: 研修センター）" style="flex:1;">
-        </div>
-        <div style="display:flex;gap:8px;">
-          <input type="text" class="form-input" id="set-group" placeholder="コード（例: KOKEN-001）" style="flex:1;letter-spacing:2px;font-weight:700;text-transform:uppercase;">
-          <button onclick="joinGroup()" style="padding:12px 16px;background:var(--green);color:#fff;border-radius:10px;font-size:13px;font-weight:700;white-space:nowrap;">追加</button>
-        </div>
-        <div style="margin-top:8px;">
-          <button onclick="generateGroupCode()" style="width:100%;padding:12px;background:var(--green-light);color:var(--green);border-radius:10px;font-size:13px;font-weight:700;">🔑 新しいコードを発行</button>
-        </div>
-        <div id="group-code-display" style="display:none;margin-top:12px;">
-          <div class="card-title">発行されたコード</div>
-          <div class="group-code-display" id="group-code-text"></div>
-          <button onclick="copyGroupCode()" style="width:100%;padding:10px;background:var(--border);border-radius:8px;font-size:13px;font-weight:600;">📋 コピーする</button>
-        </div>
-      </div>
-      <!-- 詳細設定トグル -->
-      <div style="padding:0 4px;">
-        <button onclick="toggleAdvancedSettings()" id="advanced-settings-btn" style="width:100%;padding:11px;background:var(--card);color:var(--text-sub);border:1px solid var(--border);border-radius:10px;font-size:13px;cursor:pointer;">⚙️ 詳細設定</button>
-      </div>
-      <div id="advanced-settings-block" style="display:none;">
       <!-- Theme Selector -->
       <div class="card">
         <div class="card-title">🎨 テーマカラー</div>
@@ -1281,6 +1291,20 @@ input[type="date"].form-input::-webkit-calendar-picker-indicator { filter: inver
   </div>
 </div>
 
+<!-- 招待リンクからの参加確認モーダル -->
+<div class="modal-overlay" id="invite-join-modal-overlay" onclick="closeInviteJoinModal(event)">
+  <div class="modal">
+    <div style="text-align:center;padding:8px 4px 4px;">
+      <div style="font-size:44px;margin-bottom:8px;">🏪</div>
+      <div style="font-size:15px;color:var(--text-sub);margin-bottom:6px;">このお店に参加しますか？</div>
+      <div id="invite-join-store-name" style="font-size:20px;font-weight:700;color:var(--green);margin-bottom:4px;"></div>
+      <div id="invite-join-code" style="font-size:12px;color:var(--text-sub);letter-spacing:2px;margin-bottom:22px;"></div>
+      <button class="submit-btn" onclick="confirmInviteJoin()" style="margin-top:0;">✅ 参加する</button>
+      <button onclick="closeInviteJoinModal()" style="width:100%;margin-top:10px;padding:12px;background:transparent;color:var(--text-sub);border:none;font-size:13px;cursor:pointer;">キャンセル</button>
+    </div>
+  </div>
+</div>
+
 <!-- TOAST -->
 <div class="toast" id="toast"></div>
 
@@ -1328,7 +1352,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = '20260804a';
+const APP_VERSION = '20260805a';
 // LINEログイン(LIFF) — LINEコンソールで作成したLIFFアプリのIDを入れる
 const LIFF_ID = '2010638896-vJtjkUOr';
 // 公式アカウント「カーコン工賃通知」友だち追加URL（ここに飛ばすとLINEアプリの友だち追加画面が直接開く）
@@ -3433,6 +3457,9 @@ function generateGroupCode() {
   if (!userData.ninjaMode) postToGAS({ action: 'updateProfile', name: userData.name, pref: userData.pref, store: userData.store, goal: userData.goal, role: userData.role || '', groupCode: code });
 }
 
+var _pendingInviteCode = '';
+var _pendingInviteResolvedStore = '';
+
 function handleInviteLink() {
   var inviteCode = '';
   try { inviteCode = (new URLSearchParams(location.search).get('invite') || '').trim().toUpperCase(); } catch(e) {}
@@ -3442,24 +3469,56 @@ function handleInviteLink() {
   setTimeout(function() {
     if (!userData.groupCodes) userData.groupCodes = [];
     if (userData.groupCodes.find(function(g){ return g.code === inviteCode; })) {
-      showToast('すでに参加済みのグループです: ' + inviteCode, 4000);
+      showToast('すでに参加済みのお店です: ' + inviteCode, 4000);
       return;
     }
-    if (!confirm('グループ「' + inviteCode + '」に参加しますか？')) return;
-    userData.groupCodes.push({ code: inviteCode, name: inviteCode });
-    userData.activeGroupCode = inviteCode;
-    userData.groupCode = inviteCode;
-    saveLocal();
-    if (typeof renderFollowedStores === 'function') renderFollowedStores();
-    if (typeof renderStoreSwitcher === 'function') renderStoreSwitcher();
-    showToast('✅ グループ「' + inviteCode + '」に参加しました', 4000);
-    refreshGroupNames();
-    if (userData.name && !userData.ninjaMode) {
-      postToGAS({ action: 'updateProfile', name: userData.name, pref: userData.pref || '', store: userData.store || '', goal: userData.goal || 100, role: userData.role || '', groupCode: inviteCode });
-    } else if (!userData.name) {
-      setTimeout(function(){ showToast('⚙️ 設定でお名前を登録するとランキングに表示されます', 5000); switchTab('settings'); }, 1500);
-    }
-  }, 800);
+    openInviteJoinModal(inviteCode);
+  }, 400);
+}
+
+function openInviteJoinModal(inviteCode) {
+  _pendingInviteCode = inviteCode;
+  _pendingInviteResolvedStore = '';
+  document.getElementById('invite-join-code').textContent = inviteCode;
+  document.getElementById('invite-join-store-name').textContent = '読み込み中…';
+  document.getElementById('invite-join-modal-overlay').classList.add('show');
+  resolveGroupName(inviteCode).then(function(name) {
+    if (_pendingInviteCode !== inviteCode) return; // 表示中に閉じられた／別のコードに変わった
+    _pendingInviteResolvedStore = name || '';
+    document.getElementById('invite-join-store-name').textContent = name || inviteCode;
+  });
+}
+
+function closeInviteJoinModal(e) {
+  if (e && e.target !== document.getElementById('invite-join-modal-overlay')) return;
+  document.getElementById('invite-join-modal-overlay').classList.remove('show');
+  _pendingInviteCode = '';
+}
+
+function confirmInviteJoin() {
+  var inviteCode = _pendingInviteCode;
+  if (!inviteCode) return;
+  document.getElementById('invite-join-modal-overlay').classList.remove('show');
+  if (!userData.groupCodes) userData.groupCodes = [];
+  userData.groupCodes.push({ code: inviteCode, name: _pendingInviteResolvedStore || inviteCode });
+  userData.activeGroupCode = inviteCode;
+  userData.groupCode = inviteCode;
+  if (!userData.store && _pendingInviteResolvedStore) {
+    userData.store = _pendingInviteResolvedStore;
+    var storeInput = document.getElementById('set-store');
+    if (storeInput) storeInput.value = _pendingInviteResolvedStore;
+  }
+  saveLocal();
+  if (typeof renderFollowedStores === 'function') renderFollowedStores();
+  if (typeof renderStoreSwitcher === 'function') renderStoreSwitcher();
+  showToast('✅ 「' + (_pendingInviteResolvedStore || inviteCode) + '」に参加しました', 4000);
+  refreshGroupNames();
+  if (userData.name && !userData.ninjaMode) {
+    postToGAS({ action: 'updateProfile', name: userData.name, pref: userData.pref || '', store: userData.store || '', goal: userData.goal || 100, role: userData.role || '', groupCode: inviteCode });
+  } else if (!userData.name) {
+    setTimeout(function(){ showToast('⚙️ 最後にお名前だけ登録してください', 4000); switchTab('settings'); }, 1200);
+  }
+  _pendingInviteCode = '';
 }
 
 function joinGroup() {
@@ -3483,6 +3542,17 @@ function joinGroup() {
   if (!userData.ninjaMode) postToGAS({ action: 'updateProfile', name: userData.name, pref: userData.pref, store: userData.store, goal: userData.goal, role: userData.role || '', groupCode: code });
   // 名前をコードのままにした場合はサーバーから実店舗名を補完
   if (name === code) refreshGroupNames();
+  // 自分のプロフィールの店舗名が未入力なら、参加した店舗の実店舗名で自動的に埋める
+  if (!userData.store) {
+    resolveGroupName(code).then(function(resolved) {
+      if (resolved && !userData.store) {
+        userData.store = resolved;
+        saveLocal();
+        var storeInput = document.getElementById('set-store');
+        if (storeInput) storeInput.value = resolved;
+      }
+    });
+  }
 }
 
 // グループコードからサーバー上の実店舗名を引く（メンバーの店舗名の最頻値）
