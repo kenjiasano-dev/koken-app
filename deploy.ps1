@@ -82,41 +82,48 @@ if ($LASTEXITCODE -ne 0) {
     exit 1
 }
 
-# 3. 構文チェック(<script>タグ抽出してnode --check)
-Write-Host "== 構文チェック ==" -ForegroundColor Cyan
-$matches = [regex]::Matches($html, '(?s)<script(?![^>]*\bsrc=)[^>]*>(.*?)</script>')
-$jsBody = ($matches | ForEach-Object { $_.Groups[1].Value }) -join "`n"
-$jsPath = "$env:TEMP\koken-deploy-check.js"
-[System.IO.File]::WriteAllText($jsPath, $jsBody, (New-Object System.Text.UTF8Encoding($false)))
-node --check $jsPath
-if ($LASTEXITCODE -ne 0) {
-    Write-Error "構文エラーがあります。デプロイを中止しました。"
-    exit 1
-}
-Write-Host "構文チェックOK" -ForegroundColor Green
+# 3. 構文チェック＋重複関数定義チェック
+#    対象はHTML全ファイル。以前はindex.htmlしか見ておらず、app.htmlに死んだ二重定義が
+#    700行たまっていたのを2026/8/5に発見・削除した。同じ穴を二度と開けないため全ファイルを回す。
+$targets = @('index.html', 'app.html', 'board.html') | Where-Object { Test-Path "$repoPath\$_" }
 
-# 3.5. 重複関数定義チェック(旧・末尾追記方式時代に混入した同名関数の再発防止)
-Write-Host "== 重複関数定義チェック ==" -ForegroundColor Cyan
-$jsLines = $jsBody -split "`r?`n"
-$funcCounts = @{}
-foreach ($line in $jsLines) {
-    if ($line -match '^function\s+([A-Za-z0-9_]+)\s*\(') {
-        $name = $Matches[1]
-        if ($funcCounts.ContainsKey($name)) { $funcCounts[$name] += 1 } else { $funcCounts[$name] = 1 }
+foreach ($target in $targets) {
+    Write-Host "== 構文チェック: $target ==" -ForegroundColor Cyan
+    $targetHtml = [System.IO.File]::ReadAllText("$repoPath\$target")
+    $m = [regex]::Matches($targetHtml, '(?s)<script(?![^>]*\bsrc=)[^>]*>(.*?)</script>')
+    $jsBody = ($m | ForEach-Object { $_.Groups[1].Value }) -join "`n"
+    $jsPath = "$env:TEMP\koken-deploy-check.js"
+    [System.IO.File]::WriteAllText($jsPath, $jsBody, (New-Object System.Text.UTF8Encoding($false)))
+    node --check $jsPath
+    if ($LASTEXITCODE -ne 0) {
+        Write-Error "$target に構文エラーがあります。デプロイを中止しました。"
+        exit 1
     }
+
+    # 重複関数定義チェック(旧・末尾追記方式時代に混入した同名関数の再発防止)
+    # 桁0の定義だけを数える。字下げされた関数は別の関数の中のローカル関数で、同名でも衝突しない。
+    $jsLines = $jsBody -split "`r?`n"
+    $funcCounts = @{}
+    foreach ($line in $jsLines) {
+        if ($line -match '^function\s+([A-Za-z0-9_]+)\s*\(') {
+            $name = $Matches[1]
+            if ($funcCounts.ContainsKey($name)) { $funcCounts[$name] += 1 } else { $funcCounts[$name] = 1 }
+        }
+    }
+    $dupes = $funcCounts.GetEnumerator() | Where-Object { $_.Value -gt 1 }
+    if ($dupes) {
+        Write-Host "$target で重複定義された関数:" -ForegroundColor Red
+        $dupes | ForEach-Object { Write-Host ("  {0} ({1}回定義)" -f $_.Key, $_.Value) -ForegroundColor Red }
+        Write-Error "同名関数が複数回定義されています(後の定義が前を上書きし、直しても画面が変わらない事故のもと)。デプロイを中止しました。"
+        exit 1
+    }
+    Write-Host "  OK ($target)" -ForegroundColor Green
 }
-$dupes = $funcCounts.GetEnumerator() | Where-Object { $_.Value -gt 1 }
-if ($dupes) {
-    Write-Host "重複定義された関数:" -ForegroundColor Red
-    $dupes | ForEach-Object { Write-Host ("  {0} ({1}回定義)" -f $_.Key, $_.Value) -ForegroundColor Red }
-    Write-Error "同名関数が複数回定義されています。デプロイを中止しました。"
-    exit 1
-}
-Write-Host "重複関数定義チェックOK" -ForegroundColor Green
 
 # 4. commit & push
+#    app.html を含めないと、app.html だけ直したときに「反映されたはずが実は未push」になる(2026/8/4に発生)
 Write-Host "== コミット & プッシュ ==" -ForegroundColor Cyan
-git add index.html board.html
+git add index.html app.html board.html sw.js tests/ deploy.ps1
 git commit -m $Message
 git push "https://$($env:GITHUB_TOKEN_KOKEN)@github.com/kenjiasano-dev/koken-app.git" main
 
