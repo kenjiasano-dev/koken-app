@@ -8,7 +8,9 @@
      3) 同期チェック … index/app/board の3ファイルで共通ロジックがズレていないか
      4) GAS計算    … 月の判定や称号など、集計の土台になる純粋な計算 */
 const assert = require('assert');
-const { readFile, extractInlineScripts, extractFunction, createFakeStorage, loadFunctions } = require('./harness');
+const fs = require('fs');
+const path = require('path');
+const { REPO, readFile, extractInlineScripts, extractFunction, createFakeStorage, loadFunctions } = require('./harness');
 
 let passed = 0, failed = 0;
 const failures = [];
@@ -248,6 +250,21 @@ function regressionSuite() {
     assert.ok(/useBoard/.test(get) && /useWage/.test(get), 'getGroupGoalがuseBoard/useWageを返していない');
     const set = extractFunction(gas, 'setGroupGoal');
     assert.ok(/useBoard/.test(set) && /useWage/.test(set), 'setGroupGoalがuseBoard/useWageを保存していない');
+  });
+
+  test('PC画面で開いたときだけ「アプリとして追加」ボタンが自動で出る（サービスワーカーも登録済み）', () => {
+    const html = readFile('app.html');
+    assert.ok(html.includes('id="pwa-install-btn"'), 'アプリ追加ボタンのHTMLが無い');
+    assert.ok(/navigator\.serviceWorker\.register\(/.test(html), 'サービスワーカーを登録していない（Chromeのインストール要件を満たせない）');
+
+    const update = extractFunction(html, 'updatePwaInstallButton');
+    assert.ok(update, 'updatePwaInstallButtonが無い');
+    assert.ok(/isPcScreen/.test(update) && /1100/.test(update), 'PC画面かどうかの判定が無い（スマホにも出てしまう）');
+    assert.ok(/isStandalonePwa/.test(update), 'インストール済みかどうかを見ていない（インストール後も出続ける恐れ）');
+
+    assert.ok(fs.existsSync(path.join(REPO, 'sw.js')), 'sw.js が無い（サービスワーカーの実体が無いと登録に失敗する）');
+    const sw = readFile('sw.js');
+    assert.ok(/addEventListener\(\s*['"]fetch['"]/.test(sw), 'sw.jsにfetchハンドラが無い（Chromeのインストール要件を満たせない）');
   });
 }
 
