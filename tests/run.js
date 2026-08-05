@@ -266,6 +266,42 @@ function regressionSuite() {
     const sw = readFile('sw.js');
     assert.ok(/addEventListener\(\s*['"]fetch['"]/.test(sw), 'sw.jsにfetchハンドラが無い（Chromeのインストール要件を満たせない）');
   });
+
+  test('招待リンクの参加確認が、素のconfirm()ではなく専用モーダルになっている', () => {
+    const html = readFile('index.html');
+    assert.ok(html.includes('id="invite-join-modal-overlay"'), '招待参加モーダルのHTMLが無い');
+    const handle = extractFunction(html, 'handleInviteLink');
+    assert.ok(handle, 'handleInviteLinkが無い');
+    assert.ok(!/confirm\(/.test(handle), '招待の参加確認に素のconfirm()が復活している（誤操作でキャンセルされやすい）');
+    assert.ok(/openInviteJoinModal/.test(handle), 'handleInviteLinkがモーダルを開いていない');
+    const confirmJoin = extractFunction(html, 'confirmInviteJoin');
+    assert.ok(confirmJoin, 'confirmInviteJoinが無い');
+  });
+
+  test('招待やコード参加で、自分の店舗名が未入力なら実店舗名で自動的に埋まる', () => {
+    const html = readFile('index.html');
+    const confirmJoin = extractFunction(html, 'confirmInviteJoin');
+    assert.ok(/userData\.store\s*=\s*_pendingInviteResolvedStore/.test(confirmJoin),
+      '招待参加時に店舗名を自動で埋める処理が無い');
+    const joinGroupFn = extractFunction(html, 'joinGroup');
+    assert.ok(/resolveGroupName/.test(joinGroupFn),
+      'コード手入力での参加時に店舗名を自動で埋める処理が無い');
+  });
+
+  test('初回のプロフィール登録は「名前」「店舗名」だけで完結する（都道府県等は詳細設定へ）', () => {
+    const html = readFile('index.html');
+    const profileStart = html.indexOf('<!-- Profile');
+    const advancedStart = html.indexOf('id="advanced-settings-block"');
+    assert.ok(profileStart > 0 && advancedStart > profileStart, 'プロフィールカード／詳細設定の位置が想定と違う');
+    const profileCard = html.slice(profileStart, advancedStart);
+    assert.ok(profileCard.includes('id="set-name"') && profileCard.includes('id="set-store"'),
+      '最初のプロフィールカードに名前・店舗名が無い');
+    assert.ok(!profileCard.includes('id="set-pref"') && !profileCard.includes('id="set-fiscal-start"'),
+      '都道府県・年度開始月などの任意項目が、最初のプロフィールカードに残ったまま（詳細設定に退避できていない）');
+    const advancedBlock = html.slice(advancedStart);
+    assert.ok(advancedBlock.includes('id="set-pref"') && advancedBlock.includes('id="set-fiscal-start"'),
+      '都道府県・年度開始月が詳細設定の中に見つからない');
+  });
 }
 
 /* ============================================================
