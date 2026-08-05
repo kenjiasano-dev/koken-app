@@ -292,6 +292,27 @@ function regressionSuite() {
       'deploy.ps1のgit addにapp.htmlが無い（app.htmlを直してもpushされず、反映済みと誤表示される）');
   });
 
+  test('現場ボードの工程マスが、現場で読める大きさを保っている', () => {
+    // 2026/8/5計測: 9工程を横に並べると1マス36pxしかなく、工程名が10px・2行折返しで読めなかった。
+    // 工程名をやめて番号(1文字)にしたので、二度と極小フォントに戻さないよう見張る。
+    const html = readFile('app.html');
+    const card = extractFunction(html, 'bd_workCardHtml');
+    assert.ok(/class="hnum"/.test(card), '工程マスが番号表示(.hnum)になっていない');
+    assert.ok(!/class="hname"/.test(card), '読めない工程名(.hname)が復活している');
+
+    const m = html.match(/\.hnum\{[^}]*font-size:\s*([\d.]+)px/);
+    assert.ok(m, '.hnum のフォント指定が見つからない');
+    assert.ok(parseFloat(m[1]) >= 14, '工程番号が' + m[1] + 'px（14px未満は現場で読めない）');
+
+    // 所要時間は1行に固定。折り返すと番号・担当の行がずれてガタつく
+    const t = html.match(/\.htime\{[^}]*\}/);
+    assert.ok(t && /white-space:\s*nowrap/.test(t[0]), '.htime に nowrap が無い（「120分」等で折り返して桁が崩れる）');
+    assert.ok(/function\s+fmtMinShort/.test(html), '短い時間表記(fmtMinShort)が無い');
+
+    // 工程マスを押して担当を選ぶ機能を消していないこと
+    assert.ok(/openStageAssign/.test(card), '工程マスから担当を選ぶ機能が消えている');
+  });
+
   test('招待リンクの参加確認が、素のconfirm()ではなく専用モーダルになっている', () => {
     const html = readFile('index.html');
     assert.ok(html.includes('id="invite-join-modal-overlay"'), '招待参加モーダルのHTMLが無い');
