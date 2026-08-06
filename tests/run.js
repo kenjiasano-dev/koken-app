@@ -292,19 +292,15 @@ function regressionSuite() {
       'deploy.ps1のgit addにapp.htmlが無い（app.htmlを直してもpushされず、反映済みと誤表示される）');
   });
 
-  test('現場ボードの工程マスが、現場で読める大きさを保っている', () => {
-    // 2026/8/5計測: 9工程を横に並べると1マス36pxしかなく、工程名が10px・2行折返しで読めなかった。
-    // 工程名をやめて番号(1文字)にしたので、二度と極小フォントに戻さないよう見張る。
+  test('現場ボードの工程マスに、工程名が表示されている', () => {
+    // 2026/8/5に一度「番号だけ表示」にしたが、現場で「今何をしているか分からない」と不評だったため
+    // 2026/8/6に工程名表示へ戻した。番号だけでは、覚えていないとその工程が何かわからない。
     const html = readFile('app.html');
     const card = extractFunction(html, 'bd_workCardHtml');
-    assert.ok(/class="hnum"/.test(card), '工程マスが番号表示(.hnum)になっていない');
-    assert.ok(!/class="hname"/.test(card), '読めない工程名(.hname)が復活している');
+    assert.ok(/class="hname"/.test(card), '工程マスが工程名表示(.hname)になっていない');
+    assert.ok(!/class="hnum"/.test(card), '番号だけの表示(.hnum)が復活している（現場で工程が分からなくなる）');
 
-    const m = html.match(/\.hnum\{[^}]*font-size:\s*([\d.]+)px/);
-    assert.ok(m, '.hnum のフォント指定が見つからない');
-    assert.ok(parseFloat(m[1]) >= 14, '工程番号が' + m[1] + 'px（14px未満は現場で読めない）');
-
-    // 所要時間は1行に固定。折り返すと番号・担当の行がずれてガタつく
+    // 所要時間は1行に固定。折り返すと工程名・担当の行がずれてガタつく
     const t = html.match(/\.htime\{[^}]*\}/);
     assert.ok(t && /white-space:\s*nowrap/.test(t[0]), '.htime に nowrap が無い（「120分」等で折り返して桁が崩れる）');
     assert.ok(/function\s+fmtMinShort/.test(html), '短い時間表記(fmtMinShort)が無い');

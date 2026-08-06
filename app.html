@@ -382,25 +382,25 @@ input[type="time"]::-webkit-calendar-picker-indicator { filter: invert(1); opaci
 .gaugefoot{display:flex; align-items:center; justify-content:space-between; font-size:12px; color:var(--muted);}
 .crew{font-size:11px; color:var(--muted2); margin-top:6px; line-height:1.5;}
 .crew b{color:var(--muted); font-weight:400;}
-/* 横ステップ（マスの下に工程番号、タイムと担当も表示）
-   以前は工程名をそのまま並べていたが、9工程を横に並べると1マス36pxしかなく、
-   工程名が10pxまで縮んで2行折返しになり現場で読めなかった(2026/8/5計測)。
-   工程名は「いま ⑥ 塗装」の大きい表示と、マスを押したときの担当選択画面に出るので、
-   マスには番号だけを大きく置く。番号は1文字なので折返しもしない。 */
+/* 横ステップ（マスの下に工程名を横書き、長ければ2行折返し、タイムも表示）
+   2026/8/5に一度「番号だけ表示」に変更したが、現場で「今何をしているか分からない」と不評だったため
+   工程名の表示に戻した(2026/8/6)。番号(mark)だけでは、その番号が何の工程か覚えていないと分からない。
+   タイムのnowrap・バーを太くした点など、名前表示と無関係な改善はそのまま残す。 */
 .hsteps{display:flex; gap:4px; margin:10px 0 4px;}
 .hstep{flex:1; min-width:0; text-align:center; padding:5px 0 3px; border-radius:6px;}
 .hstep:active{background:var(--accent-bg);}   /* 押した手応え（指が細いマスでも反応がわかる） */
 .hbar{height:13px; border-radius:4px; background:var(--line2); margin-bottom:5px;}
-.hnum{font-size:15px; font-weight:700; line-height:1.2; color:var(--muted2); min-height:19px;}
+.hname{font-size:10px; line-height:1.25; color:var(--muted2); word-break:break-all;
+  display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; min-height:25px;}
 .htime{font-size:12px; font-weight:600; line-height:1.3; color:var(--muted2); min-height:17px;
-  white-space:nowrap; overflow:hidden;}   /* 折り返すと番号・担当の行がずれるため必ず1行 */
+  white-space:nowrap; overflow:hidden;}   /* 折り返すと工程名・担当の行がずれるため必ず1行 */
 .hstep.done .hbar{background:var(--green);}
-.hstep.done .hnum{color:var(--muted);}
+.hstep.done .hname{color:var(--muted);}
 .hstep.cur .hbar{background:var(--accent);}
-.hstep.cur .hnum{color:var(--accent);}
+.hstep.cur .hname{color:var(--accent); font-weight:600;}
 .hstep.cur .htime{color:var(--accent);}
 .hstep.curw .hbar{background:var(--red);}
-.hstep.curw .hnum{color:var(--red);}
+.hstep.curw .hname{color:var(--red); font-weight:600;}
 .hstep.curw .htime{color:var(--red);}
 /* 現在工程を大きく見せる */
 .nowline{display:flex; align-items:baseline; justify-content:space-between; gap:8px; margin:10px 0 7px;}
@@ -627,7 +627,7 @@ input[type="time"]::-webkit-calendar-picker-indicator { filter: invert(1); opaci
 /* ===== 段階12: PCダッシュボードの車カードをスマホ版と同じ見た目に(工程ゲージ・ボタン込み) ===== */
 .pcd-list .car{ margin-bottom:10px; }
 .pcd-list .car:last-child{ margin-bottom:0; }
-.pcd-list .hnum{ font-size:12px; }
+.pcd-list .hname{ font-size:9px; }
 .pcd-list .htime{ font-size:11px; }
 /* ===== 段階15: 時刻クイックチップの選択強調 ===== */
 .dv-chip.on{ border-color:var(--accent); background:var(--accent-bg); color:var(--accent); font-weight:700; }
@@ -653,7 +653,7 @@ input[type="time"]::-webkit-calendar-picker-indicator { filter: invert(1); opaci
 .pcd-cols.single-col .car{ padding:8px 12px 9px; }
 .pcd-cols.single-col .hsteps{ gap:3px; margin:6px 0 5px; }
 .pcd-cols.single-col .hbar{ height:4px; margin-bottom:3px; }
-.pcd-cols.single-col .hnum{ font-size:11px; min-height:auto; }
+.pcd-cols.single-col .hname{ font-size:9.5px; min-height:auto; -webkit-line-clamp:1; }
 .pcd-cols.single-col .htime{ display:none; }
 .pcd-cols.single-col .hwho{ font-size:9.5px !important; margin-top:1px !important; }</style>
 <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
@@ -1816,7 +1816,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = 'app202608051820';
+const APP_VERSION = 'app202608061000';
 // LINEログイン(LIFF) — LINEコンソールで作成したLIFFアプリのIDを入れる
 const LIFF_ID = '2010638896-vJtjkUOr';
 // 公式アカウント「カーコン工賃通知」友だち追加URL（ここに飛ばすとLINEアプリの友だち追加画面が直接開く）
@@ -7848,7 +7848,7 @@ function bd_workCardHtml(c){
       const whoHtml = who
         ? `<div class="hwho" style="font-size:11px;line-height:1.15;margin-top:1px;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;${whoStyle}">${esc(who)}</div>`
         : (i<=c.stage ? `<div class="hwho" style="font-size:11px;line-height:1.15;margin-top:1px;text-align:center;color:var(--muted2);opacity:.45;">＋</div>` : '');
-      return `<div class="${cls}" style="cursor:pointer;" title="${esc(name)}｜担当を選ぶ" onclick="openStageAssign('${c.id}',${i})"><div class="hbar"></div><div class="hnum">${mark(i)}</div><div class="htime">${t}</div>${whoHtml}</div>`;
+      return `<div class="${cls}" style="cursor:pointer;" title="この工程の担当を選ぶ" onclick="openStageAssign('${c.id}',${i})"><div class="hbar"></div><div class="hname">${esc(name)}</div><div class="htime">${t}</div>${whoHtml}</div>`;
     }).join('');
     const isLast = c.stage===S.length-1;
     const curName = `${mark(c.stage)} ${esc(S[c.stage])}`;
