@@ -1352,7 +1352,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = '20260805d';
+const APP_VERSION = '20260806a';
 // LINEログイン(LIFF) — LINEコンソールで作成したLIFFアプリのIDを入れる
 const LIFF_ID = '2010638896-vJtjkUOr';
 // 公式アカウント「カーコン工賃通知」友だち追加URL（ここに飛ばすとLINEアプリの友だち追加画面が直接開く）
@@ -1746,7 +1746,8 @@ async function renderMemberList() {
         '</div>';
       }).join('');
     }
-    var inviteLink = 'https://kenjiasano-dev.github.io/koken-app/?invite=' + encodeURIComponent(code);
+    // 招待された人が、招待した人と同じ画面に着地するようにする（app.html/index.htmlの取り違え防止）
+    var inviteLink = location.origin + location.pathname + '?invite=' + encodeURIComponent(code);
     var inviteUrl = 'https://line.me/R/msg/text/?' + encodeURIComponent('工賃管理アプリに招待します！\nこのリンクを開くだけで参加できます👇\n' + inviteLink);
     html += '<div style="margin-top:12px;padding:12px;background:var(--card);border-radius:10px;border:1px solid var(--border);">' +
       '<div style="font-size:12px;font-weight:700;margin-bottom:6px;color:var(--text-sub);">グループコードを共有</div>' +

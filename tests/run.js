@@ -339,22 +339,37 @@ function regressionSuite() {
   });
 
   test('招待リンクの参加確認が、素のconfirm()ではなく専用モーダルになっている', () => {
-    const html = readFile('index.html');
-    assert.ok(html.includes('id="invite-join-modal-overlay"'), '招待参加モーダルのHTMLが無い');
-    const handle = extractFunction(html, 'handleInviteLink');
-    assert.ok(handle, 'handleInviteLinkが無い');
-    assert.ok(!/confirm\(/.test(handle), '招待の参加確認に素のconfirm()が復活している（誤操作でキャンセルされやすい）');
-    assert.ok(/openInviteJoinModal/.test(handle), 'handleInviteLinkがモーダルを開いていない');
-    const confirmJoin = extractFunction(html, 'confirmInviteJoin');
-    assert.ok(confirmJoin, 'confirmInviteJoinが無い');
+    // index.htmlだけ直してapp.htmlが取り残されていた（2026/8/5に発見）ので両方を見る
+    for (const f of ['index.html', 'app.html']) {
+      const html = readFile(f);
+      assert.ok(html.includes('id="invite-join-modal-overlay"'), f + ' に招待参加モーダルのHTMLが無い');
+      const handle = extractFunction(html, 'handleInviteLink');
+      assert.ok(handle, f + ' に handleInviteLink が無い');
+      assert.ok(!/confirm\(/.test(handle), f + ' の招待確認に素のconfirm()が復活している（誤操作でキャンセルされやすい）');
+      assert.ok(/openInviteJoinModal/.test(handle), f + ' の handleInviteLink がモーダルを開いていない');
+      assert.ok(extractFunction(html, 'confirmInviteJoin'), f + ' に confirmInviteJoin が無い');
+    }
+  });
+
+  test('招待リンクが、招待した人と同じ画面に着地する', () => {
+    // app.htmlから招待しても '/?invite=' 固定で、相手は現場ボードの無いindex.htmlに飛んでいた（2026/8/5修正）
+    for (const f of ['index.html', 'app.html']) {
+      const html = readFile(f);
+      assert.ok(!/['"]https:\/\/kenjiasano-dev\.github\.io\/koken-app\/\?invite=/.test(html),
+        f + ' の招待リンクがURL固定に戻っている（app.htmlから招待した人がindex.htmlに飛ばされる）');
+      assert.ok(/location\.origin\s*\+\s*location\.pathname\s*\+\s*'\?invite='/.test(html),
+        f + ' の招待リンクが現在の画面基準になっていない');
+    }
   });
 
   test('招待やコード参加で、自分の店舗名が未入力なら実店舗名で自動的に埋まる', () => {
-    const html = readFile('index.html');
-    const confirmJoin = extractFunction(html, 'confirmInviteJoin');
-    assert.ok(/userData\.store\s*=\s*_pendingInviteResolvedStore/.test(confirmJoin),
-      '招待参加時に店舗名を自動で埋める処理が無い');
-    const joinGroupFn = extractFunction(html, 'joinGroup');
+    for (const f of ['index.html', 'app.html']) {
+      const html = readFile(f);
+      const confirmJoin = extractFunction(html, 'confirmInviteJoin');
+      assert.ok(/userData\.store\s*=\s*_pendingInviteResolvedStore/.test(confirmJoin),
+        f + ' の招待参加時に店舗名を自動で埋める処理が無い');
+    }
+    const joinGroupFn = extractFunction(readFile('index.html'), 'joinGroup');
     assert.ok(/resolveGroupName/.test(joinGroupFn),
       'コード手入力での参加時に店舗名を自動で埋める処理が無い');
   });
