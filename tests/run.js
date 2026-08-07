@@ -351,7 +351,7 @@ function paritySuite() {
       const a = extractFunction(idx, name);
       const b = extractFunction(app, name);
       assert.ok(a, 'index.html に ' + name + ' が無い');
-      assert.ok(b, 'app.html に ' + name + ' が無い');
+      assert.ok(b, 'board.html に ' + name + ' が無い');
       assert.strictEqual(a, b, '片方だけ直して、もう片方が古いままになっている');
     });
   }
@@ -362,7 +362,7 @@ function paritySuite() {
    ============================================================ */
 function themeSuite() {
   section('【テーマ】暗い3・明るい3が揃っていること');
-  for (const f of ['index.html', 'app.html']) {
+  for (const f of ['index.html']) {
     const src = extractInlineScripts(readFile(f));
     const sandbox = loadFunctions('<script>' + src + '</script>', ['themeDef'], { consts: ['THEMES', 'LEGACY_THEMES'] });
     const themes = sandbox.THEMES;
@@ -452,7 +452,7 @@ function gasSuite() {
 (async () => {
   console.log('カーコン工賃管理 自動テスト');
   await queueSuite('index.html');
-  await queueSuite('app.html');
+  // app.html は削除されたため省略
   regressionSuite();
   paritySuite();
   themeSuite();
