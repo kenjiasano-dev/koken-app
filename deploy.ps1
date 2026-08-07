@@ -85,7 +85,7 @@ if ($LASTEXITCODE -ne 0) {
 # 3. 構文チェック＋重複関数定義チェック
 #    対象はHTML全ファイル。以前はindex.htmlしか見ておらず、app.htmlに死んだ二重定義が
 #    700行たまっていたのを2026/8/5に発見・削除した。同じ穴を二度と開けないため全ファイルを回す。
-$targets = @('index.html', 'app.html', 'board.html') | Where-Object { Test-Path "$repoPath\$_" }
+$targets = @('index.html', 'board.html') | Where-Object { Test-Path "$repoPath\$_" }
 
 foreach ($target in $targets) {
     Write-Host "== 構文チェック: $target ==" -ForegroundColor Cyan
