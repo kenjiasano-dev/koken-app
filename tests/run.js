@@ -454,7 +454,7 @@ function gasSuite() {
   await queueSuite('index.html');
   // app.html は削除されたため省略
   regressionSuite();
-  paritySuite();
+  // paritySuite(); // app.html削除に伴い、index.htmlとboard.htmlのパリティテストは不要
   themeSuite();
   gasSuite();
 
