@@ -887,7 +887,7 @@ input[type="date"].form-input::-webkit-calendar-picker-indicator { filter: inver
         <ul class="settings-list" style="margin:0;box-shadow:none;">
           <li class="setting-item">
             <div class="setting-icon" style="background:#fff3cd;">🏆</div>
-            <div><div class="setting-label">称号アップ通知</div><div class="setting-sub">昇格時に全国へお知らせ</div></div>
+            <div><div class="setting-label">称号アップ通知</div><div class="setting-sub">昇格時に同じ店舗のメンバーへお知らせ</div></div>
             <label class="toggle"><input type="checkbox" id="notif-rankup" checked><span class="toggle-slider"></span></label>
           </li>
           <li class="setting-item">
@@ -899,11 +899,6 @@ input[type="date"].form-input::-webkit-calendar-picker-indicator { filter: inver
             <div class="setting-icon" style="background:#cfe2ff;">🚀</div>
             <div><div class="setting-label">全員達成通知</div><div class="setting-sub">社内全員クリア時</div></div>
             <label class="toggle"><input type="checkbox" id="notif-rocket" checked><span class="toggle-slider"></span></label>
-          </li>
-          <li class="setting-item">
-            <div class="setting-icon" style="background:#f8d7da;">📢</div>
-            <div><div class="setting-label">全国通知を受け取る</div><div class="setting-sub">他の方の昇格お知らせ</div></div>
-            <label class="toggle"><input type="checkbox" id="notif-receive" checked><span class="toggle-slider"></span></label>
           </li>
         </ul>
       </div>
@@ -1352,7 +1347,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = '20260806b';
+const APP_VERSION = '20260821a';
 // LINEログイン(LIFF) — LINEコンソールで作成したLIFFアプリのIDを入れる
 const LIFF_ID = '2010638896-vJtjkUOr';
 // 公式アカウント「カーコン工賃通知」友だち追加URL（ここに飛ばすとLINEアプリの友だち追加画面が直接開く）
@@ -3284,7 +3279,6 @@ function initSettings() {
   document.getElementById('notif-rankup').checked = settings.notifRankup !== false;
   document.getElementById('notif-goal').checked = settings.notifGoal !== false;
   document.getElementById('notif-rocket').checked = settings.notifRocket !== false;
-  document.getElementById('notif-receive').checked = settings.notifReceive !== false;
   // 目標設定の入力欄を現在値で埋める
   var _gv = function(id, val){ var e=document.getElementById(id); if(e) e.value = (val ? val : ''); };
   _gv('goal-store-count', adminGoals.storeCount);
@@ -3294,7 +3288,7 @@ function initSettings() {
   var _ftEl = document.getElementById('feature-use-front'); if (_ftEl) _ftEl.checked = (adminGoals.useFront !== false);
 
   // toggle listeners
-  ['notif-rankup','notif-goal','notif-rocket','notif-receive'].forEach(id => {
+  ['notif-rankup','notif-goal','notif-rocket'].forEach(id => {
     document.getElementById(id).addEventListener('change', e => {
       const key = id.replace('notif-','notif').replace(/-([a-z])/g, (_,c) => c.toUpperCase());
       settings[id.replace('notif-','notif').replace(/-([a-z])/g,(_,c)=>c.toUpperCase())] = e.target.checked;
@@ -4050,7 +4044,7 @@ function triggerRankUp(rank) {
   // Also trigger fireworks in background
   triggerFireworks();
   if (settings.notifRankup !== false) {
-    postToGAS({ action: 'notifyRankup', name: userData.name, store: userData.store, pref: userData.pref, newRank: rank.name });
+    postToGAS({ action: 'notifyRankup', name: userData.name, store: userData.store, pref: userData.pref, newRank: rank.name, groupCode: userData.groupCode });
   }
 }
 

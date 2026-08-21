@@ -121,11 +121,23 @@ foreach ($target in $targets) {
 }
 
 # 4. commit & push
-#    app.html を含めないと、app.html だけ直したときに「反映されたはずが実は未push」になる(2026/8/4に発生)
+#    app.htmlは2026/8/7に削除済み。存在しないパスをgit addに残すと"fatal: pathspec"で
+#    add全体が失敗し、以降のcommit/pushが「Everything up-to-date」のまま何も反映されずに
+#    成功扱いで通り抜けてしまう(2026/8/7〜8/21の間、この状態で気づかれていなかった)。
+#    実在するファイルだけを対象にする。
 Write-Host "== コミット & プッシュ ==" -ForegroundColor Cyan
-git add index.html app.html board.html sw.js tests/ deploy.ps1
+$addTargets = @('index.html', 'board.html', 'sw.js', 'tests/', 'deploy.ps1') | Where-Object { Test-Path "$repoPath\$_" }
+git add $addTargets
 git commit -m $Message
+if ($LASTEXITCODE -ne 0) {
+    Write-Error "git commit に失敗しました(ステージされた変更がない可能性があります)。デプロイを中止しました。"
+    exit 1
+}
 git push "https://$($env:GITHUB_TOKEN_KOKEN)@github.com/kenjiasano-dev/koken-app.git" main
+if ($LASTEXITCODE -ne 0) {
+    Write-Error "git push に失敗しました。デプロイを中止しました。"
+    exit 1
+}
 
 Write-Host "== デプロイ完了 ==" -ForegroundColor Green
 Write-Host "URL: https://kenjiasano-dev.github.io/koken-app/"
