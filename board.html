@@ -379,7 +379,7 @@ button{font-family:inherit; cursor:pointer;}
      同じスプレッドシートに「進捗/入庫/完成履歴」シートとして相乗りできる。
    - いまは persist() が localStorage に書くだけ＝バックエンド不要で即使える。
    =================================================================== */
-const APP_VERSION = '20260721h';
+const APP_VERSION = '20260821a';
 const STORE_KEY   = 'board_state_v1';
 const DEFAULT_STAGES = ['パネル修正','パテ','サフ','調色','マスキング','塗装','乾燥','磨き','組み付け'];
 /* 工程は店舗ごとに設定で変更可。state.store.stages に保存、無ければ標準9工程 */
@@ -497,6 +497,16 @@ function saveLocal(){
    同期対象はステータス・工程・担当者・納車日などのテキスト情報と、写真の「枚数」だけ。 */
 const BOARD_GAS_URL = 'https://script.google.com/macros/s/AKfycbxyh_WByXmc8qeKmz0H9q0Kf2y4xKl-4C2cK6F2Ul3OkFGQZhFPvQArnlIwlo701WifwQ/exec';
 const BOARD_GAS_TOKEN = 'carcon-kotin-2025';
+
+/* 読み取り専用のGET問い合わせ(称号・ランキング表示用)。書き込みは既存のpostToBoardGAS(キュー式)を使う。 */
+async function boardFetchGAS(action, params) {
+  try {
+    const qs = new URLSearchParams(Object.assign({ action, token: BOARD_GAS_TOKEN }, params || {})).toString();
+    const res = await fetch(BOARD_GAS_URL + '?' + qs);
+    return await res.json();
+  } catch (e) { return null; }
+}
+
 let _boardSyncTimer=null, _boardSyncing=false;
 function scheduleBoardSync(){
   clearTimeout(_boardSyncTimer);
@@ -1140,6 +1150,7 @@ function settingsHTML(){
       <button class="btn" onclick="saveStages()">保存</button>
     </div>
     <button class="btn ghost" style="margin-top:9px;" onclick="openMembers()">担当者（メンバー）の編集</button>
+    <button class="btn ghost" style="margin-top:9px;" onclick="openRankingBoard()">🏆 称号・ランキング</button>
     <button class="btn ghost" style="margin-top:9px;" onclick="connectGDrive()">🔗 Googleドライブ連携${(localStorage.getItem('gdrive_confirmed_email'))?'（'+esc(localStorage.getItem('gdrive_confirmed_email'))+'）':'（未接続）'}</button>
     <button class="btn ghost" style="margin-top:9px;" onclick="exportAllZip()">📷 全部の工程写真をまとめてZIPで書き出す</button>
     <button class="btn ghost" style="margin-top:9px;" onclick="openSetup()">店舗名・グループを変更</button>`;
@@ -1221,16 +1232,31 @@ function stageCrewSave(){
 }
 function stageCrewClear(){ const s=_crewSel; if(!s) return; s.names=[]; stageCrewSave(); }
 let editMembers=[];
+let _memberRankMap = {};   // 名前 -> {emoji,name}（称号バッジ表示用。getStoreRankingから取得）
 function openMembers(){
   if(!state.store) return;
   editMembers = getMembers().slice();
   showSheet(membersHTML());
+  loadMemberRanks();
+}
+async function loadMemberRanks(){
+  if(!state.store || !state.store.group) return;
+  const res = await boardFetchGAS('getStoreRanking', { groupCode: state.store.group });
+  if(!res || !Array.isArray(res.data)) return;
+  _memberRankMap = {};
+  res.data.forEach(d => { if(d.name && d.rank) _memberRankMap[d.name] = d.rank; });
+  rebuildMembers();
+}
+function memberBadge(name){
+  const r = _memberRankMap[name];
+  return r ? `<span style="font-size:11px; color:var(--muted); white-space:nowrap;">${esc(r.emoji||'')} ${esc(r.name||'')}</span>` : '';
 }
 function membersHTML(){
   const rows = editMembers.map((m,i)=>`
     <div style="display:flex; gap:6px; align-items:center; margin-bottom:7px;">
       <span style="width:24px; text-align:center;">👤</span>
       <input value="${esc(m)}" oninput="editMembers[${i}]=this.value" placeholder="名前" style="flex:1; padding:9px 10px; font-size:15px;">
+      ${memberBadge(m)}
       <button class="iconbtn danger-text" title="削除" onclick="removeMember(${i})">✕</button>
     </div>`).join('');
   return `
@@ -1249,6 +1275,60 @@ function removeMember(i){ editMembers.splice(i,1); rebuildMembers(); }
 function saveMembers(){
   state.store.members = editMembers.map(m=>String(m).trim()).filter(Boolean);
   persist(); closeSheet(); render(); toast('メンバーを保存しました');
+}
+
+/* ---------- 称号・ランキング(表示専用。工賃アプリと同じGASを読むだけ、書き込み・通知は一切しない) ---------- */
+const NATIONAL_RANKING_UNLOCK_USERS = 100;
+function rankRow(item, isMe){
+  const manyen = ((item.amount||0)/10000).toFixed(1);
+  const r = item.rank || {};
+  return `
+    <div style="display:flex; align-items:center; gap:9px; padding:9px 0; border-bottom:0.5px solid var(--line); ${isMe?'background:var(--accent-bg); margin:0 -14px; padding-left:14px; padding-right:14px;':''}">
+      ${item.rank_num ? `<span style="width:26px; text-align:center; color:var(--muted2); font-size:13px;">${item.rank_num}</span>` : ''}
+      <div style="flex:1; min-width:0;">
+        <div style="font-size:14px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${esc(item.name||'')}${isMe?' <span style="color:var(--accent); font-size:11px;">▶ あなた</span>':''}</div>
+        <div style="font-size:11px; color:var(--muted);">${esc(item.store||'')}${item.pref?' / '+esc(item.pref):''} ・ ${esc(r.emoji||'')} ${esc(r.name||'')}</div>
+      </div>
+      <div style="font-size:15px; font-weight:700; white-space:nowrap;">${manyen}<span style="font-size:11px; font-weight:400; color:var(--muted);">万円</span></div>
+    </div>`;
+}
+function openRankingBoard(){
+  if(!state.store) return;
+  showSheet(`<h2>🏆 称号・ランキング</h2><p style="color:var(--muted); font-size:13px;">読み込み中…</p>`);
+  loadRankingBoard();
+}
+async function loadRankingBoard(){
+  const groupCode = state.store.group || '';
+  const myName = state.store.myName || '';
+  const [storeRes, statsRes] = await Promise.all([
+    groupCode ? boardFetchGAS('getStoreRanking', { groupCode }) : Promise.resolve(null),
+    boardFetchGAS('getStats', {})
+  ]);
+  const storeData = (storeRes && Array.isArray(storeRes.data)) ? storeRes.data.slice().sort((a,b)=>b.amount-a.amount) : null;
+  const totalUsers = statsRes && statsRes.totalUsers !== undefined ? Number(statsRes.totalUsers) : null;
+  let nationalHtml;
+  if(totalUsers !== null && totalUsers >= NATIONAL_RANKING_UNLOCK_USERS){
+    const natRes = await boardFetchGAS('getRanking', {});
+    const natData = (natRes && Array.isArray(natRes.data)) ? natRes.data.slice(0,20) : null;
+    nationalHtml = natData
+      ? natData.map(d=>rankRow(d, !!myName && d.name===myName)).join('')
+      : `<p style="color:var(--muted); font-size:13px;">全国ランキングを読み込めませんでした。</p>`;
+  } else {
+    const cur = totalUsers !== null ? totalUsers : '?';
+    nationalHtml = `<p style="color:var(--muted); font-size:13px; line-height:1.7;">🌐 全国ランキングは登録者${NATIONAL_RANKING_UNLOCK_USERS}人で解禁されます（現在${cur}人）。</p>`;
+  }
+  const storeHtml = storeData && storeData.length
+    ? storeData.map(d=>rankRow(d, !!myName && d.name===myName)).join('')
+    : `<p style="color:var(--muted); font-size:13px;">まだ今月の工賃データがありません。</p>`;
+  const html = `
+    <h2>🏆 称号・ランキング</h2>
+    <div style="font-size:13px; font-weight:600; color:var(--text); margin:0 0 4px;">🏪 お店（今月）</div>
+    <div style="margin-bottom:18px;">${storeHtml}</div>
+    <div style="font-size:13px; font-weight:600; color:var(--text); margin:0 0 4px;">🌐 全国（今月）</div>
+    <div style="margin-bottom:6px;">${nationalHtml}</div>
+    <button class="btn ghost" style="margin-top:10px;" onclick="openSettings()">戻る</button>`;
+  const s = document.querySelector('#overlay .sheet');
+  if(s) s.innerHTML = `<button class="sheet-x" title="閉じる" aria-label="閉じる" onclick="closeSheet()">✕</button>${html}`;
 }
 function rebuildSettings(){
   const s=document.querySelector('#overlay .sheet');
