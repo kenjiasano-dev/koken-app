@@ -892,7 +892,7 @@ input[type="date"].form-input::-webkit-calendar-picker-indicator { filter: inver
           </li>
           <li class="setting-item">
             <div class="setting-icon" style="background:#d1e7dd;">🎯</div>
-            <div><div class="setting-label">目標達成通知</div><div class="setting-sub">個人目標クリア時</div></div>
+            <div><div class="setting-label">目標達成通知</div><div class="setting-sub">個人目標クリア時に同じ店舗のメンバーへお知らせ</div></div>
             <label class="toggle"><input type="checkbox" id="notif-goal" checked><span class="toggle-slider"></span></label>
           </li>
           <li class="setting-item">
@@ -1347,7 +1347,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = '20260821a';
+const APP_VERSION = '20260821b';
 // LINEログイン(LIFF) — LINEコンソールで作成したLIFFアプリのIDを入れる
 const LIFF_ID = '2010638896-vJtjkUOr';
 // 公式アカウント「カーコン工賃通知」友だち追加URL（ここに飛ばすとLINEアプリの友だち追加画面が直接開く）
@@ -2396,8 +2396,53 @@ document.addEventListener('click', function(e) {
 function renderRanking() {
   const now = new Date();
   document.getElementById('rank-month-label').textContent = `${now.getMonth()+1}月度`;
+  fetchStats();
   renderRankingTab(currentRankTab);
 }
+
+// 全国ランキングの解禁ライン。登録者がこの人数に達したら「準備中」ロックを外す
+const NATIONAL_RANKING_UNLOCK_USERS = 100;
+let nationalRankingUnlocked = false;
+
+function applyNationalUnlockState(totalUsers) {
+  const unlocked = Number(totalUsers) >= NATIONAL_RANKING_UNLOCK_USERS;
+  if (unlocked === nationalRankingUnlocked) return;
+  nationalRankingUnlocked = unlocked;
+  const btn = document.getElementById('rank-more-btn');
+  if (!btn) return;
+  if (unlocked) {
+    btn.textContent = '🌐 全国';
+    btn.title = '';
+    btn.style.cursor = 'pointer';
+    btn.style.opacity = '1';
+  } else {
+    btn.textContent = '🌐 全国（準備中）';
+    btn.title = 'ユーザーが増えたら解放';
+    btn.style.cursor = 'not-allowed';
+    btn.style.opacity = '.4';
+  }
+}
+
+document.getElementById('rank-more-btn').addEventListener('click', function() {
+  if (!nationalRankingUnlocked) return;
+  const moreTabs = document.getElementById('rank-more-tabs');
+  const isOpen = moreTabs.style.display !== 'none';
+  if (isOpen) {
+    moreTabs.style.display = 'none';
+    document.querySelectorAll('[data-rtab]').forEach(b => b.classList.remove('active'));
+    const storeBtn = document.querySelector('[data-rtab="store"]');
+    if (storeBtn) storeBtn.classList.add('active');
+    currentRankTab = 'store';
+    ['national','region','pref','store'].forEach(t => {
+      const el = document.getElementById('rtab-' + t);
+      if (el) el.style.display = t === 'store' ? '' : 'none';
+    });
+  } else {
+    moreTabs.style.display = '';
+    const natBtn = document.querySelector('[data-rtab="national"]');
+    if (natBtn) natBtn.click();
+  }
+});
 
 function renderRankingTab(tab) {
   if (tab === 'national') { renderNational(); fetchStats(); }
@@ -2495,6 +2540,7 @@ async function fetchStats() {
       const au = document.getElementById('stat-active-users');
       if (tu) tu.textContent = res.totalUsers + '人';
       if (au) au.textContent = res.activeThisMonth + '人';
+      applyNationalUnlockState(res.totalUsers);
     }
     if (res && res.totalWageRows !== undefined) maybeShowDataAlert(res.totalWageRows);
   } catch(e) {}
