@@ -379,7 +379,7 @@ button{font-family:inherit; cursor:pointer;}
      同じスプレッドシートに「進捗/入庫/完成履歴」シートとして相乗りできる。
    - いまは persist() が localStorage に書くだけ＝バックエンド不要で即使える。
    =================================================================== */
-const APP_VERSION = '20260821a';
+const APP_VERSION = '20260821b';
 const STORE_KEY   = 'board_state_v1';
 const DEFAULT_STAGES = ['パネル修正','パテ','サフ','調色','マスキング','塗装','乾燥','磨き','組み付け'];
 /* 工程は店舗ごとに設定で変更可。state.store.stages に保存、無ければ標準9工程 */
@@ -1360,6 +1360,28 @@ function saveStages(){
     c.stage = (len>0) ? Math.min(c.stage, len-1) : 0;
   });
   persist(); closeSheet(); render(); toast(editStagesKind+'の工程を保存しました');
+  // 他のメンバーの端末にも同じ工程が反映されるよう、グループ単位でGASに保存
+  if(state.store.group){
+    postToBoardGAS('setGroupStages', { groupCode: state.store.group, stages: state.store.stages, seibiStages: state.store.seibiStages });
+  }
+}
+
+/* 起動時に、グループで共有されている工程設定を取り込む(店長が他端末で編集した分をこの端末にも反映)。
+   自分がまだ何も保存していない項目(null)は、この端末の値をそのまま使う。 */
+async function loadGroupStages(){
+  if(!state.store || !state.store.group) return;
+  const res = await boardFetchGAS('getGroupStages', { groupCode: state.store.group });
+  if(!res) return;
+  let changed = false;
+  if(Array.isArray(res.stages)){ state.store.stages = res.stages; changed = true; }
+  if(Array.isArray(res.seibiStages)){ state.store.seibiStages = res.seibiStages; changed = true; }
+  if(!changed) return;
+  saveLocal();
+  state.cars.forEach(c=>{
+    const len = getStages(c.kind).length;
+    c.stage = (len>0) ? Math.min(c.stage, len-1) : 0;
+  });
+  render();
 }
 
 /* ========== 工程写真（IndexedDB保存＋依存なしZIP書き出し） ========== */
@@ -2008,6 +2030,7 @@ renderStoreLabel();
 if(!ensureStore()){ /* setup shown */ }
 switchTab('work');
 boardSyncNow();   // 起動直後に他端末の変更を取り込む
+loadGroupStages(); // 起動時に、店長が他端末で編集した工程設定を取り込む
 </script>
 </body>
 </html>
