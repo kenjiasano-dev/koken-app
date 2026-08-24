@@ -254,8 +254,10 @@ input[type="date"].form-input::-webkit-calendar-picker-indicator { filter: inver
 .pref-select { width: 100%; padding: 10px 14px; border: 2px solid var(--border); border-radius: 10px; font-size: 14px; background: #fff; }
 
 /* ===== NOTIFICATION TOAST ===== */
-.toast { position: fixed; top: 70px; left: 50%; transform: translateX(-50%) translateY(-80px); background: #333; color: #fff; padding: 10px 20px; border-radius: 30px; font-size: 13px; z-index: 300; transition: transform .3s ease; white-space: nowrap; }
+.toast { position: fixed; top: 70px; left: 50%; transform: translateX(-50%) translateY(-80px); background: #333; color: #fff; padding: 10px 14px 10px 20px; border-radius: 30px; font-size: 13px; z-index: 300; transition: transform .3s ease; white-space: nowrap; display: flex; align-items: center; gap: 10px; }
 .toast.show { transform: translateX(-50%) translateY(0); }
+.toast-x { cursor: pointer; opacity: .65; font-size: 15px; line-height: 1; padding: 2px; }
+.toast-x:hover { opacity: 1; }
 
 /* ===== LOADING ===== */
 .skeleton { background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%); background-size: 200% 100%; animation: shimmer 1.5s infinite; border-radius: 8px; }
@@ -1301,7 +1303,7 @@ input[type="date"].form-input::-webkit-calendar-picker-indicator { filter: inver
 </div>
 
 <!-- TOAST -->
-<div class="toast" id="toast"></div>
+<div class="toast" id="toast"><span id="toast-msg"></span><span class="toast-x" onclick="hideToast()">✕</span></div>
 
 <script>
 // ============================================================
@@ -1347,7 +1349,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = '20260824d';
+const APP_VERSION = '20260824e';
 // LINEログイン(LIFF) — LINEコンソールで作成したLIFFアプリのIDを入れる
 const LIFF_ID = '2010638896-vJtjkUOr';
 // 公式アカウント「カーコン工賃通知」友だち追加URL（ここに飛ばすとLINEアプリの友だち追加画面が直接開く）
@@ -1441,17 +1443,20 @@ function saveLocal() {
 
 function showToast(msg, duration = 2500) {
   const t = document.getElementById('toast');
-  t.textContent = msg;
+  const m = document.getElementById('toast-msg');
+  if (m) m.textContent = msg; else t.textContent = msg;
   t.classList.add('show');
   setTimeout(() => t.classList.remove('show'), duration);
+}
+// ✕をタップして手動で通知を消す(タイマーが止まって残ってしまった時の保険)。
+function hideToast() {
+  const t = document.getElementById('toast');
+  if (t) t.classList.remove('show');
 }
 // バックグラウンドのタブはタイマーが止まることがあり、通知が消えずに残ることがある。
 // タブが再び表示されたら、残っている通知を消す(LINEアプリへ切り替えて戻ってきた時など)。
 document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState === 'visible') {
-    const t = document.getElementById('toast');
-    if (t) t.classList.remove('show');
-  }
+  if (document.visibilityState === 'visible') hideToast();
 });
 
 function formatYen(n) {

@@ -275,10 +275,13 @@ button{font-family:inherit; cursor:pointer;}
 .toast{
   position:fixed; left:50%; bottom:90px; transform:translateX(-50%);
   background:var(--toast-bg); border:0.5px solid var(--line2); color:#f2f3f5;
-  font-size:13px; padding:10px 16px; border-radius:22px; z-index:60;
+  font-size:13px; padding:10px 12px 10px 16px; border-radius:22px; z-index:60;
   opacity:0; transition:opacity .25s, transform .25s; pointer-events:none; white-space:nowrap;
+  display:flex; align-items:center; gap:10px;
 }
 .toast.show{opacity:1; transform:translateX(-50%) translateY(-4px);}
+.toast-x{ cursor:pointer; opacity:.65; font-size:15px; line-height:1; padding:2px; pointer-events:auto; }
+.toast-x:hover{ opacity:1; }
 </style>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
@@ -365,7 +368,7 @@ button{font-family:inherit; cursor:pointer;}
   </div>
 </div>
 
-<div class="toast" id="toast"></div>
+<div class="toast" id="toast"><span id="toast-msg"></span><span class="toast-x" onclick="hideToast()">✕</span></div>
 
 <script>
 /* ===================================================================
@@ -379,7 +382,7 @@ button{font-family:inherit; cursor:pointer;}
      同じスプレッドシートに「進捗/入庫/完成履歴」シートとして相乗りできる。
    - いまは persist() が localStorage に書くだけ＝バックエンド不要で即使える。
    =================================================================== */
-const APP_VERSION = '20260824b';
+const APP_VERSION = '20260824c';
 const STORE_KEY   = 'board_state_v1';
 const DEFAULT_STAGES = ['パネル修正','パテ','サフ','調色','マスキング','塗装','乾燥','磨き','組み付け'];
 /* 工程は店舗ごとに設定で変更可。state.store.stages に保存、無ければ標準9工程 */
@@ -684,8 +687,15 @@ function timesLine(c){
 }
 function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 function toast(msg){
-  const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show');
+  const t=document.getElementById('toast');
+  const m=document.getElementById('toast-msg');
+  if(m) m.textContent=msg; else t.textContent=msg;
+  t.classList.add('show');
   clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove('show'),2200);
+}
+function hideToast(){
+  const t=document.getElementById('toast');
+  if(t){ clearTimeout(t._t); t.classList.remove('show'); }
 }
 
 /* ---------- tab ---------- */
