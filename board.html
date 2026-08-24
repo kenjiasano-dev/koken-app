@@ -277,7 +277,7 @@ button{font-family:inherit; cursor:pointer;}
   background:var(--toast-bg); border:0.5px solid var(--line2); color:#f2f3f5;
   font-size:13px; padding:10px 12px 10px 16px; border-radius:18px; z-index:60;
   opacity:0; transition:opacity .25s, transform .25s; pointer-events:none; cursor:pointer;
-  display:flex; align-items:center; gap:10px; max-width:calc(100vw - 24px); box-sizing:border-box;
+  display:none; align-items:center; gap:10px; max-width:calc(100vw - 24px); box-sizing:border-box;
 }
 /* 表示中(.show)だけタップ可能にする(隠れている間は下のボタン操作を邪魔しない) */
 .toast.show{opacity:1; transform:translateX(-50%) translateY(-4px); pointer-events:auto;}
@@ -384,7 +384,7 @@ button{font-family:inherit; cursor:pointer;}
      同じスプレッドシートに「進捗/入庫/完成履歴」シートとして相乗りできる。
    - いまは persist() が localStorage に書くだけ＝バックエンド不要で即使える。
    =================================================================== */
-const APP_VERSION = '20260824g';
+const APP_VERSION = '20260824h';
 const STORE_KEY   = 'board_state_v1';
 const DEFAULT_STAGES = ['パネル修正','パテ','サフ','調色','マスキング','塗装','乾燥','磨き','組み付け'];
 /* 工程は店舗ごとに設定で変更可。state.store.stages に保存、無ければ標準9工程 */
@@ -688,27 +688,35 @@ function timesLine(c){
   return p.join('　/　');
 }
 function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+/* 通知の表示/非表示。以前はopacity/transformだけで隠しており、要素が常に描画パイプライン上に
+   居続けるため、ブラウザのGPU描画側の不具合で「消えたはずの絵が残像として残る」ことがあった
+   (2026-08-24、実機で複数回確認)。非表示の最終状態は必ずdisplay:noneにして描画対象から
+   完全に外し、残像が原理的に起こらないようにする。 */
 function toast(msg){
   const t=document.getElementById('toast');
   const m=document.getElementById('toast-msg');
+  clearTimeout(t._t); clearTimeout(t._dt);
   if(m) m.textContent=msg; else t.textContent=msg;
   t.dataset.shownAt = String(Date.now());
+  t.style.display='flex';
+  void t.offsetHeight;
   t.classList.add('show');
-  clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove('show'),2200);
+  t._t=setTimeout(()=>hideToast(),2200);
 }
 function hideToast(){
   const t=document.getElementById('toast');
-  if(t){ clearTimeout(t._t); t.classList.remove('show'); }
+  if(!t) return;
+  clearTimeout(t._t);
+  t.classList.remove('show');
+  clearTimeout(t._dt);
+  t._dt=setTimeout(()=>{ t.style.display='none'; },350);
 }
-// 保険: どんな理由であれ12秒以上表示され続けている通知は強制的に消す(再描画のゴースト対策込み)。
+// 保険: どんな理由であれ12秒以上表示され続けている通知は強制的に消す。
 setInterval(() => {
   const el = document.getElementById('toast');
   if (!el || !el.classList.contains('show')) return;
   const shownAt = Number(el.dataset.shownAt || 0);
-  if (!shownAt || Date.now() - shownAt > 12000) {
-    hideToast();
-    void el.offsetHeight;
-  }
+  if (!shownAt || Date.now() - shownAt > 12000) hideToast();
 }, 3000);
 
 /* ---------- tab ---------- */
