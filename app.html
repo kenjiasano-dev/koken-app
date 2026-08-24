@@ -572,10 +572,11 @@ input[type="time"]::-webkit-calendar-picker-indicator { filter: invert(1); opaci
   position:fixed; left:50%; bottom:90px; transform:translateX(-50%);
   background:var(--toast-bg); border:0.5px solid var(--line2); color:#f2f3f5;
   font-size:13px; padding:10px 12px 10px 16px; border-radius:18px; z-index:60;
-  opacity:0; transition:opacity .25s, transform .25s; pointer-events:none;
+  opacity:0; transition:opacity .25s, transform .25s; pointer-events:none; cursor:pointer;
   display:flex; align-items:center; gap:10px; max-width:calc(100vw - 24px); box-sizing:border-box;
 }
-.bdtoast.show{opacity:1; transform:translateX(-50%) translateY(-4px);}
+/* 表示中(.show)だけタップ可能にする(隠れている間は下のボタン操作を邪魔しない) */
+.bdtoast.show{opacity:1; transform:translateX(-50%) translateY(-4px); pointer-events:auto;}
 .bdtoast #bdtoast-msg{ word-break:break-word; }
 .bdtoast-x{ cursor:pointer; opacity:.65; font-size:15px; line-height:1; padding:10px; margin:-10px; pointer-events:auto; display:flex; align-items:center; justify-content:center; }
 .bdtoast-x:hover, .bdtoast-x:active{ opacity:1; }
@@ -759,7 +760,7 @@ input[type="time"]::-webkit-calendar-picker-indicator { filter: invert(1); opaci
   <div id="done-list"></div>
   <div class="emptybox hidden" id="done-empty">まだ完成した車はありません。</div>
 </div>
-<div class="bdtoast" id="bdtoast"><span id="bdtoast-msg"></span><span class="bdtoast-x" onclick="hideBdToast()">✕</span></div>
+<div class="bdtoast" id="bdtoast" onclick="hideBdToast()"><span id="bdtoast-msg"></span><span class="bdtoast-x">✕</span></div>
   </div>
 </div>
 
@@ -1773,7 +1774,7 @@ input[type="time"]::-webkit-calendar-picker-indicator { filter: invert(1); opaci
 </div>
 
 <!-- TOAST -->
-<div class="toast" id="toast"><span id="toast-msg"></span><span class="toast-x" onclick="hideToast()">✕</span></div>
+<div class="toast" id="toast" onclick="hideToast()"><span id="toast-msg"></span><span class="toast-x">✕</span></div>
 
 <script>
 // ============================================================
@@ -1819,7 +1820,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = 'app202608241430';
+const APP_VERSION = 'app202608241500';
 // LINEログイン(LIFF) — LINEコンソールで作成したLIFFアプリのIDを入れる
 const LIFF_ID = '2010638896-vJtjkUOr';
 // 公式アカウント「カーコン工賃通知」友だち追加URL（ここに飛ばすとLINEアプリの友だち追加画面が直接開く）
