@@ -279,7 +279,7 @@ input[type="time"]::-webkit-calendar-picker-indicator { filter: invert(1); opaci
 .pref-select { width: 100%; padding: 10px 14px; border: 2px solid var(--border); border-radius: 10px; font-size: 14px; background: #fff; }
 
 /* ===== NOTIFICATION TOAST ===== */
-.toast { position: fixed; top: 70px; left: 50%; transform: translateX(-50%) translateY(-80px); background: #333; color: #fff; padding: 10px 14px 10px 20px; border-radius: 18px; font-size: 13px; z-index: 300; transition: transform .3s ease; display: flex; align-items: center; gap: 10px; max-width: calc(100vw - 24px); box-sizing: border-box; }
+.toast { position: fixed; top: 70px; left: 50%; transform: translateX(-50%) translateY(-80px); background: #333; color: #fff; padding: 10px 14px 10px 20px; border-radius: 18px; font-size: 13px; z-index: 300; transition: transform .3s ease; display: none; align-items: center; gap: 10px; max-width: calc(100vw - 24px); box-sizing: border-box; }
 .toast #toast-msg { word-break: break-word; }
 .toast.show { transform: translateX(-50%) translateY(0); }
 .toast-x { cursor: pointer; opacity: .65; font-size: 15px; line-height: 1; padding: 10px; margin: -10px; display: flex; align-items: center; justify-content: center; }
@@ -573,7 +573,7 @@ input[type="time"]::-webkit-calendar-picker-indicator { filter: invert(1); opaci
   background:var(--toast-bg); border:0.5px solid var(--line2); color:#f2f3f5;
   font-size:13px; padding:10px 12px 10px 16px; border-radius:18px; z-index:60;
   opacity:0; transition:opacity .25s, transform .25s; pointer-events:none; cursor:pointer;
-  display:flex; align-items:center; gap:10px; max-width:calc(100vw - 24px); box-sizing:border-box;
+  display:none; align-items:center; gap:10px; max-width:calc(100vw - 24px); box-sizing:border-box;
 }
 /* 表示中(.show)だけタップ可能にする(隠れている間は下のボタン操作を邪魔しない) */
 .bdtoast.show{opacity:1; transform:translateX(-50%) translateY(-4px); pointer-events:auto;}
@@ -1820,7 +1820,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = 'app202608241600';
+const APP_VERSION = 'app202608241700';
 // LINEログイン(LIFF) — LINEコンソールで作成したLIFFアプリのIDを入れる
 const LIFF_ID = '2010638896-vJtjkUOr';
 // 公式アカウント「カーコン工賃通知」友だち追加URL（ここに飛ばすとLINEアプリの友だち追加画面が直接開く）
@@ -1928,23 +1928,34 @@ function saveLocal() {
   localStorage.setItem('adminGoals', JSON.stringify(adminGoals));
 }
 
+/* 通知の表示/非表示。以前はopacity/transformだけで隠しており、要素が常に描画パイプライン上に
+   居続けるため、ブラウザのGPU描画側の不具合で「消えたはずの絵が残像として残る」ことがあった
+   (2026-08-24、実機で複数回確認)。非表示の最終状態は必ずdisplay:noneにして描画対象から
+   完全に外し、残像が原理的に起こらないようにする。 */
+function _showToastEl(el, msgEl, msg, duration) {
+  if (!el) return;
+  clearTimeout(el._hideTimer);
+  clearTimeout(el._displayTimer);
+  if (msgEl) msgEl.textContent = msg; else el.textContent = msg;
+  el.dataset.shownAt = String(Date.now());
+  el.style.display = 'flex';
+  void el.offsetHeight;
+  el.classList.add('show');
+  el._hideTimer = setTimeout(() => _hideToastEl(el), duration);
+}
+function _hideToastEl(el) {
+  if (!el) return;
+  clearTimeout(el._hideTimer);
+  el.classList.remove('show');
+  clearTimeout(el._displayTimer);
+  el._displayTimer = setTimeout(() => { el.style.display = 'none'; }, 350);
+}
 function showToast(msg, duration = 2500) {
-  const t = document.getElementById('toast');
-  const m = document.getElementById('toast-msg');
-  if (m) m.textContent = msg; else t.textContent = msg;
-  t.dataset.shownAt = String(Date.now());
-  t.classList.add('show');
-  setTimeout(() => t.classList.remove('show'), duration);
+  _showToastEl(document.getElementById('toast'), document.getElementById('toast-msg'), msg, duration);
 }
 // ✕をタップして手動で通知を消す(タイマーが止まって残ってしまった時の保険)。
-function hideToast() {
-  const t = document.getElementById('toast');
-  if (t) t.classList.remove('show');
-}
-function hideBdToast() {
-  const t = document.getElementById('bdtoast');
-  if (t) t.classList.remove('show');
-}
+function hideToast() { _hideToastEl(document.getElementById('toast')); }
+function hideBdToast() { _hideToastEl(document.getElementById('bdtoast')); }
 // バックグラウンドのタブはタイマーが止まることがあり、通知が消えずに残ることがある。
 // タブが再び表示されたら、残っている通知を消す(LINEアプリへ切り替えて戻ってきた時など)。
 document.addEventListener('visibilitychange', () => {
@@ -1958,10 +1969,7 @@ setInterval(() => {
     const el = document.getElementById(id);
     if (!el || !el.classList.contains('show')) return;
     const shownAt = Number(el.dataset.shownAt || 0);
-    if (!shownAt || Date.now() - shownAt > 12000) {
-      el.classList.remove('show');
-      void el.offsetHeight; // 強制リフローで再描画のゴーストを払う
-    }
+    if (!shownAt || Date.now() - shownAt > 12000) _hideToastEl(el);
   });
 }, 3000);
 
@@ -6171,12 +6179,7 @@ function timesLine(c){
 }
 function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 function toast(msg){
-  const t=document.getElementById('bdtoast');
-  const m=document.getElementById('bdtoast-msg');
-  if(m) m.textContent=msg; else t.textContent=msg;
-  t.dataset.shownAt = String(Date.now());
-  t.classList.add('show');
-  clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove('show'),2200);
+  _showToastEl(document.getElementById('bdtoast'), document.getElementById('bdtoast-msg'), msg, 2200);
 }
 
 /* ---------- tab ---------- */
