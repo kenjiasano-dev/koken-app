@@ -275,11 +275,12 @@ button{font-family:inherit; cursor:pointer;}
 .toast{
   position:fixed; left:50%; bottom:90px; transform:translateX(-50%);
   background:var(--toast-bg); border:0.5px solid var(--line2); color:#f2f3f5;
-  font-size:13px; padding:10px 12px 10px 16px; border-radius:22px; z-index:60;
-  opacity:0; transition:opacity .25s, transform .25s; pointer-events:none; white-space:nowrap;
-  display:flex; align-items:center; gap:10px;
+  font-size:13px; padding:10px 12px 10px 16px; border-radius:18px; z-index:60;
+  opacity:0; transition:opacity .25s, transform .25s; pointer-events:none;
+  display:flex; align-items:center; gap:10px; max-width:calc(100vw - 24px); box-sizing:border-box;
 }
 .toast.show{opacity:1; transform:translateX(-50%) translateY(-4px);}
+.toast #toast-msg{ word-break:break-word; }
 .toast-x{ cursor:pointer; opacity:.65; font-size:15px; line-height:1; padding:10px; margin:-10px; pointer-events:auto; display:flex; align-items:center; justify-content:center; }
 .toast-x:hover, .toast-x:active{ opacity:1; }
 </style>
@@ -382,7 +383,7 @@ button{font-family:inherit; cursor:pointer;}
      同じスプレッドシートに「進捗/入庫/完成履歴」シートとして相乗りできる。
    - いまは persist() が localStorage に書くだけ＝バックエンド不要で即使える。
    =================================================================== */
-const APP_VERSION = '20260824d';
+const APP_VERSION = '20260824e';
 const STORE_KEY   = 'board_state_v1';
 const DEFAULT_STAGES = ['パネル修正','パテ','サフ','調色','マスキング','塗装','乾燥','磨き','組み付け'];
 /* 工程は店舗ごとに設定で変更可。state.store.stages に保存、無ければ標準9工程 */
