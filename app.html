@@ -1820,7 +1820,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = 'app202608241700';
+const APP_VERSION = 'app202608241730';
 // LINEログイン(LIFF) — LINEコンソールで作成したLIFFアプリのIDを入れる
 const LIFF_ID = '2010638896-vJtjkUOr';
 // 公式アカウント「カーコン工賃通知」友だち追加URL（ここに飛ばすとLINEアプリの友だち追加画面が直接開く）
@@ -7822,12 +7822,15 @@ function bd_openCarDetail(id){
 }
 window.addEventListener('resize', function(){ if(typeof updatePcDash==='function') updatePcDash(); });
 /* ===== 段階4b: お店ライブ合計 + 個人の推移（メンバー選択/現在作業/月別・日別ミニグラフ） ===== */
-var _pcdRank=null, _pcdTrend=null, _pcdMember=null, _pcdTrendMode='month', _pcdLastFetch=0, _pcdEstMap={};
+var _pcdRank=null, _pcdAllMembers=null, _pcdTrend=null, _pcdMember=null, _pcdTrendMode='month', _pcdLastFetch=0, _pcdEstMap={};
 async function pcdFetchData(){
   var code=(typeof userData!=='undefined'&&userData)?(userData.activeGroupCode||userData.groupCode):'';
   if(!code || typeof fetchFromGAS!=='function') return;
   var now=new Date(); var ym=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0');
-  try{ var r=await fetchFromGAS('getStoreRanking',{groupCode:code, month:ym}); if(r&&r.data){ _pcdRank=r.data.filter(function(m){return (Number(m.count)||0)>0;}); _pcdStoreTotal=r.data.reduce(function(s,m){return s+(Number(m.amount)||0);},0); } }catch(e){}
+  // _pcdRankは「メンバー別カード」表示用に今月まだ工賃0件の人を除外したもの。
+  // 個人の推移の選択肢はそれとは別に、グループの全員(0件の新人も含む)から選べる必要があるため、
+  // フィルタ前の全員リストを_pcdAllMembersに分けて保持する(2026-08-24修正)。
+  try{ var r=await fetchFromGAS('getStoreRanking',{groupCode:code, month:ym}); if(r&&r.data){ _pcdAllMembers=r.data; _pcdRank=r.data.filter(function(m){return (Number(m.count)||0)>0;}); _pcdStoreTotal=r.data.reduce(function(s,m){return s+(Number(m.amount)||0);},0); } }catch(e){}
   try{ var tr=await fetchFromGAS('getStoreTrend',{groupCode:code}); if(tr&&tr.months){ _pcdTrend=tr.months; } }catch(e){}
   try{ var est=await fetchFromGAS('getEstimateRanking',{groupCode:code, month:ym}); if(est&&est.data){ var em={}; est.data.forEach(function(m){ if(m.name) em[m.name]=m; }); _pcdEstMap=em; } }catch(e){}
   var pd=document.getElementById('pc-dash'); if(pd && pd.style.display==='flex') renderPcDash();
@@ -7872,7 +7875,7 @@ function renderPcStorePanel(){
   sp.innerHTML=pcAchievementHTML('🏪 お店の達成率', _pcdStoreTotal||0, sgoal)+((_pcdStoreTotal==null)?'<div style="font-size:11px;color:var(--muted2);margin-top:8px;">読込中…</div>':'')+pcdMemberCardsHtml();
 }
 function pcdMembers(){
-  var names=[]; if(_pcdRank) _pcdRank.forEach(function(m){ if(m.name) names.push(m.name); });
+  var names=[]; if(_pcdAllMembers) _pcdAllMembers.forEach(function(m){ if(m.name) names.push(m.name); });
   var me=(typeof userData!=='undefined'&&userData&&userData.name)||'';
   if(me && names.indexOf(me)<0) names.unshift(me);
   if(!names.length && me) names=[me];
@@ -7884,7 +7887,7 @@ function pcdSetTrendMode(m){ _pcdTrendMode=m; renderPcTrendPanel(); }
 function pcdMemberData(name){
   var me=(typeof userData!=='undefined'&&userData&&userData.name)||'';
   if(name===me){ var total=(typeof getMyMonthlyTotal==='function')?getMyMonthlyTotal():0; var goal=((userData&&userData.goal)||0)*10000; return {total:total, goal:goal}; }
-  if(_pcdRank){ var m=_pcdRank.filter(function(x){return x.name===name;})[0]; if(m) return {total:Number(m.amount)||0, goal:(Number(m.goal)||0)*10000}; }
+  if(_pcdAllMembers){ var m=_pcdAllMembers.filter(function(x){return x.name===name;})[0]; if(m) return {total:Number(m.amount)||0, goal:(Number(m.goal)||0)*10000}; }
   return {total:0, goal:0};
 }
 function pcdCurrentWork(name){
