@@ -384,7 +384,7 @@ button{font-family:inherit; cursor:pointer;}
      同じスプレッドシートに「進捗/入庫/完成履歴」シートとして相乗りできる。
    - いまは persist() が localStorage に書くだけ＝バックエンド不要で即使える。
    =================================================================== */
-const APP_VERSION = '20260824f';
+const APP_VERSION = '20260824g';
 const STORE_KEY   = 'board_state_v1';
 const DEFAULT_STAGES = ['パネル修正','パテ','サフ','調色','マスキング','塗装','乾燥','磨き','組み付け'];
 /* 工程は店舗ごとに設定で変更可。state.store.stages に保存、無ければ標準9工程 */
@@ -692,6 +692,7 @@ function toast(msg){
   const t=document.getElementById('toast');
   const m=document.getElementById('toast-msg');
   if(m) m.textContent=msg; else t.textContent=msg;
+  t.dataset.shownAt = String(Date.now());
   t.classList.add('show');
   clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove('show'),2200);
 }
@@ -699,6 +700,16 @@ function hideToast(){
   const t=document.getElementById('toast');
   if(t){ clearTimeout(t._t); t.classList.remove('show'); }
 }
+// 保険: どんな理由であれ12秒以上表示され続けている通知は強制的に消す(再描画のゴースト対策込み)。
+setInterval(() => {
+  const el = document.getElementById('toast');
+  if (!el || !el.classList.contains('show')) return;
+  const shownAt = Number(el.dataset.shownAt || 0);
+  if (!shownAt || Date.now() - shownAt > 12000) {
+    hideToast();
+    void el.offsetHeight;
+  }
+}, 3000);
 
 /* ---------- tab ---------- */
 function switchTab(tab){
