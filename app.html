@@ -721,9 +721,9 @@ input[type="time"]::-webkit-calendar-picker-indicator { filter: invert(1); opaci
 <div id="search-hint" class="search-hint hidden"></div>
 <!-- 作業中 -->
 <div class="bdpage hidden" id="page-yotei">
-  <div class="sectlabel"><span class="ic">📅</span><span style="font-weight:600;color:var(--text)">入庫予定</span><span class="n" id="yotei-count">0台</span><button class="addbtn" onclick="openAddCar()">＋ 入庫を追加</button></div>
+  <div class="sectlabel"><span class="ic">📅</span><span style="font-weight:600;color:var(--text)">入庫予定</span><span class="n" id="yotei-count">0台</span><button class="addbtn" onclick="openAddCar('yotei')">＋ 入庫予定を追加</button></div>
   <div id="yotei-list"></div>
-  <div class="emptybox hidden" id="yotei-empty">入庫予定はありません。<br>「＋ 入庫を追加」で「📅 入庫予定」を選んで登録できます。</div>
+  <div class="emptybox hidden" id="yotei-empty">入庫予定はありません。<br>「＋ 入庫予定を追加」から登録できます。</div>
 </div>
 <div class="bdpage" id="page-work">
   <div class="sectlabel">
@@ -1820,7 +1820,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = 'app202608241730';
+const APP_VERSION = 'app202608241800';
 // LINEログイン(LIFF) — LINEコンソールで作成したLIFFアプリのIDを入れる
 const LIFF_ID = '2010638896-vJtjkUOr';
 // 公式アカウント「カーコン工賃通知」友だち追加URL（ここに飛ばすとLINEアプリの友だち追加画面が直接開く）
@@ -5849,7 +5849,7 @@ reclaimFromLineRedirect().then(function(reclaimed) {
   <div class="pcd-grid">
     <div class="pcd-genba">
       <div class="pcd-cols">
-        <div class="pcd-col" id="pcd-col-yotei"><h3>📅 入庫予定 <span class="n" id="pcd-c-yotei">0</span><button class="addbtn" style="margin-left:auto;padding:5px 12px;font-size:12px;" onclick="openAddCar()">＋ 追加</button></h3><div class="pcd-list" id="pcd-yotei"></div></div>
+        <div class="pcd-col" id="pcd-col-yotei"><h3>📅 入庫予定 <span class="n" id="pcd-c-yotei">0</span><button class="addbtn" style="margin-left:auto;padding:5px 12px;font-size:12px;" onclick="openAddCar('yotei')">＋ 追加</button></h3><div class="pcd-list" id="pcd-yotei"></div></div>
         <div class="pcd-col" id="pcd-col-nyuko"><h3>🚙 入庫中 <span class="n" id="pcd-c-nyuko">0</span><button class="addbtn" style="margin-left:auto;padding:5px 12px;font-size:12px;" onclick="openAddCar()">＋ 追加</button></h3><div class="pcd-list" id="pcd-nyuko"></div></div>
         <div class="pcd-col" id="pcd-col-work"><h3>🔧 作業中 <span class="n" id="pcd-c-work">0</span></h3><div class="pcd-list" id="pcd-work"></div></div>
         <div class="pcd-col" id="pcd-col-done"><h3>🏁 完成 <select id="pcd-done-filter" onchange="pcdSetDoneFilter(this.value)"><option value="today">今日</option><option value="week">今週</option><option value="month">今月</option><option value="all">すべて</option></select> <span class="n" id="pcd-c-done">0</span></h3><div class="pcd-list" id="pcd-done"></div></div>
@@ -6276,20 +6276,24 @@ function pickCat(cat){
     b.classList.toggle('seibi', b.dataset.c===cat);
   });
 }
-function openAddCar(){
+function openAddCar(forceMode){
   editingId = null;
   newCarKind='板金';
   newCarCategory='点検整備';
-  newCarMode='now';
-  const html = `
-    <h2>入庫を追加</h2>
+  newCarMode = forceMode || 'now';
+  // 「予定」タブ・PCダッシュボードの予定列から追加する時は最初から入庫予定確定なので、
+  // 「今すぐ入庫」との切り替えは出さない(2026-08-24、選ぶ手間を省くための変更)。
+  const modeToggleHtml = forceMode ? '' : `
     <div class="field">
       <div style="display:flex; gap:8px;">
         <button type="button" class="kbtn sel" id="mode-now" onclick="bd_pickMode('now')">🚗 今すぐ入庫</button>
         <button type="button" class="kbtn" id="mode-yotei" onclick="bd_pickMode('yotei')">📅 入庫予定</button>
       </div>
-    </div>
-    <div class="field" id="nyuko-plan-field" style="display:none;">
+    </div>`;
+  const html = `
+    <h2>${forceMode==='yotei' ? '入庫予定を追加' : '入庫を追加'}</h2>
+    ${modeToggleHtml}
+    <div class="field" id="nyuko-plan-field" style="display:${newCarMode==='yotei'?'':'none'};">
       <label>入庫予定日時</label>
       <div style="display:flex; gap:8px;">
         <input type="date" id="c-nyuko-date" style="flex:1; background:var(--bg); border:0.5px solid var(--line2); color:var(--text); font-size:16px; padding:12px; border-radius:10px;">
@@ -6356,7 +6360,7 @@ function openAddCar(){
       <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-weight:500;"><input type="checkbox" id="c-insurance" style="width:20px;height:20px;"> 🛡 保険作業（保険を使う案件）</label>
     </div>    <div class="sheet-actions">
       <button class="btn ghost" onclick="closeSheet()">キャンセル</button>
-      <button class="btn" onclick="saveCar()">入庫に追加</button>
+      <button class="btn" onclick="saveCar()">${forceMode==='yotei' ? '入庫予定に追加' : '入庫に追加'}</button>
     </div>`;
   showSheet(html);
   ncInit();
