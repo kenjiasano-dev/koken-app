@@ -379,7 +379,7 @@ button{font-family:inherit; cursor:pointer;}
      同じスプレッドシートに「進捗/入庫/完成履歴」シートとして相乗りできる。
    - いまは persist() が localStorage に書くだけ＝バックエンド不要で即使える。
    =================================================================== */
-const APP_VERSION = '20260821b';
+const APP_VERSION = '20260824a';
 const STORE_KEY   = 'board_state_v1';
 const DEFAULT_STAGES = ['パネル修正','パテ','サフ','調色','マスキング','塗装','乾燥','磨き','組み付け'];
 /* 工程は店舗ごとに設定で変更可。state.store.stages に保存、無ければ標準9工程 */
@@ -713,7 +713,7 @@ function openSetup(){
     </div>
     <div class="field">
       <label>グループコード（工賃アプリと同じものを推奨・任意）</label>
-      <input id="su-group" placeholder="例）CARCON123" value="${esc(state.store?state.store.group:'')}">
+      <input id="su-group" placeholder="例）CARCON123" value="${esc(state.store?state.store.group:'')}" onblur="autofillStoreNameFromGroup()">
     </div>
     <div class="field">
       <label>あなたの名前（任意）</label>
@@ -724,6 +724,19 @@ function openSetup(){
     </div>
     <button class="btn" onclick="saveSetup()">はじめる</button>`;
   showSheet(html, false);
+}
+/* グループコードを入れて欄を離れたとき、契約台帳に正式な店舗名があれば自動で埋める。
+   店舗名欄が既に何か入力されている場合は上書きしない(手入力を尊重)。 */
+async function autofillStoreNameFromGroup(){
+  const groupEl = document.getElementById('su-group');
+  const nameEl = document.getElementById('su-name');
+  if(!groupEl || !nameEl) return;
+  const group = groupEl.value.trim();
+  if(!group || nameEl.value.trim()) return;
+  const res = await boardFetchGAS('getContractStoreName', { groupCode: group });
+  if(res && res.store && !nameEl.value.trim()){
+    nameEl.value = res.store;
+  }
 }
 function saveSetup(){
   const name = document.getElementById('su-name').value.trim();
