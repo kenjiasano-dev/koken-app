@@ -278,7 +278,8 @@ input[type="time"]::-webkit-calendar-picker-indicator { filter: invert(1); opaci
 .pref-select { width: 100%; padding: 10px 14px; border: 2px solid var(--border); border-radius: 10px; font-size: 14px; background: #fff; }
 
 /* ===== NOTIFICATION TOAST ===== */
-.toast { position: fixed; top: 70px; left: 50%; transform: translateX(-50%) translateY(-80px); background: #333; color: #fff; padding: 10px 14px 10px 20px; border-radius: 30px; font-size: 13px; z-index: 300; transition: transform .3s ease; white-space: nowrap; display: flex; align-items: center; gap: 10px; }
+.toast { position: fixed; top: 70px; left: 50%; transform: translateX(-50%) translateY(-80px); background: #333; color: #fff; padding: 10px 14px 10px 20px; border-radius: 18px; font-size: 13px; z-index: 300; transition: transform .3s ease; display: flex; align-items: center; gap: 10px; max-width: calc(100vw - 24px); box-sizing: border-box; }
+.toast #toast-msg { word-break: break-word; }
 .toast.show { transform: translateX(-50%) translateY(0); }
 .toast-x { cursor: pointer; opacity: .65; font-size: 15px; line-height: 1; padding: 10px; margin: -10px; display: flex; align-items: center; justify-content: center; }
 .toast-x:hover, .toast-x:active { opacity: 1; }
@@ -569,11 +570,12 @@ input[type="time"]::-webkit-calendar-picker-indicator { filter: invert(1); opaci
 .bdtoast{
   position:fixed; left:50%; bottom:90px; transform:translateX(-50%);
   background:var(--toast-bg); border:0.5px solid var(--line2); color:#f2f3f5;
-  font-size:13px; padding:10px 12px 10px 16px; border-radius:22px; z-index:60;
-  opacity:0; transition:opacity .25s, transform .25s; pointer-events:none; white-space:nowrap;
-  display:flex; align-items:center; gap:10px;
+  font-size:13px; padding:10px 12px 10px 16px; border-radius:18px; z-index:60;
+  opacity:0; transition:opacity .25s, transform .25s; pointer-events:none;
+  display:flex; align-items:center; gap:10px; max-width:calc(100vw - 24px); box-sizing:border-box;
 }
 .bdtoast.show{opacity:1; transform:translateX(-50%) translateY(-4px);}
+.bdtoast #bdtoast-msg{ word-break:break-word; }
 .bdtoast-x{ cursor:pointer; opacity:.65; font-size:15px; line-height:1; padding:10px; margin:-10px; pointer-events:auto; display:flex; align-items:center; justify-content:center; }
 .bdtoast-x:hover, .bdtoast-x:active{ opacity:1; }
 /* ===== 現場ボード統合オーバーライド ===== */
@@ -1816,7 +1818,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = 'app202608241330';
+const APP_VERSION = 'app202608241400';
 // LINEログイン(LIFF) — LINEコンソールで作成したLIFFアプリのIDを入れる
 const LIFF_ID = '2010638896-vJtjkUOr';
 // 公式アカウント「カーコン工賃通知」友だち追加URL（ここに飛ばすとLINEアプリの友だち追加画面が直接開く）
