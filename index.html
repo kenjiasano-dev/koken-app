@@ -256,8 +256,8 @@ input[type="date"].form-input::-webkit-calendar-picker-indicator { filter: inver
 /* ===== NOTIFICATION TOAST ===== */
 .toast { position: fixed; top: 70px; left: 50%; transform: translateX(-50%) translateY(-80px); background: #333; color: #fff; padding: 10px 14px 10px 20px; border-radius: 30px; font-size: 13px; z-index: 300; transition: transform .3s ease; white-space: nowrap; display: flex; align-items: center; gap: 10px; }
 .toast.show { transform: translateX(-50%) translateY(0); }
-.toast-x { cursor: pointer; opacity: .65; font-size: 15px; line-height: 1; padding: 2px; }
-.toast-x:hover { opacity: 1; }
+.toast-x { cursor: pointer; opacity: .65; font-size: 15px; line-height: 1; padding: 10px; margin: -10px; display: flex; align-items: center; justify-content: center; }
+.toast-x:hover, .toast-x:active { opacity: 1; }
 
 /* ===== LOADING ===== */
 .skeleton { background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%); background-size: 200% 100%; animation: shimmer 1.5s infinite; border-radius: 8px; }
@@ -1349,7 +1349,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = '20260824e';
+const APP_VERSION = '20260824f';
 // LINEログイン(LIFF) — LINEコンソールで作成したLIFFアプリのIDを入れる
 const LIFF_ID = '2010638896-vJtjkUOr';
 // 公式アカウント「カーコン工賃通知」友だち追加URL（ここに飛ばすとLINEアプリの友だち追加画面が直接開く）

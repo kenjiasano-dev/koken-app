@@ -280,8 +280,8 @@ button{font-family:inherit; cursor:pointer;}
   display:flex; align-items:center; gap:10px;
 }
 .toast.show{opacity:1; transform:translateX(-50%) translateY(-4px);}
-.toast-x{ cursor:pointer; opacity:.65; font-size:15px; line-height:1; padding:2px; pointer-events:auto; }
-.toast-x:hover{ opacity:1; }
+.toast-x{ cursor:pointer; opacity:.65; font-size:15px; line-height:1; padding:10px; margin:-10px; pointer-events:auto; display:flex; align-items:center; justify-content:center; }
+.toast-x:hover, .toast-x:active{ opacity:1; }
 </style>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
@@ -382,7 +382,7 @@ button{font-family:inherit; cursor:pointer;}
      同じスプレッドシートに「進捗/入庫/完成履歴」シートとして相乗りできる。
    - いまは persist() が localStorage に書くだけ＝バックエンド不要で即使える。
    =================================================================== */
-const APP_VERSION = '20260824c';
+const APP_VERSION = '20260824d';
 const STORE_KEY   = 'board_state_v1';
 const DEFAULT_STAGES = ['パネル修正','パテ','サフ','調色','マスキング','塗装','乾燥','磨き','組み付け'];
 /* 工程は店舗ごとに設定で変更可。state.store.stages に保存、無ければ標準9工程 */
