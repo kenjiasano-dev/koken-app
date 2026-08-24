@@ -1820,7 +1820,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = 'app202608241500';
+const APP_VERSION = 'app202608241600';
 // LINEログイン(LIFF) — LINEコンソールで作成したLIFFアプリのIDを入れる
 const LIFF_ID = '2010638896-vJtjkUOr';
 // 公式アカウント「カーコン工賃通知」友だち追加URL（ここに飛ばすとLINEアプリの友だち追加画面が直接開く）
@@ -1932,6 +1932,7 @@ function showToast(msg, duration = 2500) {
   const t = document.getElementById('toast');
   const m = document.getElementById('toast-msg');
   if (m) m.textContent = msg; else t.textContent = msg;
+  t.dataset.shownAt = String(Date.now());
   t.classList.add('show');
   setTimeout(() => t.classList.remove('show'), duration);
 }
@@ -1949,6 +1950,20 @@ function hideBdToast() {
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible') { hideToast(); hideBdToast(); }
 });
+// 保険: どんな理由であれ12秒以上表示され続けている通知は強制的に消す。
+// (このアプリの通知は最長でも8秒設定のため、それ以上残るのはタイマー消失等の異常。
+//  再描画が追いつかない端末向けに、非表示→強制リフロー→再表示で見た目のゴーストも払う)
+setInterval(() => {
+  ['toast', 'bdtoast'].forEach((id) => {
+    const el = document.getElementById(id);
+    if (!el || !el.classList.contains('show')) return;
+    const shownAt = Number(el.dataset.shownAt || 0);
+    if (!shownAt || Date.now() - shownAt > 12000) {
+      el.classList.remove('show');
+      void el.offsetHeight; // 強制リフローで再描画のゴーストを払う
+    }
+  });
+}, 3000);
 
 function formatYen(n) {
   return (n / 10000).toFixed(1).replace(/\.0$/, '');
@@ -6159,6 +6174,7 @@ function toast(msg){
   const t=document.getElementById('bdtoast');
   const m=document.getElementById('bdtoast-msg');
   if(m) m.textContent=msg; else t.textContent=msg;
+  t.dataset.shownAt = String(Date.now());
   t.classList.add('show');
   clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove('show'),2200);
 }
