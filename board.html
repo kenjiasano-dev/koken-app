@@ -379,7 +379,7 @@ button{font-family:inherit; cursor:pointer;}
      同じスプレッドシートに「進捗/入庫/完成履歴」シートとして相乗りできる。
    - いまは persist() が localStorage に書くだけ＝バックエンド不要で即使える。
    =================================================================== */
-const APP_VERSION = '20260824a';
+const APP_VERSION = '20260824b';
 const STORE_KEY   = 'board_state_v1';
 const DEFAULT_STAGES = ['パネル修正','パテ','サフ','調色','マスキング','塗装','乾燥','磨き','組み付け'];
 /* 工程は店舗ごとに設定で変更可。state.store.stages に保存、無ければ標準9工程 */
@@ -701,8 +701,31 @@ function switchTab(tab){
 /* ---------- setup gate ---------- */
 function ensureStore(){
   if(state.store && state.store.name) return true;
+  if(seedStoreFromWageApp()) return true;
   openSetup();
   return false;
+}
+/* 工賃アプリ(index.html)は同じドメインでlocalStorageの'userData'に名前・店舗名・グループコードを
+   既に持っている。あれば作業ボード側の設定画面を省略し、そのまま引き継ぐ(簡易版:UUIDは統一しない)。 */
+function seedStoreFromWageApp(){
+  try {
+    const ud = JSON.parse(localStorage.getItem('userData') || 'null');
+    if(!ud || !ud.name || !ud.store) return false;
+    state.store = Object.assign({}, state.store, {
+      name: ud.store,
+      group: ud.activeGroupCode || ud.groupCode || '',
+      myName: ud.name,
+      sei: ud.name,
+      mei: '',
+      uuid: (state.store && state.store.uuid) || uuid()
+    });
+    if(!Array.isArray(state.store.members) || !state.store.members.length){
+      state.store.members = [ud.name];
+    }
+    persist();
+    renderStoreLabel();
+    return true;
+  } catch(e) { return false; }
 }
 function openSetup(){
   const html = `
