@@ -1347,7 +1347,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = '20260824c';
+const APP_VERSION = '20260824d';
 // LINEログイン(LIFF) — LINEコンソールで作成したLIFFアプリのIDを入れる
 const LIFF_ID = '2010638896-vJtjkUOr';
 // 公式アカウント「カーコン工賃通知」友だち追加URL（ここに飛ばすとLINEアプリの友だち追加画面が直接開く）
@@ -3508,6 +3508,7 @@ function generateGroupCode() {
 
 var _pendingInviteCode = '';
 var _pendingInviteResolvedStore = '';
+var _pendingInviteResolvedPref = '';
 
 function handleInviteLink() {
   var inviteCode = '';
@@ -3528,6 +3529,7 @@ function handleInviteLink() {
 function openInviteJoinModal(inviteCode) {
   _pendingInviteCode = inviteCode;
   _pendingInviteResolvedStore = '';
+  _pendingInviteResolvedPref = '';
   document.getElementById('invite-join-code').textContent = inviteCode;
   document.getElementById('invite-join-store-name').textContent = '読み込み中…';
   document.getElementById('invite-join-modal-overlay').classList.add('show');
@@ -3535,6 +3537,10 @@ function openInviteJoinModal(inviteCode) {
     if (_pendingInviteCode !== inviteCode) return; // 表示中に閉じられた／別のコードに変わった
     _pendingInviteResolvedStore = name || '';
     document.getElementById('invite-join-store-name').textContent = name || inviteCode;
+  });
+  resolveGroupPref(inviteCode).then(function(pref) {
+    if (_pendingInviteCode !== inviteCode) return;
+    _pendingInviteResolvedPref = pref || '';
   });
 }
 
@@ -3556,6 +3562,11 @@ function confirmInviteJoin() {
     userData.store = _pendingInviteResolvedStore;
     var storeInput = document.getElementById('set-store');
     if (storeInput) storeInput.value = _pendingInviteResolvedStore;
+  }
+  if (!userData.pref && _pendingInviteResolvedPref) {
+    userData.pref = _pendingInviteResolvedPref;
+    var prefInput = document.getElementById('set-pref');
+    if (prefInput) prefInput.value = _pendingInviteResolvedPref;
   }
   saveLocal();
   if (typeof renderFollowedStores === 'function') renderFollowedStores();
@@ -3613,6 +3624,21 @@ async function resolveGroupName(code) {
       d.data.forEach(function(r){ var s = (r.store || '').trim(); if (s) counts[s] = (counts[s] || 0) + 1; });
       var best = '', bestN = 0;
       Object.keys(counts).forEach(function(s){ if (counts[s] > bestN) { best = s; bestN = counts[s]; } });
+      return best;
+    }
+  } catch(e) {}
+  return '';
+}
+
+// グループコードから、サーバー上の都道府県も引く(招待参加時の自動補完用。店舗名と同じ多数決)
+async function resolveGroupPref(code) {
+  try {
+    var d = await fetchFromGAS('getStoreRanking', { groupCode: code });
+    if (d && d.data && d.data.length) {
+      var counts = {};
+      d.data.forEach(function(r){ var p = (r.pref || '').trim(); if (p) counts[p] = (counts[p] || 0) + 1; });
+      var best = '', bestN = 0;
+      Object.keys(counts).forEach(function(p){ if (counts[p] > bestN) { best = p; bestN = counts[p]; } });
       return best;
     }
   } catch(e) {}
