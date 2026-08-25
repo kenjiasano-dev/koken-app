@@ -1216,7 +1216,10 @@ input[type="time"]::-webkit-calendar-picker-indicator { filter: invert(1); opaci
         <div class="card-title">プロフィール</div>
         <div class="form-group">
           <label class="form-label">お名前</label>
-          <input type="text" class="form-input" id="set-name" placeholder="山田 太郎">
+          <div style="display:flex; gap:8px;">
+            <input type="text" class="form-input" id="set-sei" placeholder="姓（例：山田）" style="flex:1;">
+            <input type="text" class="form-input" id="set-mei" placeholder="名（例：太郎）" style="flex:1;">
+          </div>
         </div>
         <div class="form-group">
           <label class="form-label">都道府県</label>
@@ -1820,7 +1823,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = 'app202608251100';
+const APP_VERSION = 'app202608251145';
 // LINEログイン(LIFF) — LINEコンソールで作成したLIFFアプリのIDを入れる
 const LIFF_ID = '2010638896-vJtjkUOr';
 // 公式アカウント「カーコン工賃通知」友だち追加URL（ここに飛ばすとLINEアプリの友だち追加画面が直接開く）
@@ -3886,7 +3889,15 @@ function initSettings() {
   prefFilter.innerHTML = '<option value="">都道府県を選択</option>' + PREFS.map(p => `<option value="${p}">${p}</option>`).join('');
 
   // Load saved
-  document.getElementById('set-name').value = userData.name || '';
+  // 姓・名は新しい欄。既存ユーザーは userData.sei/mei が無いので、保存済みの結合名から best-effort で分割する
+  var _sei = userData.sei, _mei = userData.mei;
+  if ((_sei === undefined || _sei === null) && userData.name) {
+    var _parts = String(userData.name).trim().split(/[\s　]+/);
+    _sei = _parts[0] || '';
+    _mei = _parts.slice(1).join(' ') || '';
+  }
+  document.getElementById('set-sei').value = _sei || '';
+  document.getElementById('set-mei').value = _mei || '';
   document.getElementById('set-pref').value = userData.pref || '';
   document.getElementById('set-store').value = userData.store || '';
   if (document.getElementById('set-fiscal-start')) document.getElementById('set-fiscal-start').value = userData.fiscalStart || 1;
@@ -4029,11 +4040,15 @@ function getRoleBadge(role) {
 }
 
 function saveProfile() {
-  const name = document.getElementById('set-name').value.trim();
+  const sei = document.getElementById('set-sei').value.trim();
+  const mei = document.getElementById('set-mei').value.trim();
+  const name = (sei && mei) ? (sei + ' ' + mei) : (sei + mei);
   const pref = document.getElementById('set-pref').value;
   const store = document.getElementById('set-store').value.trim();
   const goal = userData.goal || 100; // 個人工賃目標は🎯目標設定カードで設定
   const role = document.getElementById('set-role') ? document.getElementById('set-role').value : '';
+  userData.sei = sei;
+  userData.mei = mei;
   userData.name = name;
   userData.pref = pref;
   userData.store = store;
@@ -6239,7 +6254,7 @@ function saveSetup(){
   if(!name){ toast('店舗名を入れてください'); return; }
   const sei = document.getElementById('su-sei').value.trim();
   const mei = document.getElementById('su-mei').value.trim();
-  const myName = (sei + mei).trim();
+  const myName = (sei && mei) ? (sei + ' ' + mei) : (sei + mei);
   const prev = state.store || {};
   state.store = Object.assign({}, prev, {
     name,
