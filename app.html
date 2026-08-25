@@ -1820,7 +1820,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = 'app202608251030';
+const APP_VERSION = 'app202608251100';
 // LINEログイン(LIFF) — LINEコンソールで作成したLIFFアプリのIDを入れる
 const LIFF_ID = '2010638896-vJtjkUOr';
 // 公式アカウント「カーコン工賃通知」友だち追加URL（ここに飛ばすとLINEアプリの友だち追加画面が直接開く）
@@ -6801,11 +6801,36 @@ function stageCrewSave(){
 function stageCrewClear(){ const s=_crewSel; if(!s) return; s.names=[]; stageCrewSave(); }
 let editMembers=[];
 let _memberRankMap = {};   // 名前 -> {emoji,name}（称号バッジ表示用。getStoreRankingから取得）
+/* グループの共有メンバー(工賃アプリ側の名簿)を、担当者リストへ自動で取り込む。
+   手打ちで追加した名前(未登録の応援など)は消さず、共有メンバーに無い名前だけ足す。
+   先頭は必ず本人にする(担当を選ぶとき一番押しやすいように)。 */
+async function syncMembersFromGroup(){
+  if(!state.store || !state.store.group) return false;
+  const res = await fetchFromGAS('getStoreRanking', { groupCode: state.store.group });
+  if(!res || !Array.isArray(res.data)) return false;
+  const names = res.data.map(d=>d.name).filter(n=>n && String(n).trim());
+  const cur = Array.isArray(state.store.members) ? state.store.members.slice() : [];
+  let changed = false;
+  names.forEach(n=>{ if(cur.indexOf(n)<0){ cur.push(n); changed=true; } });
+  const me = state.store.myName || (typeof userData!=='undefined' && userData ? userData.name : '') || '';
+  if(me){
+    const idx = cur.indexOf(me);
+    if(idx>0){ cur.splice(idx,1); cur.unshift(me); changed=true; }
+    else if(idx<0){ cur.unshift(me); changed=true; }
+  }
+  if(changed){ state.store.members = cur; bd_saveLocal(); }
+  return changed;
+}
 function openMembers(){
   if(!state.store) return;
   editMembers = getMembers().slice();
   showSheet(membersHTML());
   loadMemberRanks();
+  syncMembersFromGroup().then(function(changed){
+    if(!changed) return;
+    editMembers = getMembers().slice();
+    rebuildMembers();
+  });
 }
 async function loadMemberRanks(){
   if(!state.store || !state.store.group) return;
@@ -8524,6 +8549,7 @@ function bd_boot(){
   bd_switchTab('work');
   try{ boardSyncNow(); }catch(e){}
   try{ loadGroupStages(); }catch(e){}
+  try{ syncMembersFromGroup(); }catch(e){}
   if(typeof updatePcDash==='function') updatePcDash();
 }
 window.bd_boot = bd_boot;
