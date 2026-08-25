@@ -1820,7 +1820,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = 'app202608250930';
+const APP_VERSION = 'app202608251015';
 // LINEログイン(LIFF) — LINEコンソールで作成したLIFFアプリのIDを入れる
 const LIFF_ID = '2010638896-vJtjkUOr';
 // 公式アカウント「カーコン工賃通知」友だち追加URL（ここに飛ばすとLINEアプリの友だち追加画面が直接開く）
@@ -2284,10 +2284,11 @@ async function renderMemberList() {
     var month = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0');
     var data = await fetchFromGAS('getStoreRanking', { groupCode: code, month: month });
     var members = (data && data.data) ? data.data : [];
-    var isOwner = !!userData.groupCode && String(userData.groupCode) === String(code);
+    // オーナー判定(userData.groupCode===code)は「最後に参加したグループ」しか一致せず、
+    // 複数店舗を切り替える人には不安定だった。小規模チーム運用のため、いっそ全員に開放する(2026-08-25)。
     var blankCount = members.filter(function(m){ return !m.name || String(m.name).trim() === ''; }).length;
     var html = '';
-    if (isOwner && blankCount > 0) {
+    if (blankCount > 0) {
       html += '<div style="margin-bottom:10px;padding:10px 12px;background:#3a2600;border:1px solid #b8860b;border-radius:10px;">' +
         '<div style="font-size:12px;color:#f0c040;margin-bottom:6px;">🧹 名前が未設定のメンバーが ' + blankCount + ' 件あります</div>' +
         '<button onclick="cleanupBlankMembers()" style="width:100%;padding:8px;background:#b8860b;color:#111;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;">名無しを掃除する</button>' +
@@ -2300,7 +2301,7 @@ async function renderMemberList() {
         var isMe = m.name === userData.name;
         var blank = !m.name || String(m.name).trim() === '';
         var disp = blank ? '<span style="color:var(--text-sub);">（名前未設定）</span>' : (m.name + (isMe ? ' <span style="font-size:11px;color:var(--green);">（あなた）</span>' : ''));
-        var delBtn = (isOwner && !isMe && !blank) ? '<button onclick="removeMemberUI(\'' + encodeURIComponent(m.name) + '\')" style="flex:0 0 auto;padding:6px 10px;background:transparent;border:1px solid #c0392b;color:#e74c3c;border-radius:8px;font-size:12px;cursor:pointer;">外す</button>' : '';
+        var delBtn = (!isMe && !blank) ? '<button onclick="removeMemberUI(\'' + encodeURIComponent(m.name) + '\')" style="flex:0 0 auto;padding:6px 10px;background:transparent;border:1px solid #c0392b;color:#e74c3c;border-radius:8px;font-size:12px;cursor:pointer;">外す</button>' : '';
         return '<div style="display:flex;align-items:center;gap:10px;padding:12px;background:var(--card);border-radius:12px;margin-bottom:8px;' + (isMe ? 'border:2px solid var(--green);' : 'border:1px solid var(--border);') + '">' +
           '<div style="width:36px;height:36px;border-radius:50%;background:' + (isMe ? 'var(--green)' : 'var(--border)') + '33;display:flex;align-items:center;justify-content:center;font-size:18px;">👤</div>' +
           '<div style="flex:1;min-width:0;">' +
