@@ -1535,12 +1535,12 @@ input[type="time"]::-webkit-calendar-picker-indicator { filter: invert(1); opaci
             <input type="text" class="form-input" id="front-customer" placeholder="例: 山田 太郎" autocomplete="off">
           </div>
           <div class="form-group">
-            <label class="form-label">ナンバー（任意）</label>
-            <input type="text" class="form-input" id="front-number" maxlength="4" placeholder="0000" inputmode="numeric" oninput="numAutoNext(this,&#39;front-cartype&#39;)" style="letter-spacing:6px;font-size:22px;font-weight:700;text-align:center;">
-          </div>
-          <div class="form-group">
             <label class="form-label">🚗 車種（任意）</label>
             <input type="text" class="form-input" id="front-cartype" placeholder="例: プリウス" list="cartype-list" autocomplete="off">
+          </div>
+          <div class="form-group">
+            <label class="form-label">ナンバー（任意）</label>
+            <input type="text" class="form-input" id="front-number" maxlength="4" placeholder="0000" inputmode="numeric" oninput="numAutoNext(this,&#39;front-amount&#39;)" style="letter-spacing:6px;font-size:22px;font-weight:700;text-align:center;">
           </div>
           <div class="form-group">
             <label class="form-label">📋 見積り金額</label>
@@ -1854,7 +1854,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = 'app202608272320';
+const APP_VERSION = 'app202608272335';
 // LINEログイン(LIFF) — LINEコンソールで作成したLIFFアプリのIDを入れる
 const LIFF_ID = '2010638896-vJtjkUOr';
 // 公式アカウント「カーコン工賃通知」友だち追加URL（ここに飛ばすとLINEアプリの友だち追加画面が直接開く）
