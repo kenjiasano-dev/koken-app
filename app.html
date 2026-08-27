@@ -1840,7 +1840,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = 'app202608271630';
+const APP_VERSION = 'app202608271645';
 // LINEログイン(LIFF) — LINEコンソールで作成したLIFFアプリのIDを入れる
 const LIFF_ID = '2010638896-vJtjkUOr';
 // 公式アカウント「カーコン工賃通知」友だち追加URL（ここに飛ばすとLINEアプリの友だち追加画面が直接開く）
@@ -7977,6 +7977,15 @@ function changeYoteiCalMonth(delta){
   if(_yoteiCalM<1){ _yoteiCalM=12; _yoteiCalY--; }
   renderYoteiCal();
 }
+/* 予定(yotei)は入庫予定日時(nyukoPlan)、入庫済み(nyuko/work)は実際の入庫日時(nyukoAt)を
+   その車が「その日を占有している」基準の日時として扱う共通ヘルパー(ガントチャートと共通の考え方)。 */
+function bd_yoteiOccupyKey(c){ return c.status==='yotei' ? (c.nyukoPlan||'').slice(0,10) : (c.nyukoAt||'').slice(0,10); }
+function bd_yoteiStartMs(c){
+  var key = c.status==='yotei' ? c.nyukoPlan : c.nyukoAt;
+  if(!key) return Infinity;
+  var t=new Date(key).getTime();
+  return isNaN(t)?Infinity:t;
+}
 function renderYoteiCal(){
   var titleEl=document.getElementById('yotei-cal-title'); if(titleEl) titleEl.textContent=_yoteiCalY+'年'+_yoteiCalM+'月';
   var grid=document.getElementById('yotei-cal-grid'); if(!grid) return;
@@ -7986,11 +7995,11 @@ function renderYoteiCal(){
   var days=new Date(_yoteiCalY,_yoteiCalM,0).getDate();
   var today=new Date();
   var ym=_yoteiCalY+'-'+String(_yoteiCalM).padStart(2,'0');
-  var yotei=state.cars.filter(function(c){ return c.status==='yotei'; });
+  var yotei=state.cars.filter(function(c){ return c.status==='yotei'||c.status==='nyuko'||c.status==='work'; });
   for(var i=0;i<first;i++) html+='<div class="cal-day empty"></div>';
   for(var d=1;d<=days;d++){
     var dateStr=ym+'-'+String(d).padStart(2,'0');
-    var cars=yotei.filter(function(c){ return (c.nyukoPlan||'').slice(0,10)===dateStr; });
+    var cars=yotei.filter(function(c){ return bd_yoteiOccupyKey(c)===dateStr; });
     var isToday=today.getFullYear()===_yoteiCalY && today.getMonth()+1===_yoteiCalM && today.getDate()===d;
     var dow=new Date(_yoteiCalY,_yoteiCalM-1,d).getDay();
     var cls=['cal-day', isToday?'today':'', cars.length?'has-data':'', dow===0?'sun':(dow===6?'sat':'')].filter(Boolean).join(' ');
@@ -7998,11 +8007,18 @@ function renderYoteiCal(){
   }
   grid.innerHTML=html;
 }
+/* 状態によって既存の正しいカード(ボタン込み)を出し分ける。yoteiRowの「入庫する→」ボタンを
+   既に入庫済みの車に出してしまうと、誤タップでnyukoAt(実入庫日時)が上書きされてしまうため。 */
+function bd_yoteiDayRow(c){
+  if(c.status==='nyuko') return bd_nyukoCardCompactHtml(c);
+  if(c.status==='work') return bd_workCardHtml(c);
+  return bd_yoteiRow(c);
+}
 function openYoteiCalDay(dateStr){
-  var cars=state.cars.filter(function(c){ return c.status==='yotei' && (c.nyukoPlan||'').slice(0,10)===dateStr; }).sort(function(a,b){ return bd_planMs(a)-bd_planMs(b); });
-  var body = cars.length ? cars.map(bd_yoteiRow).join('') : '<p style="color:var(--muted);font-size:13px;">この日の入庫予定はありません。</p>';
+  var cars=state.cars.filter(function(c){ return (c.status==='yotei'||c.status==='nyuko'||c.status==='work') && bd_yoteiOccupyKey(c)===dateStr; }).sort(function(a,b){ return bd_yoteiStartMs(a)-bd_yoteiStartMs(b); });
+  var body = cars.length ? cars.map(bd_yoteiDayRow).join('') : '<p style="color:var(--muted);font-size:13px;">この日の車両はありません。</p>';
   showSheet(
-    '<h2>'+esc(bd_dayHeader(dateStr))+'の入庫予定</h2>'
+    '<h2>'+esc(bd_dayHeader(dateStr))+'の車両（予定・入庫中）</h2>'
     + '<p style="color:var(--muted);font-size:12px;margin:0 0 12px;">'+cars.length+'件</p>'
     + '<div style="max-height:50vh;overflow:auto;margin-bottom:12px;">'+body+'</div>'
     + '<button class="btn ghost" onclick="openYoteiCal()">← カレンダーに戻る</button>'
