@@ -763,7 +763,7 @@ input[type="time"]::-webkit-calendar-picker-indicator { filter: invert(1); opaci
   <div class="sectlabel">
     <span class="ic"><svg viewBox="0 0 24 24" width="21" height="21" fill="currentColor"><path d="M19 15v4H5v-4H3v4c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2v-4h-2zM13 12.67l2.59-2.58L17 11.5l-5 5-5-5 1.41-1.41L11 12.67V3h2z"/></svg></span><span style="font-weight:600;color:var(--text)">入庫中</span>
     <span class="n" id="nyuko-count">0台</span>
-    <button class="addbtn" onclick="openAddCar()">＋ 入庫を追加</button>
+    <button class="addbtn" onclick="openAddCar('now')">＋ 入庫を追加</button>
   </div>
   <div id="nyuko-list"></div>
   <div class="emptybox hidden" id="nyuko-empty">入庫中の車はありません。<br>上の「＋ 入庫を追加」からはじめられます。</div>
@@ -1850,7 +1850,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = 'app202608272245';
+const APP_VERSION = 'app202608272300';
 // LINEログイン(LIFF) — LINEコンソールで作成したLIFFアプリのIDを入れる
 const LIFF_ID = '2010638896-vJtjkUOr';
 // 公式アカウント「カーコン工賃通知」友だち追加URL（ここに飛ばすとLINEアプリの友だち追加画面が直接開く）
@@ -5958,7 +5958,7 @@ reclaimFromLineRedirect().then(function(reclaimed) {
     <div class="pcd-genba">
       <div class="pcd-cols">
         <div class="pcd-col" id="pcd-col-yotei"><h3>📅 入庫予定 <span class="n" id="pcd-c-yotei">0</span><button class="addbtn" title="月カレンダーで見る" style="margin-left:auto;padding:5px 10px;font-size:12px;" onclick="openYoteiCal()">📆</button><button class="addbtn" style="padding:5px 12px;font-size:12px;" onclick="openAddCar('yotei')">＋ 追加</button></h3><div class="pcd-list" id="pcd-yotei"></div></div>
-        <div class="pcd-col" id="pcd-col-nyuko"><h3>🚙 入庫中 <span class="n" id="pcd-c-nyuko">0</span><button class="addbtn" style="margin-left:auto;padding:5px 12px;font-size:12px;" onclick="openAddCar()">＋ 追加</button></h3><div class="pcd-list" id="pcd-nyuko"></div></div>
+        <div class="pcd-col" id="pcd-col-nyuko"><h3>🚙 入庫中 <span class="n" id="pcd-c-nyuko">0</span><button class="addbtn" style="margin-left:auto;padding:5px 12px;font-size:12px;" onclick="openAddCar('now')">＋ 追加</button></h3><div class="pcd-list" id="pcd-nyuko"></div></div>
         <div class="pcd-col" id="pcd-col-work"><h3>🔧 作業中 <span class="n" id="pcd-c-work">0</span></h3><div class="pcd-list" id="pcd-work"></div></div>
         <div class="pcd-col" id="pcd-col-done"><h3>🏁 完成 <select id="pcd-done-filter" onchange="pcdSetDoneFilter(this.value)"><option value="today">今日</option><option value="week">今週</option><option value="month">今月</option><option value="all">すべて</option></select> <span class="n" id="pcd-c-done">0</span></h3><div class="pcd-list" id="pcd-done"></div></div>
       </div>
