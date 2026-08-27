@@ -1841,7 +1841,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = 'app202608271845';
+const APP_VERSION = 'app202608271905';
 // LINEログイン(LIFF) — LINEコンソールで作成したLIFFアプリのIDを入れる
 const LIFF_ID = '2010638896-vJtjkUOr';
 // 公式アカウント「カーコン工賃通知」友だち追加URL（ここに飛ばすとLINEアプリの友だち追加画面が直接開く）
@@ -8263,6 +8263,7 @@ function pcdMemberCardsHtml(){
     var estCount=Number(e.count)||0, estRate=Number(e.rate)||0, estOrder=Number(e.orderAmount)||0;
     var wageLine=g>0?('💴 '+Math.round(amt/10000)+'万 / 目標 '+Math.round(g/10000)+'万（'+rate+'%）'):('💴 '+Math.round(amt/10000)+'万');
     var estLine=estCount>0?('📋 成約率 '+estRate+'% ・ '+estCount+'件 ・ 受注 '+Math.round(estOrder/10000)+'万'):'📋 受付 なし';
+    var workLine=pcdCurrentWork(m.name);
     return '<div style="padding:9px 11px;background:var(--card2);border-radius:10px;margin-bottom:7px;'+(isMe?'border:1px solid var(--green);':'border:1px solid var(--line2);')+'">'
       + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">'
       +   '<span style="font-size:12px;font-weight:700;'+(isMe?'color:var(--green);':'')+'">'+esc(m.name||'')+(isMe?'（あなた）':'')+'</span>'
@@ -8270,7 +8271,8 @@ function pcdMemberCardsHtml(){
       + '</div>'
       + '<div style="font-size:11px;margin-bottom:3px;">'+wageLine+'</div>'
       + (g>0?'<div style="height:6px;background:var(--line2);border-radius:3px;overflow:hidden;margin-bottom:5px;"><div style="height:100%;width:'+rate+'%;background:'+(isMe?'var(--green)':'var(--accent)')+';border-radius:3px;"></div></div>':'')
-      + '<div style="font-size:10px;color:var(--muted);">'+estLine+'</div>'
+      + '<div style="font-size:10px;color:var(--muted);margin-bottom:3px;">'+estLine+'</div>'
+      + '<div style="font-size:10px;color:var(--accent);">'+esc(workLine)+'</div>'
       + '</div>';
   }).join('');
   return '<div style="border-top:1px solid var(--line2);margin-top:12px;padding-top:11px;">'
