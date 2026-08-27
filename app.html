@@ -177,6 +177,17 @@ input[type="time"]::-webkit-calendar-picker-indicator { filter: invert(1); opaci
 .cal-day.empty { pointer-events: none; }
 .cal-day.sun { color: #e74c3c; }
 .cal-day.sat { color: #3498db; }
+.ywgrid{ display:flex; gap:4px; overflow-x:auto; padding-bottom:10px; -webkit-overflow-scrolling:touch; }
+.ywcol{ flex:0 0 88px; display:flex; flex-direction:column; }
+.ywhead{ text-align:center; font-size:12px; font-weight:700; padding:5px 0; border-bottom:2px solid var(--line2,var(--border)); margin-bottom:5px; color:var(--text); position:sticky; top:0; background:var(--card,#141a22); }
+.ywhead.today{ color:var(--accent,var(--green)); }
+.ywhead.sun{ color:#e74c3c; }
+.ywhead.sat{ color:#3498db; }
+.ywdow{ font-size:9px; font-weight:400; color:var(--muted); margin-left:2px; }
+.ywbody{ display:flex; flex-direction:column; gap:4px; min-height:32px; }
+.ywchip{ background:var(--card2,var(--card)); border:1px solid var(--line2,var(--border)); border-radius:7px; padding:5px 4px; cursor:pointer; text-align:center; }
+.ywtype{ font-size:10.5px; font-weight:700; line-height:1.25; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--text); }
+.ywnum{ font-size:9px; color:var(--muted); font-family:ui-monospace,Menlo,Consolas,monospace; margin-top:1px; }
 
 /* ===== MY CALENDAR (パチンコ収支カレンダー風) ===== */
 .mycal-wrap { padding: 12px; }
@@ -1824,7 +1835,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = 'app202608271445';
+const APP_VERSION = 'app202608271515';
 // LINEログイン(LIFF) — LINEコンソールで作成したLIFFアプリのIDを入れる
 const LIFF_ID = '2010638896-vJtjkUOr';
 // 公式アカウント「カーコン工賃通知」友だち追加URL（ここに飛ばすとLINEアプリの友だち追加画面が直接開く）
@@ -7873,8 +7884,52 @@ function openYoteiCal(){
     +   '<button class="cal-nav" onclick="changeYoteiCalMonth(1)">▶</button>'
     + '</div>'
     + '<div class="cal-grid" id="yotei-cal-grid"></div>'
+    + '<button class="btn ghost" style="margin-top:12px;" onclick="openYoteiGrid()">📋 日付を横に並べた表で見る</button>'
   );
   renderYoteiCal();
+}
+/* ===== 1〜31日を横軸に、各日の車種・ナンバーを縦に並べる一覧表(加盟店の紙の入庫予定表と同じ見方) ===== */
+function openYoteiGrid(){
+  if(_yoteiCalY==null){ var now=new Date(); _yoteiCalY=now.getFullYear(); _yoteiCalM=now.getMonth()+1; }
+  showSheet(yoteiGridHTML());
+}
+function changeYoteiGridMonth(delta){
+  _yoteiCalM+=delta;
+  if(_yoteiCalM>12){ _yoteiCalM=1; _yoteiCalY++; }
+  if(_yoteiCalM<1){ _yoteiCalM=12; _yoteiCalY--; }
+  showSheet(yoteiGridHTML());
+}
+function yoteiGridHTML(){
+  var days=new Date(_yoteiCalY,_yoteiCalM,0).getDate();
+  var ym=_yoteiCalY+'-'+String(_yoteiCalM).padStart(2,'0');
+  var today=new Date();
+  var yotei=state.cars.filter(function(c){ return c.status==='yotei'; });
+  var cols='';
+  for(var d=1; d<=days; d++){
+    var dateStr=ym+'-'+String(d).padStart(2,'0');
+    var dow=new Date(_yoteiCalY,_yoteiCalM-1,d).getDay();
+    var w=['日','月','火','水','木','金','土'][dow];
+    var wcls = dow===0?'sun':(dow===6?'sat':'');
+    var isToday=today.getFullYear()===_yoteiCalY && today.getMonth()+1===_yoteiCalM && today.getDate()===d;
+    var cars=yotei.filter(function(c){ return (c.nyukoPlan||'').slice(0,10)===dateStr; }).sort(function(a,b){ return bd_planMs(a)-bd_planMs(b); });
+    var chips=cars.map(function(c){
+      return '<div class="ywchip" onclick="bd_openCarModal(\''+c.id+'\')">'
+        + '<div class="ywtype">'+esc(c.cartype)+'</div>'
+        + '<div class="ywnum">'+esc(c.number)+'</div>'
+        + '</div>';
+    }).join('');
+    cols += '<div class="ywcol">'
+      + '<div class="ywhead '+wcls+(isToday?' today':'')+'">'+d+'<span class="ywdow">('+w+')</span></div>'
+      + '<div class="ywbody">'+chips+'</div>'
+      + '</div>';
+  }
+  return '<h2>📋 入庫予定表（'+_yoteiCalY+'年'+_yoteiCalM+'月）</h2>'
+    + '<div class="cal-header" style="margin-top:2px;">'
+    +   '<button class="cal-nav" onclick="changeYoteiGridMonth(-1)">◀</button>'
+    +   '<button class="btn ghost" style="padding:6px 14px;font-size:12px;" onclick="openYoteiCal()">📆 カレンダー表示に戻る</button>'
+    +   '<button class="cal-nav" onclick="changeYoteiGridMonth(1)">▶</button>'
+    + '</div>'
+    + '<div class="ywgrid">'+cols+'</div>';
 }
 function changeYoteiCalMonth(delta){
   _yoteiCalM+=delta;
