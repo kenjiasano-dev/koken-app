@@ -1841,7 +1841,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = 'app202608271905';
+const APP_VERSION = 'app202608271925';
 // LINEログイン(LIFF) — LINEコンソールで作成したLIFFアプリのIDを入れる
 const LIFF_ID = '2010638896-vJtjkUOr';
 // 公式アカウント「カーコン工賃通知」友だち追加URL（ここに飛ばすとLINEアプリの友だち追加画面が直接開く）
@@ -5936,6 +5936,7 @@ reclaimFromLineRedirect().then(function(reclaimed) {
     <div class="pcd-side">
       <div class="pcd-panel" id="pcd-store-panel"></div>
       <div class="pcd-panel" id="pcd-me-panel"></div>
+      <div class="pcd-panel" id="pcd-assign-panel"></div>
     </div>
   </div>
 </div>
@@ -8346,7 +8347,38 @@ function renderPcTrendPanel(){
     + '</div>';
   tp.innerHTML=head+ach+work+toggle+pcdMiniChart(sel);
 }
-function renderPcAchievement(){ renderPcStorePanel(); renderPcTrendPanel(); }
+var _pcdAssignee=null;
+function pcdSetAssignee(n){ _pcdAssignee=n; renderPcAssignPanel(); }
+function renderPcAssignPanel(){
+  var ap=document.getElementById('pcd-assign-panel'); if(!ap) return;
+  var mem=getMembers();
+  var sel=_pcdAssignee||mem[0]||'';
+  if(mem.length && mem.indexOf(sel)<0) sel=mem[0];
+  var opts=mem.map(function(n){ return '<option value="'+esc(n)+'"'+(n===sel?' selected':'')+'>'+esc(n)+'</option>'; }).join('');
+  var head='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;gap:8px;">'
+    + '<span style="font-size:14px;color:var(--muted);font-weight:600;white-space:nowrap;">🔎 担当者の今の作業</span>'
+    + (mem.length?('<select onchange="pcdSetAssignee(this.value)" style="background:var(--card2);color:var(--text);border:1px solid var(--line2);border-radius:6px;padding:4px 6px;font-size:12px;max-width:130px;">'+opts+'</select>'):'')
+    + '</div>';
+  var body;
+  if(!mem.length){
+    body='<div style="font-size:12px;color:var(--muted2);">⚙設定→担当者（メンバー）で作業者を登録してください。</div>';
+  } else {
+    var cars=(state.cars||[]).filter(function(c){ return c.status==='work' && c.assignee===sel; });
+    if(!cars.length){
+      body='<div style="font-size:13px;color:var(--muted);">現在担当中の作業はありません。</div>';
+    } else {
+      body=cars.map(function(c){
+        var S=getStages(c.kind); var now=S.length?(mark(c.stage)+' '+esc(S[Math.min(c.stage,S.length-1)])):'作業中';
+        return '<div style="padding:9px 11px;background:var(--card2);border-radius:10px;margin-bottom:7px;border:1px solid var(--line2);">'
+          + '<div style="font-size:13px;font-weight:700;">🚗 '+esc(c.cartype)+'・'+esc(c.number)+'</div>'
+          + '<div style="font-size:11px;color:var(--accent);margin-top:3px;">'+now+'</div>'
+          + '</div>';
+      }).join('');
+    }
+  }
+  ap.innerHTML=head+body;
+}
+function renderPcAchievement(){ renderPcStorePanel(); renderPcTrendPanel(); renderPcAssignPanel(); }
 function updatePcDash(){
   var el=document.getElementById('pc-dash'), rb=document.getElementById('pcd-reopen'); if(!el) return;
   if(pcDashShouldShow()){ el.style.display='flex'; if(rb) rb.style.display='none'; _pcdViewMode='board'; document.body.classList.remove('pcdv-view'); pcdUpdateViewSwitchButtons(); renderPcDash(); if(!_pcdLastFetch||Date.now()-_pcdLastFetch>60000){ _pcdLastFetch=Date.now(); pcdFetchData(); } }
