@@ -722,7 +722,7 @@ input[type="time"]::-webkit-calendar-picker-indicator { filter: invert(1); opaci
 <div id="search-hint" class="search-hint hidden"></div>
 <!-- 作業中 -->
 <div class="bdpage hidden" id="page-yotei">
-  <div class="sectlabel"><span class="ic">📅</span><span style="font-weight:600;color:var(--text)">入庫予定</span><span class="n" id="yotei-count">0台</span><button class="addbtn" onclick="openAddCar('yotei')">＋ 入庫予定を追加</button></div>
+  <div class="sectlabel"><span class="ic">📅</span><span style="font-weight:600;color:var(--text)">入庫予定</span><span class="n" id="yotei-count">0台</span><button class="addbtn" title="月カレンダーで見る" onclick="openYoteiCal()" style="margin-left:auto;margin-right:6px;">📆</button><button class="addbtn" onclick="openAddCar('yotei')">＋ 入庫予定を追加</button></div>
   <div id="yotei-list"></div>
   <div class="emptybox hidden" id="yotei-empty">入庫予定はありません。<br>「＋ 入庫予定を追加」から登録できます。</div>
 </div>
@@ -1824,7 +1824,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = 'app202608271415';
+const APP_VERSION = 'app202608271445';
 // LINEログイン(LIFF) — LINEコンソールで作成したLIFFアプリのIDを入れる
 const LIFF_ID = '2010638896-vJtjkUOr';
 // 公式アカウント「カーコン工賃通知」友だち追加URL（ここに飛ばすとLINEアプリの友だち追加画面が直接開く）
@@ -5867,7 +5867,7 @@ reclaimFromLineRedirect().then(function(reclaimed) {
   <div class="pcd-grid">
     <div class="pcd-genba">
       <div class="pcd-cols">
-        <div class="pcd-col" id="pcd-col-yotei"><h3>📅 入庫予定 <span class="n" id="pcd-c-yotei">0</span><button class="addbtn" style="margin-left:auto;padding:5px 12px;font-size:12px;" onclick="openAddCar('yotei')">＋ 追加</button></h3><div class="pcd-list" id="pcd-yotei"></div></div>
+        <div class="pcd-col" id="pcd-col-yotei"><h3>📅 入庫予定 <span class="n" id="pcd-c-yotei">0</span><button class="addbtn" title="月カレンダーで見る" style="margin-left:auto;padding:5px 10px;font-size:12px;" onclick="openYoteiCal()">📆</button><button class="addbtn" style="padding:5px 12px;font-size:12px;" onclick="openAddCar('yotei')">＋ 追加</button></h3><div class="pcd-list" id="pcd-yotei"></div></div>
         <div class="pcd-col" id="pcd-col-nyuko"><h3>🚙 入庫中 <span class="n" id="pcd-c-nyuko">0</span><button class="addbtn" style="margin-left:auto;padding:5px 12px;font-size:12px;" onclick="openAddCar()">＋ 追加</button></h3><div class="pcd-list" id="pcd-nyuko"></div></div>
         <div class="pcd-col" id="pcd-col-work"><h3>🔧 作業中 <span class="n" id="pcd-c-work">0</span></h3><div class="pcd-list" id="pcd-work"></div></div>
         <div class="pcd-col" id="pcd-col-done"><h3>🏁 完成 <select id="pcd-done-filter" onchange="pcdSetDoneFilter(this.value)"><option value="today">今日</option><option value="week">今週</option><option value="month">今月</option><option value="all">すべて</option></select> <span class="n" id="pcd-c-done">0</span></h3><div class="pcd-list" id="pcd-done"></div></div>
@@ -7861,6 +7861,58 @@ function renderYotei(yotei){
   }).join('');
 }
 function bd_arriveCar(id){ var c=findCar(id); if(!c) return; c.status='nyuko'; c.nyukoAt=nowISO(); c.updatedAt=Date.now(); persist(c); bd_switchTab('nyuko'); toast('入庫にしました'); }
+/* ===== 入庫予定カレンダー(月表示)。工賃カレンダーと同じcal-*クラスを流用 ===== */
+var _yoteiCalY=null, _yoteiCalM=null;
+function openYoteiCal(){
+  if(_yoteiCalY==null){ var now=new Date(); _yoteiCalY=now.getFullYear(); _yoteiCalM=now.getMonth()+1; }
+  showSheet(
+    '<h2>📆 入庫予定カレンダー</h2>'
+    + '<div class="cal-header" style="margin-top:6px;">'
+    +   '<button class="cal-nav" onclick="changeYoteiCalMonth(-1)">◀</button>'
+    +   '<h2 id="yotei-cal-title" style="font-size:16px;"></h2>'
+    +   '<button class="cal-nav" onclick="changeYoteiCalMonth(1)">▶</button>'
+    + '</div>'
+    + '<div class="cal-grid" id="yotei-cal-grid"></div>'
+  );
+  renderYoteiCal();
+}
+function changeYoteiCalMonth(delta){
+  _yoteiCalM+=delta;
+  if(_yoteiCalM>12){ _yoteiCalM=1; _yoteiCalY++; }
+  if(_yoteiCalM<1){ _yoteiCalM=12; _yoteiCalY--; }
+  renderYoteiCal();
+}
+function renderYoteiCal(){
+  var titleEl=document.getElementById('yotei-cal-title'); if(titleEl) titleEl.textContent=_yoteiCalY+'年'+_yoteiCalM+'月';
+  var grid=document.getElementById('yotei-cal-grid'); if(!grid) return;
+  var dows=['日','月','火','水','木','金','土'];
+  var html=dows.map(function(d){ return '<div class="cal-dow">'+d+'</div>'; }).join('');
+  var first=new Date(_yoteiCalY,_yoteiCalM-1,1).getDay();
+  var days=new Date(_yoteiCalY,_yoteiCalM,0).getDate();
+  var today=new Date();
+  var ym=_yoteiCalY+'-'+String(_yoteiCalM).padStart(2,'0');
+  var yotei=state.cars.filter(function(c){ return c.status==='yotei'; });
+  for(var i=0;i<first;i++) html+='<div class="cal-day empty"></div>';
+  for(var d=1;d<=days;d++){
+    var dateStr=ym+'-'+String(d).padStart(2,'0');
+    var cars=yotei.filter(function(c){ return (c.nyukoPlan||'').slice(0,10)===dateStr; });
+    var isToday=today.getFullYear()===_yoteiCalY && today.getMonth()+1===_yoteiCalM && today.getDate()===d;
+    var dow=new Date(_yoteiCalY,_yoteiCalM-1,d).getDay();
+    var cls=['cal-day', isToday?'today':'', cars.length?'has-data':'', dow===0?'sun':(dow===6?'sat':'')].filter(Boolean).join(' ');
+    html+='<div class="'+cls+'" onclick="openYoteiCalDay(\''+dateStr+'\')"><span>'+d+'</span>'+(cars.length?('<span class="cal-amount">'+cars.length+'台</span>'):'')+'</div>';
+  }
+  grid.innerHTML=html;
+}
+function openYoteiCalDay(dateStr){
+  var cars=state.cars.filter(function(c){ return c.status==='yotei' && (c.nyukoPlan||'').slice(0,10)===dateStr; }).sort(function(a,b){ return bd_planMs(a)-bd_planMs(b); });
+  var body = cars.length ? cars.map(bd_yoteiRow).join('') : '<p style="color:var(--muted);font-size:13px;">この日の入庫予定はありません。</p>';
+  showSheet(
+    '<h2>'+esc(bd_dayHeader(dateStr))+'の入庫予定</h2>'
+    + '<p style="color:var(--muted);font-size:12px;margin:0 0 12px;">'+cars.length+'件</p>'
+    + '<div style="max-height:50vh;overflow:auto;margin-bottom:12px;">'+body+'</div>'
+    + '<button class="btn ghost" onclick="openYoteiCal()">← カレンダーに戻る</button>'
+  );
+}
 /* ===== 段階4: PCダッシュボードのロジック ===== */
 var _pcdQ='', _pcdDoneFilter='today', _pcdStoreTotal=null;
 function pcdSearch(v){ _pcdQ=v||''; renderPcDash(); }
