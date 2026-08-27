@@ -1841,7 +1841,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = 'app202608271700';
+const APP_VERSION = 'app202608271730';
 // LINEログイン(LIFF) — LINEコンソールで作成したLIFFアプリのIDを入れる
 const LIFF_ID = '2010638896-vJtjkUOr';
 // 公式アカウント「カーコン工賃通知」友だち追加URL（ここに飛ばすとLINEアプリの友だち追加画面が直接開く）
@@ -6328,21 +6328,17 @@ function openAddCar(forceMode){
   const html = `
     <h2>${forceMode==='yotei' ? '入庫予定を追加' : '入庫を追加'}</h2>
     ${modeToggleHtml}
-    <div class="field" id="nyuko-plan-field" style="display:${newCarMode==='yotei'?'':'none'};">
-      <label>入庫予定日時</label>
-      <div style="display:flex; gap:8px;">
-        <input type="date" id="c-nyuko-date" style="flex:1; background:var(--bg); border:0.5px solid var(--line2); color:var(--text); font-size:16px; padding:12px; border-radius:10px;">
-        <input type="time" id="c-nyuko-time" style="background:var(--bg); border:0.5px solid var(--line2); color:var(--text); font-size:16px; padding:12px; border-radius:10px;">
-      </div>
-      <div class="dv-chips" style="margin-top:8px;">
-        <button type="button" class="dv-chip" onclick="bd_pickTime('c-nyuko-time','09:00')">9:00</button>
-        <button type="button" class="dv-chip" onclick="bd_pickTime('c-nyuko-time','10:00')">10:00</button>
-        <button type="button" class="dv-chip" onclick="bd_pickTime('c-nyuko-time','12:00')">12:00</button>
-        <button type="button" class="dv-chip" onclick="bd_pickTime('c-nyuko-time','14:00')">14:00</button>
-        <button type="button" class="dv-chip" onclick="bd_pickTime('c-nyuko-time','15:00')">15:00</button>
-        <button type="button" class="dv-chip" onclick="bd_pickTime('c-nyuko-time','17:00')">17:00</button>
-        <button type="button" class="dv-chip" onclick="bd_pickTime('c-nyuko-time','18:00')">18:00</button>
-      </div>
+    <div class="field">
+      <label>お客様名（任意）</label>
+      <input id="c-customer" placeholder="例）山田 太郎" autocomplete="off">
+    </div>
+    <div class="field">
+      <label>車種名 <span class="req">必須</span></label>
+      <input id="c-type" placeholder="例）ノア" autocomplete="off">
+    </div>
+    <div class="field">
+      <label>ナンバー（下4桁）</label>
+      <input id="c-num" placeholder="例）4821" inputmode="numeric" maxlength="4" autocomplete="off" oninput="this.value=this.value.replace(/[^0-9]/g,''); if(this.value.length>=4) this.blur();">
     </div>
     <div class="field">
       <label>種別</label>
@@ -6358,13 +6354,21 @@ function openAddCar(forceMode){
         <button type="button" class="kbtn" data-c="一般整備" onclick="pickCat('一般整備')">一般整備</button>
       </div>
     </div>
-    <div class="field">
-      <label>車種名 <span class="req">必須</span></label>
-      <input id="c-type" placeholder="例）ノア" autocomplete="off">
-    </div>
-    <div class="field">
-      <label>ナンバー（下4桁）</label>
-      <input id="c-num" placeholder="例）4821" inputmode="numeric" maxlength="4" autocomplete="off" oninput="this.value=this.value.replace(/[^0-9]/g,''); if(this.value.length>=4) this.blur();">
+    <div class="field" id="nyuko-plan-field" style="display:${newCarMode==='yotei'?'':'none'};">
+      <label>入庫予定日時</label>
+      <div style="display:flex; gap:8px;">
+        <input type="date" id="c-nyuko-date" style="flex:1; background:var(--bg); border:0.5px solid var(--line2); color:var(--text); font-size:16px; padding:12px; border-radius:10px;">
+        <input type="time" id="c-nyuko-time" style="background:var(--bg); border:0.5px solid var(--line2); color:var(--text); font-size:16px; padding:12px; border-radius:10px;">
+      </div>
+      <div class="dv-chips" style="margin-top:8px;">
+        <button type="button" class="dv-chip" onclick="bd_pickTime('c-nyuko-time','09:00')">9:00</button>
+        <button type="button" class="dv-chip" onclick="bd_pickTime('c-nyuko-time','10:00')">10:00</button>
+        <button type="button" class="dv-chip" onclick="bd_pickTime('c-nyuko-time','12:00')">12:00</button>
+        <button type="button" class="dv-chip" onclick="bd_pickTime('c-nyuko-time','14:00')">14:00</button>
+        <button type="button" class="dv-chip" onclick="bd_pickTime('c-nyuko-time','15:00')">15:00</button>
+        <button type="button" class="dv-chip" onclick="bd_pickTime('c-nyuko-time','17:00')">17:00</button>
+        <button type="button" class="dv-chip" onclick="bd_pickTime('c-nyuko-time','18:00')">18:00</button>
+      </div>
     </div>
     <div class="field">
       <label>納車予定日（任意・後から入れられます）</label>
@@ -6392,6 +6396,10 @@ function openAddCar(forceMode){
       <input type="time" id="c-deliv-time" style="width:auto;background:var(--bg);border:0.5px solid var(--line2);color:var(--text);font-size:16px;padding:11px 14px;border-radius:10px;">
     </div>
     <div class="field">
+      <label>見積金額（任意・円）</label>
+      <input id="c-estimate" placeholder="例）150000" inputmode="numeric" autocomplete="off" oninput="this.value=this.value.replace(/[^0-9]/g,'');">
+    </div>
+    <div class="field">
       <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-weight:500;"><input type="checkbox" id="c-insurance" style="width:20px;height:20px;"> 🛡 保険作業（保険を使う案件）</label>
     </div>    <div class="sheet-actions">
       <button class="btn ghost" onclick="closeSheet()">キャンセル</button>
@@ -6409,6 +6417,8 @@ function ncToggleCal(){
 function saveCar(){
   const cartype = document.getElementById('c-type').value.trim();
   const number  = document.getElementById('c-num').value.trim();
+  const customerName = (document.getElementById('c-customer')||{}).value?.trim() || '';
+  const estimateAmount = parseInt((document.getElementById('c-estimate')||{}).value||'',10) || 0;
   const deliv   = newCarDeliv || '';
   if(!cartype){ toast('車種名を入れてください'); return; }
   if(number){
@@ -6421,6 +6431,8 @@ function saveCar(){
   state.cars.push({
     id: uuid(),
     cartype, number,
+    customerName,          // お客様名(任意)
+    estimateAmount,        // 見積金額(任意・円)
     kind: newCarKind,      // 板金 / 整備
     category: newCarKind==='整備' ? newCarCategory : '',   // 点検整備 / 一般整備
     deliveryDate: deliv,   // 納車予定日 'YYYY-MM-DD'
@@ -6469,6 +6481,15 @@ function daysUntil(dateStr){
   const t=new Date(); t.setHours(0,0,0,0);
   const d=new Date(dateStr+'T00:00:00');
   return Math.round((d - t)/86400000);
+}
+/* お客様名・見積金額(2026-08-27追加)を、カード類・車両詳細で共通して出す小さな行。
+   どちらも未設定の車(既存データ)では何も表示しない。 */
+function bd_custEstLine(c){
+  if(!c.customerName && !c.estimateAmount) return '';
+  var parts=[];
+  if(c.customerName) parts.push('👤 '+esc(c.customerName));
+  if(c.estimateAmount) parts.push('💰 見積 ¥'+Number(c.estimateAmount).toLocaleString());
+  return '<div style="font-size:12px;color:var(--muted);margin-top:4px;">'+parts.join('　')+'</div>';
 }
 function deliveryLine(c){
   if(!c.deliveryDate){
@@ -7959,7 +7980,8 @@ function yoteiGridHTML(){
     var cls = c.status==='yotei' ? 'ywbar ywbar-yotei' : 'ywbar';
     var barStyle = 'grid-column:'+it.start+'/'+(it.end+1)+';grid-row:'+(it.lane+2)+';'+(c.ganttColor?('border-left-color:'+c.ganttColor+';'):'');
     var dotStyle = c.ganttColor ? ('background:'+c.ganttColor+';') : '';
-    return '<div class="'+cls+'" style="'+barStyle+'" onclick="bd_openCarModal(\''+c.id+'\')" title="'+esc(c.cartype)+'・'+esc(c.number)+'・'+statusLabel+'（'+span+'日）">'
+    var custEstTitle = (c.customerName?('・'+esc(c.customerName)):'') + (c.estimateAmount?('・見積¥'+Number(c.estimateAmount).toLocaleString()):'');
+    return '<div class="'+cls+'" style="'+barStyle+'" onclick="bd_openCarModal(\''+c.id+'\')" title="'+esc(c.cartype)+'・'+esc(c.number)+'・'+statusLabel+'（'+span+'日）'+custEstTitle+'">'
       + '<span class="ywdot" style="'+dotStyle+'" title="色を変える" onclick="event.stopPropagation();bd_yoteiColorPick(event,\''+c.id+'\')"></span>'
       + '<span class="ywbtype">'+esc(c.cartype)+'</span>'
       + (span>1?('<span class="ywbnum">'+esc(c.number)+'</span>'):'')
@@ -8421,6 +8443,7 @@ function bd_workCardHtml(c){
       <div><div>${kindBadge(c)}${insBadge(c)}<span class="name">${esc(c.cartype)}</span><span class="num">・${esc(c.number)}</span></div><div style="margin-top:5px;">${assignChip(c)}</div></div>
       <div class="row-actions">${pinBox}${toggleBtn}</div>
     </div>
+    ${bd_custEstLine(c)}
     ${deliveryLine(c)}
     <div class="times">${timesLine(c)}</div>
     ${bd_stageSummaryLine(c)}`;
@@ -8457,7 +8480,7 @@ function bd_tile(c){
   else if(c.status==='nyuko' && daysBetween(c.nyukoAt, nowISO())>=7) cls+=' wait';
   else if(c.status==='done') cls+=' done';
   var icon = c.kind==='整備' ? '🛠' : '🔧';
-  return '<div class="'+cls+'" onclick="bd_openCarModal(\''+c.id+'\')" title="'+esc(c.cartype)+'・'+esc(c.number)+'">'
+  return '<div class="'+cls+'" onclick="bd_openCarModal(\''+c.id+'\')" title="'+esc(c.cartype)+'・'+esc(c.number)+(c.customerName?('・'+esc(c.customerName)):'')+'">'
     + '<div class="tk">'+icon+'</div>'
     + '<div class="tn">'+esc(c.number)+'</div>'
     + '<div class="tt">'+esc(c.cartype)+'</div>'
@@ -8606,6 +8629,7 @@ function bd_yoteiRow(c){
     + '<div class="top"><div>'+kindBadge(c)+insBadge(c)+'<span class="name">'+esc(c.cartype)+'</span><span class="num">・'+esc(c.number)+'</span></div>'
     +   '<div class="row-actions">'+pinBox+'<button class="iconbtn" title="削除" onclick="askDelete(\''+c.id+'\')">🗑</button><button class="pill green" onclick="bd_arriveCar(\''+c.id+'\')">入庫する →</button></div>'
     + '</div>'
+    + bd_custEstLine(c)
     + '<div style="display:flex;gap:18px;margin-top:9px;flex-wrap:wrap;">'
     +   '<div><div style="font-size:11px;color:var(--muted);margin-bottom:2px;">🚙 入庫予定</div><div style="font-size:19px;font-weight:700;color:var(--accent);">'+inb+'</div></div>'
     +   '<div><div style="font-size:11px;color:var(--muted);margin-bottom:2px;">🚚 納車予定</div><div style="font-size:19px;font-weight:700;color:var(--green);">'+dlv+'</div></div>'
@@ -8623,6 +8647,7 @@ function bd_nyukoCardHtml(c){
     <div class="top">
       <div>
         <div><div>${kindBadge(c)}${insBadge(c)}<span class="name">${esc(c.cartype)}</span><span class="num">・${esc(c.number)}</span></div><div style="margin-top:5px;">${assignChip(c)}</div></div>
+        ${bd_custEstLine(c)}
         <div class="${subCls}">⏱ ${fmtDateTime(c.nyukoAt)} 入庫・${d}日待ち</div>
         ${deliveryLine(c)}
         ${holdBlock(c)}
@@ -8646,6 +8671,7 @@ function bd_doneCardHtml(c){
     <div class="top">
       <div>
         <div><div>${kindBadge(c)}${insBadge(c)}<span class="name">${esc(c.cartype)}</span><span class="num">・${esc(c.number)}</span></div><div style="margin-top:5px;">${assignChip(c)}</div></div>
+        ${bd_custEstLine(c)}
         <div class="sub" style="color:var(--green)">🏁 ${c.doneAt?fmtDateTime(c.doneAt):''} 完成　${leadTxt}</div>
         <div class="times">${timesLine(c)}</div>
         ${(function(){var tot=totalMinutes(c); return tot>0?`<div class="crew"><b>作業時間</b> 累計 ${fmtMin(tot)}</div>`:'';})()}
@@ -8677,6 +8703,7 @@ function bd_nyukoCardCompactHtml(c){
     +   '<div><div>'+kindBadge(c)+insBadge(c)+'<span class="name">'+esc(c.cartype)+'</span><span class="num">・'+esc(c.number)+'</span></div><div style="margin-top:5px;">'+assignChip(c)+'</div></div>'
     +   '<div class="row-actions">'+pinBox+'<button class="pill" onclick="startCar(\''+c.id+'\')">作業開始 →</button></div>'
     + '</div>'
+    + bd_custEstLine(c)
     + deliveryLine(c)
     + bd_nyukoStatusLine(c)
     + '</div>';
@@ -8694,6 +8721,7 @@ function bd_doneCardCompactHtml(c){
     +   '<div><div>'+kindBadge(c)+insBadge(c)+'<span class="name">'+esc(c.cartype)+'</span><span class="num">・'+esc(c.number)+'</span></div><div style="margin-top:5px;">'+assignChip(c)+'</div></div>'
     +   '<div class="row-actions">'+pinBox+'</div>'
     + '</div>'
+    + bd_custEstLine(c)
     + bd_doneStatusLine(c)
     + '</div>';
 }
