@@ -1823,7 +1823,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = 'app202608271130';
+const APP_VERSION = 'app202608271200';
 // LINEログイン(LIFF) — LINEコンソールで作成したLIFFアプリのIDを入れる
 const LIFF_ID = '2010638896-vJtjkUOr';
 // 公式アカウント「カーコン工賃通知」友だち追加URL（ここに飛ばすとLINEアプリの友だち追加画面が直接開く）
@@ -7243,9 +7243,15 @@ async function ensureGDriveConsent(token){
   return ok;
 }
 /* 1枚だけアップロード（自動送信・手動リトライ共通の実処理） */
+/* アップロード中の写真IDを覚えておく。撮影直後の自動送信と20秒ごとの再送チェックが
+   同じ写真に対してほぼ同時に走ると、どちらも「まだ未送信」と判断して二重にアップロード
+   してしまう競合状態があったため、進行中はスキップするガードを追加(2026-08-27)。 */
+var _gdriveUploading = {};
 async function uploadOnePhoto(c, photoId, token){
   const p=(c.photos||[]).find(x=>x.id===photoId);
   if(!p || p.gdriveId) return false;
+  if(_gdriveUploading[photoId]) return false;
+  _gdriveUploading[photoId] = true;
   const auth={'Authorization':'Bearer '+token};
   try{
     if(!c.gdriveFolderId){
@@ -7272,6 +7278,7 @@ async function uploadOnePhoto(c, photoId, token){
     }
     return false;
   }catch(e){ return false; }
+  finally{ delete _gdriveUploading[photoId]; }
 }
 /* 撮影直後に呼ぶ：サイレントにトークンが取れれば自動送信。
    ページ読み込み直後などGIS未準備で失敗した場合に備え、5秒後に1回だけ再挑戦する（それでもダメなら定期リトライに任せる）。 */
