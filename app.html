@@ -1850,7 +1850,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = 'app202608272150';
+const APP_VERSION = 'app202608272210';
 // LINEログイン(LIFF) — LINEコンソールで作成したLIFFアプリのIDを入れる
 const LIFF_ID = '2010638896-vJtjkUOr';
 // 公式アカウント「カーコン工賃通知」友だち追加URL（ここに飛ばすとLINEアプリの友だち追加画面が直接開く）
@@ -6366,29 +6366,28 @@ function renderStoreLabel(){
 }
 
 /* ---------- add / edit car ---------- */
+/* 種別は板金塗装/車検整備/一般整備/その他の4択に統一(2026-08-27)。
+   その他は自由入力のカテゴリー名をnewCarCategoryにそのまま入れる。 */
 let newCarKind='板金';
-let newCarCategory='点検整備';
+let newCarCategory='';
 function pickKind(k){
-  newCarKind=k;
+  if(k==='bankin'){ newCarKind='板金'; newCarCategory=''; }
+  else if(k==='tenken'){ newCarKind='整備'; newCarCategory='点検整備'; }
+  else if(k==='ippan'){ newCarKind='整備'; newCarCategory='一般整備'; }
+  else { newCarKind='整備'; newCarCategory=((document.getElementById('c-cat-other')||{}).value||'').trim(); }
   document.querySelectorAll('#kind-pick .kbtn').forEach(function(b){
     const on=b.dataset.k===k;
     b.classList.toggle('sel', on);
-    b.classList.toggle('seibi', on && k==='整備');
+    b.classList.toggle('seibi', on && k!=='bankin');
   });
   const cat=document.getElementById('cat-field');
-  if(cat) cat.style.display = (k==='整備') ? '' : 'none';
+  if(cat) cat.style.display = (k==='other') ? '' : 'none';
 }
-function pickCat(cat){
-  newCarCategory=cat;
-  document.querySelectorAll('#cat-pick .kbtn').forEach(function(b){
-    b.classList.toggle('sel', b.dataset.c===cat);
-    b.classList.toggle('seibi', b.dataset.c===cat);
-  });
-}
+function updateOtherCat(v){ newCarCategory = (v||'').trim(); }
 function openAddCar(forceMode){
   editingId = null;
   newCarKind='板金';
-  newCarCategory='点検整備';
+  newCarCategory='';
   newCarMode = forceMode || 'now';
   // 「予定」タブ・PCダッシュボードの予定列から追加する時は最初から入庫予定確定なので、
   // 「今すぐ入庫」との切り替えは出さない(2026-08-24、選ぶ手間を省くための変更)。
@@ -6416,17 +6415,16 @@ function openAddCar(forceMode){
     </div>
     <div class="field">
       <label>種別</label>
-      <div id="kind-pick" style="display:flex; gap:8px;">
-        <button type="button" class="kbtn sel" data-k="板金" onclick="pickKind('板金')">🔧 板金</button>
-        <button type="button" class="kbtn" data-k="整備" onclick="pickKind('整備')">🛠 整備</button>
+      <div id="kind-pick" style="display:flex; gap:8px; flex-wrap:wrap;">
+        <button type="button" class="kbtn sel" data-k="bankin" onclick="pickKind('bankin')">🔧 板金塗装</button>
+        <button type="button" class="kbtn" data-k="tenken" onclick="pickKind('tenken')">🚗 車検整備</button>
+        <button type="button" class="kbtn" data-k="ippan" onclick="pickKind('ippan')">🛠 一般整備</button>
+        <button type="button" class="kbtn" data-k="other" onclick="pickKind('other')">❓ その他</button>
       </div>
     </div>
     <div class="field" id="cat-field" style="display:none;">
-      <label>整備カテゴリー</label>
-      <div id="cat-pick" style="display:flex; gap:8px;">
-        <button type="button" class="kbtn sel seibi" data-c="点検整備" onclick="pickCat('点検整備')">点検整備</button>
-        <button type="button" class="kbtn" data-c="一般整備" onclick="pickCat('一般整備')">一般整備</button>
-      </div>
+      <label>その他の名称</label>
+      <input id="c-cat-other" placeholder="例）洗車・コーティング" autocomplete="off" oninput="updateOtherCat(this.value)">
     </div>
     <div class="field" id="nyuko-plan-field" style="display:${newCarMode==='yotei'?'':'none'};">
       <label>入庫予定日時</label>
@@ -6548,7 +6546,7 @@ function kindBadge(c){
     const label = c.category ? c.category : '整備';
     return `<span class="kind kind-seibi">🛠 ${esc(label)}</span>`;
   }
-  return '<span class="kind kind-bankin">🔧 板金</span>';
+  return '<span class="kind kind-bankin">🔧 板金塗装</span>';
 }
 
 /* ---------- 納車予定日 ---------- */
