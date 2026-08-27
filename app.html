@@ -1841,7 +1841,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = 'app202608271745';
+const APP_VERSION = 'app202608271800';
 // LINEログイン(LIFF) — LINEコンソールで作成したLIFFアプリのIDを入れる
 const LIFF_ID = '2010638896-vJtjkUOr';
 // 公式アカウント「カーコン工賃通知」友だち追加URL（ここに飛ばすとLINEアプリの友だち追加画面が直接開く）
@@ -4872,6 +4872,42 @@ async function fetchFromGAS(action, params = {}) {
   } catch(e) { console.warn('GAS fetch failed', e); return null; }
 }
 
+/* ===== 初回起動の「ようこそ」表紙画面 =====
+   いきなり設定画面に放り込まれると何のアプリか分からない、というフィードバックを受けて追加(2026-08-27)。
+   「はじめる」を押すまでは閉じられない(showSheetのdismissable=false)。一度見たらlocalStorageに記録し、
+   以降は出さない(プロフィール未登録のまま何度も開いても毎回出るのは煩わしいため)。 */
+function showWelcomeScreen(){
+  if (userData.name) return;
+  showSheet(`
+    <div style="text-align:center;padding:6px 4px 4px;">
+      <div style="font-size:46px;margin-bottom:10px;">🔧</div>
+      <h2 style="margin:0 0 6px;">ようこそ、カーコン現場コントロールへ</h2>
+      <p style="color:var(--text-sub);font-size:14px;margin:0 0 24px;line-height:1.6;">工賃の記録から現場の進捗管理まで、<br>お店の毎日をこれ1つで。</p>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:16px;margin-bottom:26px;">
+      <div style="display:flex;gap:12px;align-items:flex-start;">
+        <span style="font-size:22px;line-height:1.4;">💰</span>
+        <div><div style="font-weight:700;font-size:14px;">工賃をかんたん記録</div><div style="color:var(--text-sub);font-size:12.5px;margin-top:2px;">日々の工賃を入力するだけで、称号やランキングが自動で付いてきます</div></div>
+      </div>
+      <div style="display:flex;gap:12px;align-items:flex-start;">
+        <span style="font-size:22px;line-height:1.4;">🚗</span>
+        <div><div style="font-weight:700;font-size:14px;">現場の進捗をみんなで共有</div><div style="color:var(--text-sub);font-size:12.5px;margin-top:2px;">入庫予定から完成まで、店舗のメンバーでリアルタイムに把握できます</div></div>
+      </div>
+      <div style="display:flex;gap:12px;align-items:flex-start;">
+        <span style="font-size:22px;line-height:1.4;">📷</span>
+        <div><div style="font-weight:700;font-size:14px;">工程写真を自動でドライブに保存</div><div style="color:var(--text-sub);font-size:12.5px;margin-top:2px;">撮った写真はお店自身のGoogleドライブに自動で整理されます</div></div>
+      </div>
+    </div>
+    <button class="btn" style="width:100%;" onclick="closeWelcomeScreen()">はじめる →</button>
+  `, false);
+}
+function closeWelcomeScreen(){
+  try{ localStorage.setItem('koken_welcome_seen', '1'); }catch(e){}
+  closeSheet();
+  switchTab('settings');
+  setTimeout(function(){ var el=document.getElementById('set-sei'); if(el) el.focus(); }, 250);
+}
+
 // ============================================================
 // INIT
 // ============================================================
@@ -4894,11 +4930,17 @@ function init() {
   // フォロー中店舗の表示名がコードのままなら実店舗名で補完
   refreshGroupNames();
 
-  // Check if first launch
+  // Check if first launch。招待リンク経由の人は招待の合流画面を優先するので表紙は出さない。
   if (!userData.name) {
-    setTimeout(() => {
-      showToast('⚙️ 設定からお名前を登録してください', 4000);
-    }, 1000);
+    var _hasInvite = false;
+    try { _hasInvite = !!(new URLSearchParams(location.search).get('invite')); } catch(e) {}
+    if (!_hasInvite && !localStorage.getItem('koken_welcome_seen')) {
+      setTimeout(showWelcomeScreen, 300);
+    } else {
+      setTimeout(() => {
+        showToast('⚙️ 設定からお名前を登録してください', 4000);
+      }, 1000);
+    }
   }
 
   // Initial rank baseline
