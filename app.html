@@ -7,8 +7,8 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#0a0a0a">
-<title>カーコン現場コントロール</title>
-<meta name="apple-mobile-web-app-title" content="現場コントロール">
+<title>ピットボード</title>
+<meta name="apple-mobile-web-app-title" content="ピットボード">
 <link rel="manifest" href="app.webmanifest">
 <link rel="icon" type="image/png" href="icon-192.png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
@@ -693,7 +693,7 @@ input[type="time"]::-webkit-calendar-picker-indicator { filter: invert(1); opaci
   <div id="header">
     <div style="display:flex;align-items:center;gap:10px;flex:1;min-width:0;">
       <div style="width:34px;height:34px;border-radius:10px;background:rgba(255,255,255,.18);display:flex;align-items:center;justify-content:center;font-size:19px;font-weight:900;color:#fff;flex-shrink:0;">工</div>
-      <h1 id="header-title" style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">🔧 カーコン工賃管理</h1>
+      <h1 id="header-title" style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">🔧 ピットボード</h1>
     </div>
     <div class="rank-badge" id="my-rank-badge">⚔️ 侍</div>
   </div>
@@ -1245,7 +1245,7 @@ input[type="time"]::-webkit-calendar-picker-indicator { filter: invert(1); opaci
         </div>
         <div class="form-group">
           <label class="form-label">店舗名</label>
-          <input type="text" class="form-input" id="set-store" placeholder="カーコン○○店">
+          <input type="text" class="form-input" id="set-store" placeholder="例）〇〇自動車">
         </div>
         <div class="form-group">
           <label class="form-label">職種 <span style="font-size:11px;color:var(--text-sub);font-weight:400;">（複数選択可）</span></label>
@@ -1490,8 +1490,8 @@ input[type="time"]::-webkit-calendar-picker-indicator { filter: invert(1); opaci
       <div class="card">
         <div class="card-title">アプリ情報</div>
         <div style="font-size:13px;color:var(--text-sub);line-height:1.8;">
-          <div>カーコン工賃管理 v1.0.0</div>
-          <div>カーコンビニ倶楽部 加盟店専用</div>
+          <div>ピットボード v1.0.0</div>
+          <div>自動車修理店向け 工賃・現場管理アプリ</div>
           <div style="margin-top:8px;">
             <button onclick="resetData()" style="color:#e74c3c;font-size:13px;">データをリセット</button>
           </div>
@@ -1841,7 +1841,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = 'app202608271800';
+const APP_VERSION = 'app202608271830';
 // LINEログイン(LIFF) — LINEコンソールで作成したLIFFアプリのIDを入れる
 const LIFF_ID = '2010638896-vJtjkUOr';
 // 公式アカウント「カーコン工賃通知」友だち追加URL（ここに飛ばすとLINEアプリの友だち追加画面が直接開く）
@@ -2048,7 +2048,7 @@ function switchTab(tab) {
   currentTab = tab;
 
   const titles = { genba:'🚗 現場', settings:'⚙️ 設定', front:'📋 受付入力', input:'✏️ 工賃入力', 'store-status':'🏪 店舗状況', my:'👤 マイ', ranking:'🏪 社内ランキング', mypage:'👤 マイページ', summary:'📊 月間サマリー', trend:'📈 年間推移' };
-  document.getElementById('header-title').textContent = titles[tab] || 'カーコン工賃管理';
+  document.getElementById('header-title').textContent = titles[tab] || 'ピットボード';
 
   if (tab === 'settings' && typeof renderFailedLogCard === 'function') renderFailedLogCard();
   if (tab === 'input') renderInputHistory();
@@ -4881,7 +4881,7 @@ function showWelcomeScreen(){
   showSheet(`
     <div style="text-align:center;padding:6px 4px 4px;">
       <div style="font-size:46px;margin-bottom:10px;">🔧</div>
-      <h2 style="margin:0 0 6px;">ようこそ、カーコン現場コントロールへ</h2>
+      <h2 style="margin:0 0 6px;">ようこそ、ピットボードへ</h2>
       <p style="color:var(--text-sub);font-size:14px;margin:0 0 24px;line-height:1.6;">工賃の記録から現場の進捗管理まで、<br>お店の毎日をこれ1つで。</p>
     </div>
     <div style="display:flex;flex-direction:column;gap:16px;margin-bottom:26px;">
@@ -6280,7 +6280,7 @@ function openSetup(){
     <h2>お店の設定</h2>
     <div class="field">
       <label>店舗名</label>
-      <input id="su-name" placeholder="カーコン○○店" value="${esc(state.store?state.store.name:'')}">
+      <input id="su-name" placeholder="例）〇〇自動車" value="${esc(state.store?state.store.name:'')}">
     </div>
     <div class="field">
       <label>グループコード（工賃アプリと同じものを推奨・任意）</label>
@@ -8938,7 +8938,7 @@ window.bd_boot = bd_boot;
 window.bd_switchTab = bd_switchTab;
 </script>
 <footer style="text-align:center;padding:14px 16px 90px;font-size:11px;color:#8a94a3;line-height:1.6;">
-  カーコン現場コントロール — 自動車修理店向け 工賃管理・作業進捗管理アプリ<br>
+  ピットボード — 自動車修理店向け 工賃管理・作業進捗管理アプリ<br>
   <a href="privacy.html" style="color:#8a94a3;text-decoration:underline;">プライバシーポリシー</a>
 </footer>
 </body>
