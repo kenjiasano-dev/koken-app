@@ -185,6 +185,7 @@ input[type="time"]::-webkit-calendar-picker-indicator { filter: invert(1); opaci
 .ywh.sat{ color:#3498db; }
 .ywdow{ font-size:8px; font-weight:400; color:var(--muted); }
 .ywbar{ background:var(--card2,var(--card)); border:1px solid var(--line2,var(--border)); border-left:3px solid var(--accent,var(--green)); border-radius:5px; padding:3px 6px; cursor:pointer; display:flex; align-items:center; gap:5px; overflow:hidden; white-space:nowrap; min-width:0; }
+.ywbar.ywbar-yotei{ border-style:dashed; opacity:.85; }
 .ywbtype{ font-size:10.5px; font-weight:700; color:var(--text); overflow:hidden; text-overflow:ellipsis; }
 .ywbnum{ font-size:9px; color:var(--muted); font-family:ui-monospace,Menlo,Consolas,monospace; flex-shrink:0; }
 
@@ -1839,7 +1840,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = 'app202608271615';
+const APP_VERSION = 'app202608271630';
 // LINEログイン(LIFF) — LINEコンソールで作成したLIFFアプリのIDを入れる
 const LIFF_ID = '2010638896-vJtjkUOr';
 // 公式アカウント「カーコン工賃通知」友だち追加URL（ここに飛ばすとLINEアプリの友だち追加画面が直接開く）
@@ -7921,13 +7922,23 @@ function yoteiGridHTML(){
   var days=new Date(_yoteiCalY,_yoteiCalM,0).getDate();
   var ym=_yoteiCalY+'-'+String(_yoteiCalM).padStart(2,'0');
   var today=new Date();
-  var items=state.cars.filter(function(c){ return c.status==='yotei' && (c.nyukoPlan||'').slice(0,7)===ym; }).map(function(c){
-    var start=parseInt((c.nyukoPlan||'').slice(8,10),10);
+  // 予定(yotei)だけでなく、既に入庫済み(nyuko)・作業中(work)の車も「今この日を占有している」
+  // という点では同じなので一緒に表示する(完成済みdoneのみ対象外)。入庫日は、予定車は
+  // nyukoPlan、入庫済みの車は実際の入庫日時nyukoAtを使う。
+  var items=state.cars.filter(function(c){
+    if(c.status!=='yotei' && c.status!=='nyuko' && c.status!=='work') return false;
+    var startKey = c.status==='yotei' ? (c.nyukoPlan||'').slice(0,10) : (c.nyukoAt||'').slice(0,10);
+    return startKey.slice(0,7)===ym;
+  }).map(function(c){
+    var startKey = c.status==='yotei' ? (c.nyukoPlan||'').slice(0,10) : (c.nyukoAt||'').slice(0,10);
+    var start=parseInt(startKey.slice(8,10),10);
     var end=start;
     if(c.deliveryDate){
       var dm=c.deliveryDate.slice(0,7), dd=parseInt(c.deliveryDate.slice(8,10),10);
       if(dm===ym && dd>=start) end=dd;
       else if(dm>ym) end=days;   // 納車が翌月以降＝今月末まで伸ばして表示(簡易表現)
+    } else if(c.status!=='yotei'){
+      end=days;   // 入庫済みでまだ納車日未定＝今も居座っている＝月末まで伸ばして表示
     }
     return {car:c, start:start, end:Math.min(end,days)};
   }).sort(function(a,b){ return a.start-b.start || a.end-b.end; });
@@ -7943,14 +7954,16 @@ function yoteiGridHTML(){
   }
   var bars=items.map(function(it){
     var c=it.car, span=it.end-it.start+1;
-    return '<div class="ywbar" style="grid-column:'+it.start+'/'+(it.end+1)+';grid-row:'+(it.lane+2)+';" onclick="bd_openCarModal(\''+c.id+'\')" title="'+esc(c.cartype)+'・'+esc(c.number)+'（'+span+'日）">'
+    var statusLabel = {yotei:'予定', nyuko:'入庫中', work:'作業中'}[c.status] || '';
+    var cls = c.status==='yotei' ? 'ywbar ywbar-yotei' : 'ywbar';
+    return '<div class="'+cls+'" style="grid-column:'+it.start+'/'+(it.end+1)+';grid-row:'+(it.lane+2)+';" onclick="bd_openCarModal(\''+c.id+'\')" title="'+esc(c.cartype)+'・'+esc(c.number)+'・'+statusLabel+'（'+span+'日）">'
       + '<span class="ywbtype">'+esc(c.cartype)+'</span>'
       + (span>1?('<span class="ywbnum">'+esc(c.number)+'</span>'):'')
       + '</div>';
   }).join('');
   var gridStyle='grid-template-columns:repeat('+days+',minmax(34px,1fr));grid-template-rows:32px repeat('+lanes+',28px);';
   return '<h2>📋 入庫予定表（'+_yoteiCalY+'年'+_yoteiCalM+'月）</h2>'
-    + '<p style="color:var(--muted);font-size:11px;margin:2px 0 10px;">棒の長さ＝入庫〜納車予定のお預かり日数（納車日未設定は入庫日のみ表示）</p>'
+    + '<p style="color:var(--muted);font-size:11px;margin:2px 0 10px;">棒の長さ＝お預かり日数（点線縁＝入庫予定・実線縁＝入庫済み）。納車日未定の入庫済み車は月末まで居座っているものとして表示</p>'
     + '<div class="cal-header" style="margin-top:2px;">'
     +   '<button class="cal-nav" onclick="changeYoteiGridMonth(-1)">◀</button>'
     +   '<button class="btn ghost" style="padding:6px 14px;font-size:12px;" onclick="openYoteiCal()">📆 カレンダー表示に戻る</button>'
