@@ -543,6 +543,9 @@ input[type="time"]::-webkit-calendar-picker-indicator { filter: invert(1); opaci
   padding:18px 16px calc(18px + env(safe-area-inset-bottom)); border-top:0.5px solid var(--line2);
   max-height:90vh; overflow-y:auto;
 }
+/* PCで入庫予定表(ガントチャート)を画面いっぱいに見せたい、というリクエストに応じて
+   通常のシート幅(520px)とは別に、幅広で見たい画面だけこのクラスを追加する(2026-08-27) */
+.sheet.sheet-wide{ max-width:min(96vw, 1400px); }
 /* どのシートにも必ず出る閉じるボタン（showSheetが自動で入れる） */
 .sheet-x{
   position:absolute; top:10px; right:10px; z-index:3;
@@ -1834,7 +1837,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = 'app202608271545';
+const APP_VERSION = 'app202608271600';
 // LINEログイン(LIFF) — LINEコンソールで作成したLIFFアプリのIDを入れる
 const LIFF_ID = '2010638896-vJtjkUOr';
 // 公式アカウント「カーコン工賃通知」友だち追加URL（ここに飛ばすとLINEアプリの友だち追加画面が直接開く）
@@ -7711,12 +7714,12 @@ function setDoneFilter(f){
 }
 
 /* ---------- sheet / modal ---------- */
-function showSheet(innerHTML, dismissable=true){
+function showSheet(innerHTML, dismissable=true, wide=false){
   closeSheet();
   const ov=document.createElement('div');
   ov.className='overlay'; ov.id='overlay';
   const xbtn = dismissable ? '<button class="sheet-x" title="閉じる" aria-label="閉じる" onclick="closeSheet()">✕</button>' : '';
-  ov.innerHTML=`<div class="sheet" onclick="event.stopPropagation()">${xbtn}${innerHTML}</div>`;
+  ov.innerHTML=`<div class="sheet${wide?' sheet-wide':''}" onclick="event.stopPropagation()">${xbtn}${innerHTML}</div>`;
   if(dismissable) ov.addEventListener('click', closeSheet);
   document.body.appendChild(ov);
 }
@@ -7890,13 +7893,13 @@ function openYoteiCal(){
 /* ===== 1〜31日を横軸に、各日の車種・ナンバーを縦に並べる一覧表(加盟店の紙の入庫予定表と同じ見方) ===== */
 function openYoteiGrid(){
   if(_yoteiCalY==null){ var now=new Date(); _yoteiCalY=now.getFullYear(); _yoteiCalM=now.getMonth()+1; }
-  showSheet(yoteiGridHTML());
+  showSheet(yoteiGridHTML(), true, true);
 }
 function changeYoteiGridMonth(delta){
   _yoteiCalM+=delta;
   if(_yoteiCalM>12){ _yoteiCalM=1; _yoteiCalY++; }
   if(_yoteiCalM<1){ _yoteiCalM=12; _yoteiCalY--; }
-  showSheet(yoteiGridHTML());
+  showSheet(yoteiGridHTML(), true, true);
 }
 /* 各車を「入庫予定日〜納車予定日」の長さの横棒として配置(ガントチャート形式)。
    お預かり日数が一目で分かるように、というリクエストに応じて2026-08-27に日付列
@@ -7943,7 +7946,7 @@ function yoteiGridHTML(){
       + (span>1?('<span class="ywbnum">'+esc(c.number)+'</span>'):'')
       + '</div>';
   }).join('');
-  var gridStyle='grid-template-columns:repeat('+days+',minmax(26px,1fr));grid-template-rows:30px repeat('+lanes+',27px);';
+  var gridStyle='grid-template-columns:repeat('+days+',minmax(34px,1fr));grid-template-rows:32px repeat('+lanes+',28px);';
   return '<h2>📋 入庫予定表（'+_yoteiCalY+'年'+_yoteiCalM+'月）</h2>'
     + '<p style="color:var(--muted);font-size:11px;margin:2px 0 10px;">棒の長さ＝入庫〜納車予定のお預かり日数（納車日未設定は入庫日のみ表示）</p>'
     + '<div class="cal-header" style="margin-top:2px;">'
