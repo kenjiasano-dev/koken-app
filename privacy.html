@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>プライバシーポリシー | カーコン現場コントロール</title>
+<style>
+  :root{
+    --bg:#f7f8fa;
+    --card:#ffffff;
+    --border:#e2e6eb;
+    --ink:#1c2530;
+    --ink-soft:#54606f;
+    --accent:#2e6f8e;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--ink);
+    font-family:"Hiragino Kaku Gothic ProN","Yu Gothic",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+    line-height:1.85;
+  }
+  .wrap{
+    max-width:720px;
+    margin:0 auto;
+    padding:48px 20px 96px;
+  }
+  h1{
+    font-size:22px;
+    font-weight:700;
+    margin:0 0 6px;
+  }
+  .updated{
+    color:var(--ink-soft);
+    font-size:13px;
+    margin:0 0 32px;
+  }
+  h2{
+    font-size:16px;
+    font-weight:700;
+    margin:34px 0 10px;
+    padding-bottom:8px;
+    border-bottom:1px solid var(--border);
+  }
+  p, li{
+    font-size:14.5px;
+    color:var(--ink-soft);
+  }
+  ul{
+    padding-left:1.3em;
+    margin:8px 0;
+  }
+  li{ margin-bottom:4px; }
+  table{
+    width:100%;
+    border-collapse:collapse;
+    margin:10px 0;
+    font-size:13.5px;
+  }
+  th,td{
+    text-align:left;
+    padding:8px 10px;
+    border:1px solid var(--border);
+    vertical-align:top;
+  }
+  th{
+    background:var(--card);
+    font-weight:700;
+    white-space:nowrap;
+  }
+  .card{
+    background:var(--card);
+    border:1px solid var(--border);
+    border-radius:12px;
+    padding:16px 18px;
+    margin:14px 0;
+  }
+  a{ color:var(--accent); }
+  .contact{
+    font-size:14.5px;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>プライバシーポリシー</h1>
+  <p class="updated">最終更新日：2026年8月27日</p>
+
+  <p>本ポリシーは、カーコン工賃管理・現場コントロール（以下「本アプリ」）における個人情報・データの取り扱いについて説明するものです。本アプリは、カーコンフロント株式会社（以下「運営者」）の加盟店向けに、工賃管理・作業進捗管理を目的として提供しています。</p>
+
+  <h2>1. 本アプリについて</h2>
+  <p>本アプリは、自動車の板金塗装・整備を行う加盟店の従業員が、工賃の記録、作業進捗（入庫〜完成）の管理、修理過程の写真記録を行うためのWebアプリケーションです。</p>
+
+  <h2>2. 取得する情報</h2>
+  <p>本アプリは、ご利用にあたり以下の情報を取得します。</p>
+  <table>
+    <tr><th>情報の種類</th><th>内容</th></tr>
+    <tr><td>プロフィール情報</td><td>氏名（姓・名）、都道府県、所属店舗名、職種、経験年数</td></tr>
+    <tr><td>グループ情報</td><td>所属店舗を識別するためのグループコード</td></tr>
+    <tr><td>工賃データ</td><td>作業日、金額、車種、車両ナンバー下4桁、作業カテゴリ</td></tr>
+    <tr><td>受付・見積データ</td><td>見積金額、成約状況等</td></tr>
+    <tr><td>作業進捗データ</td><td>車種、車両ナンバー下4桁、入庫日、作業工程の進捗状況、担当者名</td></tr>
+    <tr><td>修理工程写真</td><td>作業中に撮影した車両・作業内容の写真（詳細は「4. Googleドライブ連携」を参照）</td></tr>
+    <tr><td>端末識別子</td><td>端末ごとに割り当てるUUID（他社サービスと連携しない、本アプリ専用の識別子）</td></tr>
+    <tr><td>LINEユーザーID</td><td>目標達成通知等をLINEで送るために、通知登録をした方のみ</td></tr>
+  </table>
+
+  <h2>3. 情報の利用目的</h2>
+  <ul>
+    <li>工賃・受付実績の記録およびランキング表示</li>
+    <li>車両修理の作業進捗（入庫〜完成）の店舗内共有</li>
+    <li>目標達成時・称号昇格時のLINE通知（登録者のみ）</li>
+    <li>アプリの不具合調査・改善</li>
+  </ul>
+  <p>取得した情報を、本アプリの提供・改善以外の目的（広告配信、第三者への販売等）に利用することはありません。</p>
+
+  <h2>4. Googleドライブ連携について</h2>
+  <p>本アプリには、作業工程で撮影した写真を各店舗自身のGoogleドライブへ自動保存する任意機能があります。この機能を利用する場合、以下の権限（<code>drive.file</code>スコープ）についてGoogleアカウントへの許可をお願いしています。</p>
+  <div class="card">
+    <p style="margin:0 0 8px;"><strong>取得する権限</strong>：<code>https://www.googleapis.com/auth/drive.file</code></p>
+    <p style="margin:0;">この権限は、<strong>本アプリが作成したファイル・フォルダのみ</strong>にアクセスできる限定的な権限です。ユーザーの既存のGoogleドライブ内の他のファイルには一切アクセスできません。</p>
+  </div>
+  <p><strong>重要：</strong>撮影された写真は、各利用者の端末（スマートフォン等）から、その利用者・店舗自身のGoogleドライブへ<strong>直接</strong>アップロードされます。運営者が管理するサーバーが写真データを受信・保存・閲覧することは一切ありません。写真の保存先・アクセス権は、各店舗のGoogleアカウントの管理下に置かれます。</p>
+  <p>連携を行わない場合でも、本アプリの他の機能（工賃記録・進捗管理等）は通常どおりご利用いただけます。連携はいつでも解除できます（Googleアカウントの「アプリの権限」設定から取り消し可能です）。</p>
+
+  <h2>5. 情報の保存・管理</h2>
+  <p>Googleドライブに保存される写真を除き、上記の情報は運営者が管理するGoogle スプレッドシート（Googleスプレッドシート／Google Apps Script基盤）に保存されます。第三者への提供は行いません。</p>
+
+  <h2>6. 情報の開示・削除のご請求</h2>
+  <p>ご自身の情報の開示・訂正・削除をご希望の場合は、下記の連絡先までご連絡ください。確認の上、対応いたします。</p>
+
+  <h2>7. お問い合わせ</h2>
+  <p class="contact">
+    カーコンフロント株式会社<br>
+    担当：浅野 賢二<br>
+    Email：<a href="mailto:kenji_asano@carcon.co.jp">kenji_asano@carcon.co.jp</a>
+  </p>
+
+  <h2>8. 本ポリシーの変更</h2>
+  <p>本ポリシーの内容は、必要に応じて予告なく変更する場合があります。変更後の内容は、本ページに掲載した時点で効力を生じるものとします。</p>
+
+</div>
+</body>
+</html>
