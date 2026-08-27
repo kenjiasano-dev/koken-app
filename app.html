@@ -1824,7 +1824,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = 'app202608271300';
+const APP_VERSION = 'app202608271345';
 // LINEログイン(LIFF) — LINEコンソールで作成したLIFFアプリのIDを入れる
 const LIFF_ID = '2010638896-vJtjkUOr';
 // 公式アカウント「カーコン工賃通知」友だち追加URL（ここに飛ばすとLINEアプリの友だち追加画面が直接開く）
@@ -7217,6 +7217,10 @@ function handleGDriveRedirect(){
   });
 }
 handleGDriveRedirect();
+/* サイレント(prompt:'')のトークン取得は、この端末で一度も連携していない場合など
+   コールバックが一切呼ばれず永遠に応答が返らないことがあった(「ドライブから読み込み中…」
+   のまま固まる不具合の原因)。非対話リクエストにはタイムアウトを設け、諦めてnullを
+   返すことで、呼び出し側が「取得できませんでした」を出せるようにする(2026-08-27)。 */
 function requestGDriveToken(interactive){
   return new Promise(res=>{
     if(_gdriveToken && Date.now() < _gdriveTokenExp - 60000){ res(_gdriveToken); return; }
@@ -7227,8 +7231,11 @@ function requestGDriveToken(interactive){
     }
     gdriveInit();
     if(!_gdriveTokenClient){ res(null); return; }
+    let settled=false;
+    const settle=(v)=>{ if(settled) return; settled=true; res(v); };
+    if(!interactive) setTimeout(()=>settle(null), 8000);
     const inFlight=_gdriveTokenResolvers.length>0;
-    _gdriveTokenResolvers.push(res);
+    _gdriveTokenResolvers.push(settle);
     if(inFlight) return;
     try{ _gdriveTokenClient.requestAccessToken(interactive ? {} : {prompt:''}); }
     catch(e){ const rs=_gdriveTokenResolvers; _gdriveTokenResolvers=[]; rs.forEach(r=>r(null)); }
