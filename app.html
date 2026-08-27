@@ -1824,7 +1824,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = 'app202608271230';
+const APP_VERSION = 'app202608271300';
 // LINEログイン(LIFF) — LINEコンソールで作成したLIFFアプリのIDを入れる
 const LIFF_ID = '2010638896-vJtjkUOr';
 // 公式アカウント「カーコン工賃通知」友だち追加URL（ここに飛ばすとLINEアプリの友だち追加画面が直接開く）
@@ -7060,6 +7060,14 @@ function onPhotoPicked(e){
   const carId=_photoTargetCar; const isDoc=_photoTargetIsDoc; _photoTargetIsDoc=false;
   handlePickedFiles(carId, files, isDoc);
 }
+/* ファイル名やブラウザ報告のMIMEタイプだけでは、ドラッグ&ドロップ経由のファイルで
+   PDF判定が外れることがあった(isPdf=falseのまま画像として扱われ、PDFが壊れた画像
+   のように表示される不具合の原因)。中身の先頭バイト("%PDF-")を見て確実に判定する。 */
+async function detectIsPdf(f){
+  if(f.type==='application/pdf') return true;
+  if(/\.pdf$/i.test(f.name||'')) return true;
+  try{ return (await f.slice(0,5).text())==='%PDF-'; }catch(e){ return false; }
+}
 /* PCからのドラッグ&ドロップでも、ファイル選択(input)と同じ経路で処理する共通関数 */
 function handlePickedFiles(carId, files, isDoc){
   const c=findCar(carId); if(!c || !files.length) return;
@@ -7067,16 +7075,17 @@ function handlePickedFiles(carId, files, isDoc){
   toast(files.length+'件を保存中…');
   let done=0;
   files.forEach(f=>{
-    const isPdf = f.type==='application/pdf' || /\.pdf$/i.test(f.name||'');
-    const proc = isPdf ? Promise.resolve(f) : shrinkImage(f).catch(()=>f);
-    proc.then(blob=>{
-      const id='p_'+Date.now().toString(36)+Math.random().toString(36).slice(2,7);
-      const rec={id, carId:c.id, stageIndex:ctx.idx, stageLabel:ctx.label, ts:Date.now(), blob, isPdf};
-      return pdbPut(rec).then(()=>{
-        c.photos=c.photos||[];
-        c.photos.push({id, stageIndex:ctx.idx, stageLabel:ctx.label, ts:rec.ts, isPdf});
-        persist(c);
-        autoUploadPhoto(c.id, id);   // 見積書・PDFも工程写真と同様にドライブへ自動送信(店舗の全員が見られるように)
+    detectIsPdf(f).then(isPdf=>{
+      const proc = isPdf ? Promise.resolve(f) : shrinkImage(f).catch(()=>f);
+      return proc.then(blob=>{
+        const id='p_'+Date.now().toString(36)+Math.random().toString(36).slice(2,7);
+        const rec={id, carId:c.id, stageIndex:ctx.idx, stageLabel:ctx.label, ts:Date.now(), blob, isPdf};
+        return pdbPut(rec).then(()=>{
+          c.photos=c.photos||[];
+          c.photos.push({id, stageIndex:ctx.idx, stageLabel:ctx.label, ts:rec.ts, isPdf});
+          persist(c);
+          autoUploadPhoto(c.id, id);   // 見積書・PDFも工程写真と同様にドライブへ自動送信(店舗の全員が見られるように)
+        });
       });
     }).catch(()=>{}).then(()=>{
       if(++done===files.length){ toast(files.length+'件を保存しました'); render(); if(document.getElementById('gallery-body')) refreshGallery(c.id); }
