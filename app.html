@@ -1531,6 +1531,10 @@ input[type="time"]::-webkit-calendar-picker-indicator { filter: invert(1); opaci
             </div>
           </div>
           <div class="form-group">
+            <label class="form-label">👤 お客様名（任意）</label>
+            <input type="text" class="form-input" id="front-customer" placeholder="例: 山田 太郎" autocomplete="off">
+          </div>
+          <div class="form-group">
             <label class="form-label">ナンバー（任意）</label>
             <input type="text" class="form-input" id="front-number" maxlength="4" placeholder="0000" inputmode="numeric" oninput="numAutoNext(this,&#39;front-cartype&#39;)" style="letter-spacing:6px;font-size:22px;font-weight:700;text-align:center;">
           </div>
@@ -1850,7 +1854,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = 'app202608272300';
+const APP_VERSION = 'app202608272320';
 // LINEログイン(LIFF) — LINEコンソールで作成したLIFFアプリのIDを入れる
 const LIFF_ID = '2010638896-vJtjkUOr';
 // 公式アカウント「カーコン工賃通知」友だち追加URL（ここに飛ばすとLINEアプリの友だち追加画面が直接開く）
@@ -5069,6 +5073,7 @@ function submitEstimate() {
   const date = document.getElementById('front-date').value || new Date().toISOString().slice(0,10);
   const number = document.getElementById('front-number').value.trim();
   const cartype = document.getElementById('front-cartype').value.trim();
+  const customerName = document.getElementById('front-customer').value.trim();
   const orderAmount = (contractedState === 'immediate' || contractedState === 'later')
     ? (parseAmount(document.getElementById('front-order-amount').value) || amount)
     : 0;
@@ -5078,7 +5083,7 @@ function submitEstimate() {
     contracted: contractedState !== 'none',
     immediate: contractedState === 'immediate',
     later: contractedState === 'later',
-    number, cartype,
+    number, cartype, customerName,
     name: userData.name || '', store: userData.store || '', pref: userData.pref || '',
     groupCode: userData.activeGroupCode || userData.groupCode || ''
   };
@@ -5094,6 +5099,7 @@ function submitEstimate() {
   document.getElementById('front-order-amount').value = '';
   document.getElementById('front-number').value = '';
   document.getElementById('front-cartype').value = '';
+  document.getElementById('front-customer').value = '';
   contractedState = null;
   document.getElementById('btn-immediate').className = 'contract-btn';
   document.getElementById('btn-later').className = 'contract-btn';
@@ -5516,6 +5522,7 @@ function renderFrontHistory() {
     return `<div class="front-history-item">
       <div>
         <div style="font-weight:700;">${d.date} ${d.number ? '【'+escapeHtml(d.number)+'】' : ''} ${escapeHtml(d.cartype || '')}</div>
+        ${d.customerName ? `<div style="font-size:12px;color:var(--text-sub);">👤 ${escapeHtml(d.customerName)}</div>` : ''}
         <div style="font-size:12px;color:var(--text-sub);">見積:¥${(d.amount||0).toLocaleString()}${d.orderAmount ? ' → 受注:¥'+d.orderAmount.toLocaleString() : ''}</div>
       </div>
       <span style="padding:3px 8px;border-radius:10px;font-size:11px;font-weight:700;${badgeStyle}">${badge}</span>
