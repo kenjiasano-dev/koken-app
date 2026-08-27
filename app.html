@@ -177,17 +177,16 @@ input[type="time"]::-webkit-calendar-picker-indicator { filter: invert(1); opaci
 .cal-day.empty { pointer-events: none; }
 .cal-day.sun { color: #e74c3c; }
 .cal-day.sat { color: #3498db; }
-.ywgrid{ display:flex; gap:4px; overflow-x:auto; padding-bottom:10px; -webkit-overflow-scrolling:touch; }
-.ywcol{ flex:0 0 88px; display:flex; flex-direction:column; }
-.ywhead{ text-align:center; font-size:12px; font-weight:700; padding:5px 0; border-bottom:2px solid var(--line2,var(--border)); margin-bottom:5px; color:var(--text); position:sticky; top:0; background:var(--card,#141a22); }
-.ywhead.today{ color:var(--accent,var(--green)); }
-.ywhead.sun{ color:#e74c3c; }
-.ywhead.sat{ color:#3498db; }
-.ywdow{ font-size:9px; font-weight:400; color:var(--muted); margin-left:2px; }
-.ywbody{ display:flex; flex-direction:column; gap:4px; min-height:32px; }
-.ywchip{ background:var(--card2,var(--card)); border:1px solid var(--line2,var(--border)); border-radius:7px; padding:5px 4px; cursor:pointer; text-align:center; }
-.ywtype{ font-size:10.5px; font-weight:700; line-height:1.25; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--text); }
-.ywnum{ font-size:9px; color:var(--muted); font-family:ui-monospace,Menlo,Consolas,monospace; margin-top:1px; }
+.ywgantt-wrap{ overflow-x:auto; -webkit-overflow-scrolling:touch; padding-bottom:10px; }
+.ywgantt{ display:grid; gap:2px; min-width:100%; }
+.ywh{ text-align:center; font-size:10px; font-weight:700; color:var(--text); border-bottom:2px solid var(--line2,var(--border)); position:sticky; top:0; background:var(--card,#141a22); display:flex; flex-direction:column; align-items:center; justify-content:center; }
+.ywh.today{ color:var(--accent,var(--green)); }
+.ywh.sun{ color:#e74c3c; }
+.ywh.sat{ color:#3498db; }
+.ywdow{ font-size:8px; font-weight:400; color:var(--muted); }
+.ywbar{ background:var(--card2,var(--card)); border:1px solid var(--line2,var(--border)); border-left:3px solid var(--accent,var(--green)); border-radius:5px; padding:3px 6px; cursor:pointer; display:flex; align-items:center; gap:5px; overflow:hidden; white-space:nowrap; min-width:0; }
+.ywbtype{ font-size:10.5px; font-weight:700; color:var(--text); overflow:hidden; text-overflow:ellipsis; }
+.ywbnum{ font-size:9px; color:var(--muted); font-family:ui-monospace,Menlo,Consolas,monospace; flex-shrink:0; }
 
 /* ===== MY CALENDAR (パチンコ収支カレンダー風) ===== */
 .mycal-wrap { padding: 12px; }
@@ -1835,7 +1834,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = 'app202608271515';
+const APP_VERSION = 'app202608271545';
 // LINEログイン(LIFF) — LINEコンソールで作成したLIFFアプリのIDを入れる
 const LIFF_ID = '2010638896-vJtjkUOr';
 // 公式アカウント「カーコン工賃通知」友だち追加URL（ここに飛ばすとLINEアプリの友だち追加画面が直接開く）
@@ -7899,37 +7898,60 @@ function changeYoteiGridMonth(delta){
   if(_yoteiCalM<1){ _yoteiCalM=12; _yoteiCalY--; }
   showSheet(yoteiGridHTML());
 }
+/* 各車を「入庫予定日〜納車予定日」の長さの横棒として配置(ガントチャート形式)。
+   お預かり日数が一目で分かるように、というリクエストに応じて2026-08-27に日付列
+   スタック方式から変更。重ならないよう空いている行(レーン)に詰めて配置する。 */
+function bd_yoteiAssignLanes(items){
+  var laneEnd=[];
+  items.forEach(function(it){
+    var lane=-1;
+    for(var i=0;i<laneEnd.length;i++){ if(laneEnd[i] < it.start){ lane=i; break; } }
+    if(lane<0){ lane=laneEnd.length; laneEnd.push(0); }
+    laneEnd[lane]=it.end;
+    it.lane=lane;
+  });
+  return laneEnd.length;
+}
 function yoteiGridHTML(){
   var days=new Date(_yoteiCalY,_yoteiCalM,0).getDate();
   var ym=_yoteiCalY+'-'+String(_yoteiCalM).padStart(2,'0');
   var today=new Date();
-  var yotei=state.cars.filter(function(c){ return c.status==='yotei'; });
-  var cols='';
+  var items=state.cars.filter(function(c){ return c.status==='yotei' && (c.nyukoPlan||'').slice(0,7)===ym; }).map(function(c){
+    var start=parseInt((c.nyukoPlan||'').slice(8,10),10);
+    var end=start;
+    if(c.deliveryDate){
+      var dm=c.deliveryDate.slice(0,7), dd=parseInt(c.deliveryDate.slice(8,10),10);
+      if(dm===ym && dd>=start) end=dd;
+      else if(dm>ym) end=days;   // 納車が翌月以降＝今月末まで伸ばして表示(簡易表現)
+    }
+    return {car:c, start:start, end:Math.min(end,days)};
+  }).sort(function(a,b){ return a.start-b.start || a.end-b.end; });
+  var lanes=Math.max(bd_yoteiAssignLanes(items),1);
+
+  var headCells='';
   for(var d=1; d<=days; d++){
-    var dateStr=ym+'-'+String(d).padStart(2,'0');
     var dow=new Date(_yoteiCalY,_yoteiCalM-1,d).getDay();
     var w=['日','月','火','水','木','金','土'][dow];
     var wcls = dow===0?'sun':(dow===6?'sat':'');
     var isToday=today.getFullYear()===_yoteiCalY && today.getMonth()+1===_yoteiCalM && today.getDate()===d;
-    var cars=yotei.filter(function(c){ return (c.nyukoPlan||'').slice(0,10)===dateStr; }).sort(function(a,b){ return bd_planMs(a)-bd_planMs(b); });
-    var chips=cars.map(function(c){
-      return '<div class="ywchip" onclick="bd_openCarModal(\''+c.id+'\')">'
-        + '<div class="ywtype">'+esc(c.cartype)+'</div>'
-        + '<div class="ywnum">'+esc(c.number)+'</div>'
-        + '</div>';
-    }).join('');
-    cols += '<div class="ywcol">'
-      + '<div class="ywhead '+wcls+(isToday?' today':'')+'">'+d+'<span class="ywdow">('+w+')</span></div>'
-      + '<div class="ywbody">'+chips+'</div>'
-      + '</div>';
+    headCells += '<div class="ywh '+wcls+(isToday?' today':'')+'" style="grid-column:'+d+'/'+(d+1)+';grid-row:1;">'+d+'<span class="ywdow">'+w+'</span></div>';
   }
+  var bars=items.map(function(it){
+    var c=it.car, span=it.end-it.start+1;
+    return '<div class="ywbar" style="grid-column:'+it.start+'/'+(it.end+1)+';grid-row:'+(it.lane+2)+';" onclick="bd_openCarModal(\''+c.id+'\')" title="'+esc(c.cartype)+'・'+esc(c.number)+'（'+span+'日）">'
+      + '<span class="ywbtype">'+esc(c.cartype)+'</span>'
+      + (span>1?('<span class="ywbnum">'+esc(c.number)+'</span>'):'')
+      + '</div>';
+  }).join('');
+  var gridStyle='grid-template-columns:repeat('+days+',minmax(26px,1fr));grid-template-rows:30px repeat('+lanes+',27px);';
   return '<h2>📋 入庫予定表（'+_yoteiCalY+'年'+_yoteiCalM+'月）</h2>'
+    + '<p style="color:var(--muted);font-size:11px;margin:2px 0 10px;">棒の長さ＝入庫〜納車予定のお預かり日数（納車日未設定は入庫日のみ表示）</p>'
     + '<div class="cal-header" style="margin-top:2px;">'
     +   '<button class="cal-nav" onclick="changeYoteiGridMonth(-1)">◀</button>'
     +   '<button class="btn ghost" style="padding:6px 14px;font-size:12px;" onclick="openYoteiCal()">📆 カレンダー表示に戻る</button>'
     +   '<button class="cal-nav" onclick="changeYoteiGridMonth(1)">▶</button>'
     + '</div>'
-    + '<div class="ywgrid">'+cols+'</div>';
+    + '<div class="ywgantt-wrap"><div class="ywgantt" style="'+gridStyle+'">'+headCells+bars+'</div></div>';
 }
 function changeYoteiCalMonth(delta){
   _yoteiCalM+=delta;
