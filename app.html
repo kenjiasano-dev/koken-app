@@ -1841,7 +1841,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = 'app202608271730';
+const APP_VERSION = 'app202608271745';
 // LINEログイン(LIFF) — LINEコンソールで作成したLIFFアプリのIDを入れる
 const LIFF_ID = '2010638896-vJtjkUOr';
 // 公式アカウント「カーコン工賃通知」友だち追加URL（ここに飛ばすとLINEアプリの友だち追加画面が直接開く）
@@ -6483,13 +6483,43 @@ function daysUntil(dateStr){
   return Math.round((d - t)/86400000);
 }
 /* お客様名・見積金額(2026-08-27追加)を、カード類・車両詳細で共通して出す小さな行。
-   どちらも未設定の車(既存データ)では何も表示しない。 */
+   タップすればいつでも後から入力・修正できる(納車予定日と同じ「タップで編集」方式)。 */
 function bd_custEstLine(c){
-  if(!c.customerName && !c.estimateAmount) return '';
+  if(!c.customerName && !c.estimateAmount){
+    return '<div class="deliv" onclick="event.stopPropagation();openCustEst(\''+c.id+'\')"><span class="deliv-set">＋ お客様名・見積金額</span></div>';
+  }
   var parts=[];
   if(c.customerName) parts.push('👤 '+esc(c.customerName));
   if(c.estimateAmount) parts.push('💰 見積 ¥'+Number(c.estimateAmount).toLocaleString());
-  return '<div style="font-size:12px;color:var(--muted);margin-top:4px;">'+parts.join('　')+'</div>';
+  return '<div style="font-size:12px;color:var(--muted);margin-top:4px;cursor:pointer;" onclick="event.stopPropagation();openCustEst(\''+c.id+'\')">'+parts.join('　')+' <span style="opacity:.5;">✎</span></div>';
+}
+function openCustEst(id){
+  const c=findCar(id); if(!c) return;
+  const html=`
+    <h2>お客様名・見積金額</h2>
+    <p style="color:var(--muted); font-size:13px; margin:0 0 14px;">${esc(c.cartype)} ・${esc(c.number)}</p>
+    <div class="field">
+      <label>お客様名（任意）</label>
+      <input id="ce-customer" value="${esc(c.customerName||'')}" placeholder="例）山田 太郎" autocomplete="off">
+    </div>
+    <div class="field">
+      <label>見積金額（任意・円）</label>
+      <input id="ce-estimate" value="${c.estimateAmount||''}" placeholder="例）150000" inputmode="numeric" autocomplete="off" oninput="this.value=this.value.replace(/[^0-9]/g,'');">
+    </div>
+    <div class="sheet-actions">
+      <button class="btn ghost" onclick="closeSheet()">キャンセル</button>
+      <button class="btn" onclick="saveCustEst('${id}')">保存</button>
+    </div>`;
+  showSheet(html);
+  setTimeout(()=>{ var el=document.getElementById('ce-customer'); if(el) el.focus(); },50);
+}
+function saveCustEst(id){
+  const c=findCar(id); if(!c) return;
+  const nameEl=document.getElementById('ce-customer'), estEl=document.getElementById('ce-estimate');
+  c.customerName = nameEl ? nameEl.value.trim() : c.customerName;
+  c.estimateAmount = parseInt((estEl&&estEl.value)||'',10) || 0;
+  persist(c); closeSheet(); render();
+  toast('保存しました');
 }
 function deliveryLine(c){
   if(!c.deliveryDate){
