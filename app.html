@@ -1850,7 +1850,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = 'app202608272210';
+const APP_VERSION = 'app202608272225';
 // LINEログイン(LIFF) — LINEコンソールで作成したLIFFアプリのIDを入れる
 const LIFF_ID = '2010638896-vJtjkUOr';
 // 公式アカウント「カーコン工賃通知」友だち追加URL（ここに飛ばすとLINEアプリの友だち追加画面が直接開く）
@@ -6445,13 +6445,6 @@ function openAddCar(forceMode){
     <div class="field">
       <label>納車予定日（任意・後から入れられます）</label>
       <div id="nc-deliv-disp" style="font-size:15px; margin-bottom:9px; color:var(--muted);">未設定（任意）</div>
-      <div class="dv-chips" style="margin-bottom:12px;">
-        <button type="button" class="dv-chip" onclick="ncQuick(0)">今日</button>
-        <button type="button" class="dv-chip" onclick="ncQuick(1)">明日</button>
-        <button type="button" class="dv-chip" onclick="ncQuick(2)">明後日</button>
-        <button type="button" class="dv-chip" onclick="ncQuick(3)">3日後</button>
-        <button type="button" class="dv-chip" onclick="ncQuick(7)">1週間後</button>
-      </div>
       <div id="nc-cal"></div>
     </div>
     <div class="field">
@@ -6640,21 +6633,13 @@ function openDelivery(id){
   const c=findCar(id); if(!c) return;
   const base = c.deliveryDate ? new Date(c.deliveryDate+'T00:00:00') : new Date();
   dvCal = { id:id, y:base.getFullYear(), m:base.getMonth() };
-  const chips=[['今日',0],['明日',1],['明後日',2],['3日後',3],['1週間後',7]]
-    .map(function(x){ return `<button class="dv-chip" onclick="setDeliveryIn('${id}',${x[1]})">${x[0]}</button>`; }).join('');
   const html=`
     <h2>納車予定日</h2>
     <p style="color:var(--muted); font-size:13px; margin:0 0 14px;">${esc(c.cartype)} ・${esc(c.number)}</p>
-    <div class="dv-chips">${chips}</div>
-    <div id="dv-cal" style="margin-top:16px;"></div>
+    <div id="dv-cal"></div>
     ${c.deliveryDate?`<button class="btn ghost" style="margin-top:14px;" onclick="setDelivery('${id}','')">納車予定日をクリア</button>`:''}`;
   showSheet(html);
   bd_renderCalendar();
-}
-function setDeliveryIn(id,days){
-  const t=new Date(); t.setDate(t.getDate()+days);
-  const pad2=function(n){return String(n).padStart(2,'0');};
-  setDelivery(id, t.getFullYear()+'-'+pad2(t.getMonth()+1)+'-'+pad2(t.getDate()));   // 保存して閉じる
 }
 function dvMove(delta){
   if(!dvCal) return;
@@ -6676,13 +6661,6 @@ let ncCal=null;
 function ncInit(){
   newCarDeliv='';
   const n=new Date(); ncCal={y:n.getFullYear(), m:n.getMonth()};
-  updateNcDisp(); renderNcCal();
-}
-function ncQuick(days){
-  const t=new Date(); t.setDate(t.getDate()+days);
-  const pad2=function(n){return String(n).padStart(2,'0');};
-  newCarDeliv = t.getFullYear()+'-'+pad2(t.getMonth()+1)+'-'+pad2(t.getDate());
-  ncCal={y:t.getFullYear(), m:t.getMonth()};
   updateNcDisp(); renderNcCal();
 }
 function ncPick(ds){
