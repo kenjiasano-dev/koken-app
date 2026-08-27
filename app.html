@@ -186,6 +186,7 @@ input[type="time"]::-webkit-calendar-picker-indicator { filter: invert(1); opaci
 .ywdow{ font-size:8px; font-weight:400; color:var(--muted); }
 .ywbar{ background:var(--card2,var(--card)); border:1px solid var(--line2,var(--border)); border-left:3px solid var(--accent,var(--green)); border-radius:5px; padding:3px 6px; cursor:pointer; display:flex; align-items:center; gap:5px; overflow:hidden; white-space:nowrap; min-width:0; }
 .ywbar.ywbar-yotei{ border-style:dashed; opacity:.85; }
+.ywdot{ width:9px; height:9px; border-radius:50%; background:var(--accent,var(--green)); flex:0 0 auto; cursor:pointer; box-shadow:0 0 0 1px rgba(255,255,255,.25) inset; }
 .ywbtype{ font-size:10.5px; font-weight:700; color:var(--text); overflow:hidden; text-overflow:ellipsis; }
 .ywbnum{ font-size:9px; color:var(--muted); font-family:ui-monospace,Menlo,Consolas,monospace; flex-shrink:0; }
 
@@ -1840,7 +1841,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = 'app202608271645';
+const APP_VERSION = 'app202608271700';
 // LINEログイン(LIFF) — LINEコンソールで作成したLIFFアプリのIDを入れる
 const LIFF_ID = '2010638896-vJtjkUOr';
 // 公式アカウント「カーコン工賃通知」友だち追加URL（ここに飛ばすとLINEアプリの友だち追加画面が直接開く）
@@ -7956,7 +7957,10 @@ function yoteiGridHTML(){
     var c=it.car, span=it.end-it.start+1;
     var statusLabel = {yotei:'予定', nyuko:'入庫中', work:'作業中'}[c.status] || '';
     var cls = c.status==='yotei' ? 'ywbar ywbar-yotei' : 'ywbar';
-    return '<div class="'+cls+'" style="grid-column:'+it.start+'/'+(it.end+1)+';grid-row:'+(it.lane+2)+';" onclick="bd_openCarModal(\''+c.id+'\')" title="'+esc(c.cartype)+'・'+esc(c.number)+'・'+statusLabel+'（'+span+'日）">'
+    var barStyle = 'grid-column:'+it.start+'/'+(it.end+1)+';grid-row:'+(it.lane+2)+';'+(c.ganttColor?('border-left-color:'+c.ganttColor+';'):'');
+    var dotStyle = c.ganttColor ? ('background:'+c.ganttColor+';') : '';
+    return '<div class="'+cls+'" style="'+barStyle+'" onclick="bd_openCarModal(\''+c.id+'\')" title="'+esc(c.cartype)+'・'+esc(c.number)+'・'+statusLabel+'（'+span+'日）">'
+      + '<span class="ywdot" style="'+dotStyle+'" title="色を変える" onclick="event.stopPropagation();bd_yoteiColorPick(event,\''+c.id+'\')"></span>'
       + '<span class="ywbtype">'+esc(c.cartype)+'</span>'
       + (span>1?('<span class="ywbnum">'+esc(c.number)+'</span>'):'')
       + '</div>';
@@ -7970,6 +7974,39 @@ function yoteiGridHTML(){
     +   '<button class="cal-nav" onclick="changeYoteiGridMonth(1)">▶</button>'
     + '</div>'
     + '<div class="ywgantt-wrap"><div class="ywgantt" style="'+gridStyle+'">'+headCells+bars+'</div></div>';
+}
+/* バー先頭の丸(ywdot)をタップすると出す、色を選ぶだけの最小限のポップアップ。
+   整備・車検・コーチングなど種類が増えても、車ごとに自由に色分けできるように(2026-08-27)。 */
+var YOTEI_COLORS=['#4A9ECC','#e74c3c','#f39c12','#27ae60','#9b59b6','#1abc9c','#e91e63','#795548'];
+function bd_yoteiColorPick(ev, carId){
+  var old=document.getElementById('yw-colorpop'); if(old) old.remove();
+  var pop=document.createElement('div');
+  pop.id='yw-colorpop';
+  pop.style.cssText='position:fixed;z-index:200;background:var(--card2,#222);border:1px solid var(--line2,#444);border-radius:10px;padding:8px;display:flex;gap:6px;flex-wrap:wrap;width:132px;box-shadow:0 6px 20px rgba(0,0,0,.4);';
+  var x=Math.min(ev.clientX, window.innerWidth-150), y=Math.min(ev.clientY, window.innerHeight-100);
+  pop.style.left=x+'px'; pop.style.top=y+'px';
+  YOTEI_COLORS.forEach(function(col){
+    var sw=document.createElement('div');
+    sw.style.cssText='width:22px;height:22px;border-radius:50%;cursor:pointer;background:'+col+';border:2px solid rgba(255,255,255,.15);';
+    sw.onclick=function(e){ e.stopPropagation(); bd_setYoteiColor(carId, col); };
+    pop.appendChild(sw);
+  });
+  var clr=document.createElement('div');
+  clr.textContent='色なしに戻す';
+  clr.style.cssText='width:100%;text-align:center;font-size:10px;color:var(--muted);cursor:pointer;margin-top:6px;padding-top:6px;border-top:1px solid var(--line2,#444);';
+  clr.onclick=function(e){ e.stopPropagation(); bd_setYoteiColor(carId, ''); };
+  pop.appendChild(clr);
+  document.body.appendChild(pop);
+  setTimeout(function(){
+    document.addEventListener('click', function closeOnce(){ var p=document.getElementById('yw-colorpop'); if(p) p.remove(); document.removeEventListener('click',closeOnce); });
+  },0);
+}
+function bd_setYoteiColor(carId, color){
+  var c=findCar(carId); if(!c) return;
+  c.ganttColor=color; persist(c);
+  var pop=document.getElementById('yw-colorpop'); if(pop) pop.remove();
+  showSheet(yoteiGridHTML(), true, true);
+  toast(color?'色を変更しました':'色をリセットしました');
 }
 function changeYoteiCalMonth(delta){
   _yoteiCalM+=delta;
