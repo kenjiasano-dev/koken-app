@@ -546,6 +546,8 @@ input[type="time"]::-webkit-calendar-picker-indicator { filter: invert(1); opaci
 /* PCで入庫予定表(ガントチャート)を画面いっぱいに見せたい、というリクエストに応じて
    通常のシート幅(520px)とは別に、幅広で見たい画面だけこのクラスを追加する(2026-08-27) */
 .sheet.sheet-wide{ max-width:min(96vw, 1400px); }
+.overlay.overlay-right{ justify-content:flex-end; align-items:stretch; }
+.overlay.overlay-right .sheet{ height:100vh; max-height:100vh; border-radius:0; }
 /* どのシートにも必ず出る閉じるボタン（showSheetが自動で入れる） */
 .sheet-x{
   position:absolute; top:10px; right:10px; z-index:3;
@@ -1837,7 +1839,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = 'app202608271600';
+const APP_VERSION = 'app202608271615';
 // LINEログイン(LIFF) — LINEコンソールで作成したLIFFアプリのIDを入れる
 const LIFF_ID = '2010638896-vJtjkUOr';
 // 公式アカウント「カーコン工賃通知」友だち追加URL（ここに飛ばすとLINEアプリの友だち追加画面が直接開く）
@@ -7717,7 +7719,7 @@ function setDoneFilter(f){
 function showSheet(innerHTML, dismissable=true, wide=false){
   closeSheet();
   const ov=document.createElement('div');
-  ov.className='overlay'; ov.id='overlay';
+  ov.className='overlay'+(wide?' overlay-right':''); ov.id='overlay';
   const xbtn = dismissable ? '<button class="sheet-x" title="閉じる" aria-label="閉じる" onclick="closeSheet()">✕</button>' : '';
   ov.innerHTML=`<div class="sheet${wide?' sheet-wide':''}" onclick="event.stopPropagation()">${xbtn}${innerHTML}</div>`;
   if(dismissable) ov.addEventListener('click', closeSheet);
