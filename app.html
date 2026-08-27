@@ -1291,7 +1291,10 @@ input[type="time"]::-webkit-calendar-picker-indicator { filter: invert(1); opaci
           <div style="font-size:12px;color:var(--text-sub);margin-bottom:6px;">📱 端末ID（機種変更時にメモしてください）</div>
           <div style="display:flex;gap:8px;align-items:center;">
             <div id="uuid-display" style="flex:1;font-size:11px;color:var(--text-sub);background:var(--border);padding:8px 10px;border-radius:8px;word-break:break-all;font-family:monospace;"></div>
-            <button onclick="copyUUID()" style="padding:8px 12px;background:var(--card);border:1px solid var(--border);border-radius:8px;font-size:12px;cursor:pointer;white-space:nowrap;">📋 コピー</button></div><button onclick="registerWithLINE()" style="width:100%;margin-top:8px;padding:10px;background:#00b900;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;">📲 LINEで登録</button><div id="line-register-status" style="margin-top:6px;font-size:12px;text-align:center;"></div></div>
+            <button onclick="copyUUID()" style="padding:8px 12px;background:var(--card);border:1px solid var(--border);border-radius:8px;font-size:12px;cursor:pointer;white-space:nowrap;">📋 コピー</button></div>
+          <button onclick="copyRestoreLink()" style="width:100%;margin-top:8px;padding:10px;background:var(--card);color:var(--green);border:1px solid var(--green);border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;">🔗 復元リンクをコピー</button>
+          <div style="font-size:11px;color:var(--text-sub);margin-top:5px;line-height:1.6;">ブラウザの設定でデータが消えても、このリンクを開くだけで元通りに復元できます。<b style="color:var(--text);">LINEのキープメモなど、ブラウザ以外の場所に保存</b>しておいてください。</div>
+          <button onclick="registerWithLINE()" style="width:100%;margin-top:8px;padding:10px;background:#00b900;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;">📲 LINEで登録</button><div id="line-register-status" style="margin-top:6px;font-size:12px;text-align:center;"></div></div>
       </div>
       <!-- Group -->
       <div class="card">
@@ -1841,7 +1844,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = 'app202608271925';
+const APP_VERSION = 'app202608272040';
 // LINEログイン(LIFF) — LINEコンソールで作成したLIFFアプリのIDを入れる
 const LIFF_ID = '2010638896-vJtjkUOr';
 // 公式アカウント「カーコン工賃通知」友だち追加URL（ここに飛ばすとLINEアプリの友だち追加画面が直接開く）
@@ -4533,6 +4536,18 @@ function copyUUID() {
   if (!uuid) { showToast('端末IDが見つかりません', 2000); return; }
   navigator.clipboard.writeText(uuid)
     .then(() => showToast('📋 端末IDをコピーしました', 2000))
+    .catch(() => showToast('コピーできませんでした。手動でコピーしてください', 3000));
+}
+
+// ブラウザの「閉じるたびにデータを消す」設定等でこの端末のlocalStorageが消えても、
+// このリンクを開けば？rejoinUuid=経由（reclaimFromLineRedirect）で自動復元できる。
+// ブラウザの外（LINEのキープメモ等）に保存してもらうための「消えない入口」。
+function copyRestoreLink() {
+  const uuid = userData.uuid || '';
+  if (!uuid) { showToast('端末IDが見つかりません。先にお名前を保存してください', 2500); return; }
+  const url = location.origin + location.pathname + '?rejoinUuid=' + encodeURIComponent(uuid);
+  navigator.clipboard.writeText(url)
+    .then(() => showToast('🔗 復元リンクをコピーしました。LINEのキープメモ等に保存してください', 4000))
     .catch(() => showToast('コピーできませんでした。手動でコピーしてください', 3000));
 }
 
