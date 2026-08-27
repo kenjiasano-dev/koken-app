@@ -1824,7 +1824,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = 'app202608271400';
+const APP_VERSION = 'app202608271415';
 // LINEログイン(LIFF) — LINEコンソールで作成したLIFFアプリのIDを入れる
 const LIFF_ID = '2010638896-vJtjkUOr';
 // 公式アカウント「カーコン工賃通知」友だち追加URL（ここに飛ばすとLINEアプリの友だち追加画面が直接開く）
@@ -7602,9 +7602,18 @@ function bd_initZoomViewer(){
 function delPhoto(carId,pid){
   if(!confirm('この写真を削除しますか？')) return;
   const c=findCar(carId); if(!c) return;
+  const target=(c.photos||[]).find(p=>p.id===pid);
   c.photos=(c.photos||[]).filter(p=>p.id!==pid);
   persist();
   pdbDel(pid).then(()=>{ refreshGallery(carId); render(); toast('写真を削除しました'); }).catch(()=>{ refreshGallery(carId); render(); });
+  if(target && target.gdriveId) deleteGDrivePhoto(target.gdriveId);   // ドライブ本体のファイルも削除(アプリ側の記録だけ消えて残り続けないように)
+}
+async function deleteGDrivePhoto(fileId){
+  try{
+    const token=await requestGDriveToken(false);
+    if(!token) return;
+    await fetch('https://www.googleapis.com/drive/v3/files/'+fileId, {method:'DELETE', headers:{'Authorization':'Bearer '+token}});
+  }catch(e){}
 }
 
 /* ---- 依存なしZIP（無圧縮=store・UTF-8ファイル名） ---- */
