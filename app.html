@@ -1919,7 +1919,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = 'app202608281335';
+const APP_VERSION = 'app202608281350';
 // LINEログイン(LIFF) — LINEコンソールで作成したLIFFアプリのIDを入れる
 const LIFF_ID = '2010638896-vJtjkUOr';
 // 公式アカウント「カーコン工賃通知」友だち追加URL（ここに飛ばすとLINEアプリの友だち追加画面が直接開く）
@@ -8471,14 +8471,29 @@ function yoteiGridHTML(){
 }
 /* 代車管理: 入庫予定表と同じ月・同じ日付軸で、行=登録済みの代車、バー=貸出中の車(お客様名・車種)。
    貸出期間は既定でその車自身の入庫〜納車予定と同じだが、loanerStart/loanerEndで個別に上書きできる。 */
+/* 代車表は使わない店もあるため、出したり消したりできるように(2026-08-28)。
+   settings.hideDaishaに状態を保存し、次回もその表示状態を覚えている。 */
+function bd_daishaHidden(){ return !!(typeof settings!=='undefined' && settings && settings.hideDaisha); }
+function bd_toggleDaisha(){
+  if(typeof settings==='undefined'||!settings) return;
+  settings.hideDaisha = !settings.hideDaisha;
+  if(typeof saveLocal==='function') saveLocal();
+  showSheet(yoteiGridHTML(), true, true);
+}
 function daishaGridHTML(){
   var days=new Date(_yoteiCalY,_yoteiCalM,0).getDate();
   var ym=_yoteiCalY+'-'+String(_yoteiCalM).padStart(2,'0');
   var loaners=getLoanerCars();
+  var hidden=bd_daishaHidden();
+  var toggleBtn='<button class="btn ghost" style="padding:4px 10px;font-size:11px;" onclick="bd_toggleDaisha()">'+(hidden?'▼ 表示':'▲ 隠す')+'</button>';
   if(!loaners.length){
     return '<div style="margin-top:26px;">'
-      + '<h3 style="font-size:14px;margin:0 0 8px;display:flex;align-items:center;gap:8px;">🚙 代車管理<button class="btn ghost" style="padding:4px 10px;font-size:11px;margin-left:auto;" onclick="openLoanerCars()">代車を登録</button></h3>'
-      + '<p style="color:var(--muted);font-size:12px;">代車が登録されていません。⚙設定→代車 から登録してください。</p></div>';
+      + '<h3 style="font-size:14px;margin:0 0 8px;display:flex;align-items:center;gap:8px;">🚙 代車管理'+toggleBtn+'<button class="btn ghost" style="padding:4px 10px;font-size:11px;margin-left:auto;" onclick="openLoanerCars()">代車を登録</button></h3>'
+      + (hidden?'':'<p style="color:var(--muted);font-size:12px;">代車が登録されていません。⚙設定→代車 から登録してください。</p>') + '</div>';
+  }
+  if(hidden){
+    return '<div style="margin-top:26px;">'
+      + '<h3 style="font-size:14px;margin:0;display:flex;align-items:center;gap:8px;">🚙 代車管理'+toggleBtn+'</h3></div>';
   }
   function loanerPeriod(c){
     var s = c.loanerStart || (c.status==='yotei' ? (c.nyukoPlan||'').slice(0,10) : (c.nyukoAt||'').slice(0,10));
@@ -8516,7 +8531,7 @@ function daishaGridHTML(){
   });
   var gridStyle='grid-template-columns:90px repeat('+days+',minmax(34px,1fr));grid-template-rows:32px repeat('+loaners.length+',28px);';
   return '<div style="margin-top:26px;">'
-    + '<h3 style="font-size:14px;margin:0 0 8px;display:flex;align-items:center;gap:8px;">🚙 代車管理<button class="btn ghost" style="padding:4px 10px;font-size:11px;margin-left:auto;" onclick="openLoanerCars()">代車を編集</button></h3>'
+    + '<h3 style="font-size:14px;margin:0 0 8px;display:flex;align-items:center;gap:8px;">🚙 代車管理'+toggleBtn+'<button class="btn ghost" style="padding:4px 10px;font-size:11px;margin-left:auto;" onclick="openLoanerCars()">代車を編集</button></h3>'
     + '<div class="ywgantt-wrap"><div class="ywgantt" style="'+gridStyle+'">'+headCells+rowsHtml+'</div></div>'
     + '</div>';
 }
