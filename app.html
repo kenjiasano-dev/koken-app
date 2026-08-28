@@ -1926,7 +1926,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = 'app202608282530';
+const APP_VERSION = 'app202608282600';
 // LINEログイン(LIFF) — LINEコンソールで作成したLIFFアプリのIDを入れる
 const LIFF_ID = '2010638896-vJtjkUOr';
 // 公式アカウント「カーコン工賃通知」友だち追加URL（ここに飛ばすとLINEアプリの友だち追加画面が直接開く）
@@ -6427,9 +6427,12 @@ function fmtDate(iso){ const d=new Date(iso); return (d.getMonth()+1)+'/'+d.getD
 function fmtTime(iso){ if(!iso) return ''; const d=new Date(iso); return d.getHours()+':'+String(d.getMinutes()).padStart(2,'0'); }
 function fmtDateTime(iso){ if(!iso) return ''; return fmtDate(iso)+' '+fmtTime(iso); }
 function timesLine(c){
-  var wrap=function(label,val,color){ return '<span style="color:'+color+';">'+label+' <b style="color:var(--text);font-weight:700;">'+val+'</b></span>'; };
+  var wrap=function(label,val,color,onclick){
+    return '<span style="color:'+color+';'+(onclick?'cursor:pointer;':'')+'"'+(onclick?(' onclick="event.stopPropagation();'+onclick+'"'):'')+'>'+label+' <b style="color:var(--text);font-weight:700;">'+val+'</b>'+(onclick?' <span style="opacity:.5;font-weight:400;">✎</span>':'')+'</span>';
+  };
   var p=[];
-  if(c.nyukoAt) p.push(wrap('入庫', fmtDateTime(c.nyukoAt), 'var(--accent)'));
+  // 入庫日時は後からでも直せるように、ここだけタップで編集できる(2026-08-28)
+  if(c.nyukoAt) p.push(wrap('入庫', fmtDateTime(c.nyukoAt), 'var(--accent)', "openNyukoEdit('"+c.id+"')"));
   if(c.startAt) p.push(wrap('開始', fmtDateTime(c.startAt), 'var(--amber)'));
   if(c.doneAt)  p.push(wrap('完成', fmtDateTime(c.doneAt), 'var(--green)'));
   return p.join('<span style="color:var(--muted2);">　/　</span>');
@@ -7034,6 +7037,58 @@ function setDelivery(id,val){
   const c=findCar(id); if(!c) return;
   c.deliveryDate = val||'';
   persist(c); closeSheet(); render();
+}
+
+/* 入庫日もタップで変更できるように(2026-08-28、納車日と同じ考え方)。
+   予定(yotei)は入庫予定日時(nyukoPlan)、それ以降は実際の入庫日時(nyukoAt)を編集する。 */
+let nyEditCal=null;
+function openNyukoEdit(id){
+  const c=findCar(id); if(!c) return;
+  var isPlan = c.status==='yotei';
+  var curDate = isPlan ? (c.nyukoPlan||'').slice(0,10) : (c.nyukoAt ? isoDateStr(new Date(c.nyukoAt)) : '');
+  var curTime = isPlan ? (c.nyukoPlan||'').slice(11,16) : (c.nyukoAt ? fmtTime(c.nyukoAt) : '');
+  const base = curDate ? new Date(curDate+'T00:00:00') : new Date();
+  nyEditCal = { id:id, y:base.getFullYear(), m:base.getMonth(), selected:curDate };
+  const html=`
+    <h2>${isPlan?'入庫予定日時':'入庫日時'}</h2>
+    <p style="color:var(--muted); font-size:13px; margin:0 0 14px;">${esc(c.cartype)} ・${esc(c.number)}</p>
+    <div id="ny-edit-cal"></div>
+    <div class="field" style="margin-top:12px;">
+      <label>時刻（任意）</label>
+      <input type="time" id="ny-edit-time" value="${esc(curTime)}">
+    </div>
+    <button class="btn" style="width:100%;margin-top:14px;" onclick="saveNyukoEdit('${id}')">保存</button>`;
+  showSheet(html);
+  nyEditRenderCal();
+}
+function nyEditMove(delta){
+  if(!nyEditCal) return;
+  nyEditCal.m += delta;
+  if(nyEditCal.m<0){ nyEditCal.m=11; nyEditCal.y--; } else if(nyEditCal.m>11){ nyEditCal.m=0; nyEditCal.y++; }
+  nyEditRenderCal();
+}
+function nyEditPick(ds){
+  if(!nyEditCal) return;
+  nyEditCal.selected=ds;
+  const d=new Date(ds+'T00:00:00'); nyEditCal.y=d.getFullYear(); nyEditCal.m=d.getMonth();
+  nyEditRenderCal();
+}
+function nyEditRenderCal(){
+  const el=document.getElementById('ny-edit-cal'); if(!el||!nyEditCal) return;
+  el.innerHTML = buildCalendarHTML(nyEditCal.y, nyEditCal.m, nyEditCal.selected||'', 'nyEditPick', 'nyEditMove');
+}
+function saveNyukoEdit(id){
+  const c=findCar(id); if(!c) return;
+  var ds = (nyEditCal && nyEditCal.selected) || '';
+  if(!ds){ toast('日付を選んでください'); return; }
+  var tm = (document.getElementById('ny-edit-time')||{}).value || '';
+  if(c.status==='yotei'){
+    c.nyukoPlan = ds + (tm?('T'+tm):'');
+  } else {
+    c.nyukoAt = new Date(ds+'T'+(tm||'00:00')+':00').toISOString();
+  }
+  persist(c); closeSheet(); render();
+  toast('入庫日時を変更しました');
 }
 
 /* 入庫 → 作業開始 */
@@ -9693,7 +9748,7 @@ function bd_yoteiRow(c){
     + bd_custEstLine(c)
     + bd_loanerLine(c)
     + '<div style="display:flex;gap:18px;margin-top:9px;flex-wrap:wrap;">'
-    +   '<div><div style="font-size:11px;color:var(--muted);margin-bottom:2px;">🚙 入庫予定</div><div style="font-size:19px;font-weight:700;color:var(--accent);">'+inb+'</div></div>'
+    +   '<div onclick="event.stopPropagation();openNyukoEdit(\''+c.id+'\')" style="cursor:pointer;"><div style="font-size:11px;color:var(--muted);margin-bottom:2px;">🚙 入庫予定 <span style="opacity:.5;">✎</span></div><div style="font-size:19px;font-weight:700;color:var(--accent);">'+inb+'</div></div>'
     +   '<div><div style="font-size:11px;color:var(--muted);margin-bottom:2px;">🚚 納車予定</div><div style="font-size:19px;font-weight:700;color:var(--green);">'+dlv+'</div></div>'
     + '</div></div>';
 }
@@ -9711,7 +9766,7 @@ function bd_nyukoCardHtml(c){
         <div><div>${kindBadge(c)}${insBadge(c)}${bd_carNameNum(c)}</div><div style="margin-top:5px;">${assignChip(c)}</div></div>
         ${bd_custEstLine(c)}
         ${bd_loanerLine(c)}
-        <div class="${subCls}">⏱ ${fmtDateTime(c.nyukoAt)} 入庫・${d}日待ち</div>
+        <div class="${subCls}" onclick="event.stopPropagation();openNyukoEdit('${c.id}')" style="cursor:pointer;">⏱ ${fmtDateTime(c.nyukoAt)} 入庫・${d}日待ち <span style="opacity:.5;">✎</span></div>
         ${deliveryLine(c)}
         ${holdBlock(c)}
       </div>
