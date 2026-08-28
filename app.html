@@ -1924,7 +1924,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = 'app202608281900';
+const APP_VERSION = 'app202608281945';
 // LINEログイン(LIFF) — LINEコンソールで作成したLIFFアプリのIDを入れる
 const LIFF_ID = '2010638896-vJtjkUOr';
 // 公式アカウント「カーコン工賃通知」友だち追加URL（ここに飛ばすとLINEアプリの友だち追加画面が直接開く）
@@ -7159,7 +7159,7 @@ function settingsHTML(){
     <button class="btn ghost" style="margin-top:9px;" onclick="connectGDrive()">🔗 Googleドライブ連携${(localStorage.getItem('gdrive_confirmed_email'))?'（'+esc(localStorage.getItem('gdrive_confirmed_email'))+'）':'（未接続）'}</button>
     <button class="btn ghost" style="margin-top:9px;" onclick="exportAllZip()">📷 全部の工程写真をまとめてZIPで書き出す</button>
     <button class="btn ghost" style="margin-top:9px;" onclick="openSetup()">店舗名・グループを変更</button>
-    ${bd_isTestStore() ? '<button class="btn ghost" style="margin-top:9px;background:var(--amber-bg,#3a2600);border-color:var(--amber,#e67e22);color:var(--amber,#e67e22);" onclick="generateTestCars()">🧪 テストデータをまとめて作成（30台・研修用）</button>' : ''}`;
+    ${bd_isTestStore() ? '<button class="btn ghost" style="margin-top:9px;background:var(--amber-bg,#3a2600);border-color:var(--amber,#e67e22);color:var(--amber,#e67e22);" onclick="generateTestCars()">🧪 受付テストデータを一括作成（90件・7/1〜10/15・研修用）</button>' : ''}`;
 }
 
 /* ---------- テストデータ一括作成(研修・デモ用、2026-08-28) ----------
@@ -7171,52 +7171,74 @@ function bd_isTestStore(){
   var g=String(state.store.group||''), n=String(state.store.name||'');
   return g==='KOKEN-UJ9UC' || n.indexOf('研修')>=0 || n.indexOf('テスト')>=0 || g.toLowerCase().indexOf('test')>=0;
 }
+/* 受付見積データ(frontData)90件を7/1〜10/15に分けて作成し、成約分は現場ボードにも自動反映する。
+   受け月ごとの受注率集計・入庫日/納車日の必須記入・担当者振り分けを、実際の受付フロー(syncEstimateToBoard)
+   経由でまとめてテストできるようにするための一括生成(2026-08-28)。 */
 async function generateTestCars(){
-  if(!confirm('ランダムな車30台（車種・お客様名・入庫予定日）を、今日から約4週間に分けて作成します。よろしいですか？')) return;
-  var carTypes=['プリウス','アクア','ヴィッツ','ノート','ノア','ヴォクシー','ハスラー','ワゴンR','N-BOX','タント','フリード','セレナ','ekワゴン','ラパン','ジムニー','デイズ','ムーヴ','スペーシア','ヴェゼル','フィット','ミラ','スイフト','アルファード','エクリプスクロス','RAV4'];
-  var surnames=['佐藤','鈴木','高橋','田中','伊藤','渡辺','山本','中村','小林','加藤','吉田','山田','佐々木','山口','松本','井上','木村','林','斎藤','清水'];
+  if(!confirm('7/1〜10/15の受付見積データを90件（入庫日・納車日・担当者もすべて記入）作成します。よろしいですか？')) return;
+  var carTypes=['プリウス','アクア','ヴィッツ','ノート','ノア','ヴォクシー','ハスラー','ワゴンR','N-BOX','タント','フリード','セレナ','ekワゴン','ラパン','ジムニー','デイズ','ムーヴ','スペーシア','ヴェゼル','フィット','ミラ','スイフト','アルファード','RAV4'];
+  var surnames=['佐藤','鈴木','高橋','田中','伊藤','渡辺','山本','中村','小林','加藤','吉田','山田','佐々木','山口','松本'];
   function pad(n){ return String(n).padStart(2,'0'); }
   function rnd(n){ return Math.floor(Math.random()*n); }
-  var today=new Date(); today.setHours(0,0,0,0);
-  var totalDays=28;
-  var newCars=[];
-  for(var i=0;i<30;i++){
-    var dayOffset=Math.max(0, Math.min(totalDays, Math.round((i/29)*totalDays + (rnd(3)-1))));
-    var d=new Date(today.getTime()+dayOffset*86400000);
-    var dateStr=d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
-    var timeStr=['09:00','10:00','12:00','14:00','15:00','17:00'][rnd(6)];
-    var isSeibi=rnd(10)<3;
-    var kind=isSeibi?'整備':'板金';
-    var category=isSeibi?(rnd(2)===0?'点検整備':'一般整備'):'';
-    var customerName=rnd(10)<7 ? (surnames[rnd(surnames.length)]+'様') : '';
-    var estimateAmount=rnd(10)<6 ? (rnd(28)+3)*10000 : 0;
-    var status, nyukoPlan='', nyukoAt=null, deliveryDate='';
-    if(dayOffset<=1){
-      status=rnd(2)===0?'work':'nyuko';
-      nyukoAt=d.toISOString();
-      if(rnd(10)<6){ var dd=new Date(d.getTime()+(rnd(6)+2)*86400000); deliveryDate=dd.getFullYear()+'-'+pad(dd.getMonth()+1)+'-'+pad(dd.getDate()); }
-    } else {
-      status='yotei';
-      nyukoPlan=dateStr+'T'+timeStr;
-      if(rnd(10)<5){ var dd2=new Date(d.getTime()+(rnd(6)+2)*86400000); deliveryDate=dd2.getFullYear()+'-'+pad(dd2.getMonth()+1)+'-'+pad(dd2.getDate()); }
+  function addDays(d,days){ return new Date(d.getTime()+days*86400000); }
+  function ymd(d){ return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate()); }
+  var start=new Date(2026,6,1), end=new Date(2026,9,15);
+  var totalDays=Math.round((end-start)/86400000);
+  var members=getMembers(); if(!members.length) members=['田中','鈴木','高橋','伊藤'];
+  var N=90;
+  for(var i=0;i<N;i++){
+    var dayOffset=Math.max(0, Math.min(totalDays, Math.round((i/(N-1))*totalDays + (rnd(3)-1))));
+    var recvDate=addDays(start, dayOffset);
+    var dateStr=ymd(recvDate);
+
+    var r=rnd(100);
+    var contractType = r<55?'immediate':(r<70?'later':'none');
+    var contracted = contractType!=='none';
+    var immediate = contractType==='immediate';
+    var later = contractType==='later';
+
+    var amount=(rnd(28)+3)*10000;
+    var orderAmount = contracted ? (rnd(2)===0 ? amount : Math.round(amount*(0.85+Math.random()*0.3)/1000)*1000) : 0;
+
+    // 入庫日・納車日は今回は必ず両方入れる(前回テストで納車日未記入が多かった反省)
+    var nyukoDateObj=addDays(recvDate, rnd(5)+1);
+    var nyukoTime=['09:00','10:00','12:00','14:00','15:00','17:00'][rnd(6)];
+    var nyukoPlan=ymd(nyukoDateObj)+'T'+nyukoTime;
+    var deliveryDateObj=addDays(nyukoDateObj, rnd(9)+2);
+    var deliveryDate=ymd(deliveryDateObj);
+    var deliveryTime=['15:00','16:00','17:00','18:00'][rnd(4)];
+
+    var kindRoll=rnd(10);
+    if(kindRoll<7){ frontCarKind='板金'; frontCarCategory=''; }
+    else if(kindRoll<9){ frontCarKind='整備'; frontCarCategory='点検整備'; }
+    else { frontCarKind='整備'; frontCarCategory='一般整備'; }
+
+    var entry={
+      date:dateStr, amount:amount, orderAmount:orderAmount, contractType:contractType,
+      contracted:contracted, immediate:immediate, later:later,
+      number:String(1000+rnd(9000)), cartype:carTypes[rnd(carTypes.length)],
+      customerName:surnames[rnd(surnames.length)]+'様',
+      nyukoPlan:nyukoPlan, deliveryDate:deliveryDate, deliveryTime:deliveryTime,
+      name:userData.name||'', store:userData.store||'', pref:userData.pref||'',
+      groupCode:userData.activeGroupCode||userData.groupCode||''
+    };
+    entry.entryId=newEid();
+    entry.uuid=userData.uuid||'';
+    frontData.push(entry);
+    if(!userData.ninjaMode) postToGAS({ action:'addEstimate', ...entry });
+
+    var addedToBoard=syncEstimateToBoard(entry);
+    if(addedToBoard){
+      var newCar=state.cars[state.cars.length-1];
+      newCar.assignee=members[rnd(members.length)];
     }
-    newCars.push({
-      id: uuid(), cartype: carTypes[rnd(carTypes.length)], number: pad(rnd(10000)).padStart(4,'0'),
-      customerName: customerName, estimateAmount: estimateAmount,
-      kind: kind, category: category,
-      deliveryDate: deliveryDate, deliveryTime:'', isInsurance: rnd(10)<2,
-      status: status, stage: status==='work'?rnd(4):0, stageDur:[], stageBy:[], assignee:'',
-      waitingParts:false, partSince:null, onHold:false, holdReason:'',
-      photos:[], wageLogged:[], stageStart:null,
-      nyukoPlan: nyukoPlan, nyukoAt: nyukoAt, startAt:null, doneAt:null, projectId:null,
-      updatedAt: Date.now()
-    });
   }
-  state.cars = state.cars.concat(newCars);
+  saveLocal();
   bd_saveLocal();
   await syncBoardCars(state.cars);
   closeSheet(); render();
-  toast('🧪 テストデータ30台を作成しました');
+  if(typeof renderFrontHistory==='function') renderFrontHistory();
+  toast('🧪 受付テストデータ90件（7/1〜10/15）を作成しました');
 }
 
 /* ---------- 担当者（メンバー） ---------- */
