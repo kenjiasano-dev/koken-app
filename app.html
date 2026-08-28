@@ -1923,7 +1923,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = 'app202608281555';
+const APP_VERSION = 'app202608281615';
 // LINEログイン(LIFF) — LINEコンソールで作成したLIFFアプリのIDを入れる
 const LIFF_ID = '2010638896-vJtjkUOr';
 // 公式アカウント「カーコン工賃通知」友だち追加URL（ここに飛ばすとLINEアプリの友だち追加画面が直接開く）
@@ -7441,19 +7441,38 @@ function saveLoanerAssign(){
 }
 /* 代車管理の行(代車側)から、貸す相手の車を選ぶ逆方向の入口(2026-08-28)。
    選んだあとは既存のloanerAssignHTMLに合流し、期間確認・保存はそちらと共通。 */
+let _loanerRowKey = null;
 function openLoanerRowAssign(cartype, number){
   var key = loanerKey({cartype:cartype, number:number});
+  _loanerRowKey = key;
   var candidates = state.cars.filter(function(c){ return c.status==='yotei'||c.status==='nyuko'||c.status==='work'; })
     .sort(function(a,b){ return (b.loanerCar===key?1:0)-(a.loanerCar===key?1:0); });
   var rows = candidates.map(function(c){
     var already = c.loanerCar===key;
     var sub = (c.customerName?esc(c.customerName)+'　':'')+(already?'（この代車を貸出中）':(c.loanerCar?'（別の代車を貸出中）':''));
-    return '<button class="btn ghost" style="width:100%;text-align:left;margin-bottom:7px;'+(already?'border-color:var(--accent);color:var(--accent);':'')+'" onclick="assignLoanerRowToCar(\''+c.id+'\',\''+esc(key)+'\')">🚗 '+esc(c.cartype)+'・'+esc(c.number)+' <span style="font-size:11px;opacity:.7;">'+sub+'</span></button>';
+    var searchText = esc(((c.cartype||'')+(c.number||'')+(c.customerName||'')).toLowerCase());
+    return '<button class="btn ghost" data-search="'+searchText+'" style="width:100%;text-align:left;margin-bottom:7px;'+(already?'border-color:var(--accent);color:var(--accent);':'')+'" onclick="assignLoanerRowToCar(\''+c.id+'\',\''+esc(key)+'\')">🚗 '+esc(c.cartype)+'・'+esc(c.number)+' <span style="font-size:11px;opacity:.7;">'+sub+'</span></button>';
   }).join('');
   if(!candidates.length) rows = '<p style="color:var(--muted);font-size:13px;">入庫予定・入庫中・作業中の車がありません。</p>';
   showSheet('<h2>🚙 '+esc(loanerLabel({cartype:cartype,number:number}))+' を貸す</h2>'
-    + '<p style="color:var(--muted);font-size:12px;margin:0 0 12px;">貸す相手の車を選んでください</p>'
-    + '<div style="max-height:50vh;overflow:auto;">'+rows+'</div>');
+    + '<p style="color:var(--muted);font-size:12px;margin:0 0 10px;">貸す相手の車を選んでください</p>'
+    + '<input id="loaner-row-search" class="form-input" placeholder="🔍 車種・ナンバー・お客様名で検索" oninput="filterLoanerRowList(this.value)" style="margin-bottom:10px;">'
+    + '<div id="loaner-row-list" style="max-height:36vh;overflow:auto;margin-bottom:16px;">'+rows+'</div>'
+    + '<div style="padding-top:12px;border-top:1px solid var(--border);">'
+    +   '<div style="font-size:12px;color:var(--muted);margin-bottom:8px;">車種などまだ決まっていなくても、とりあえず仮抑えできます</div>'
+    +   '<input id="loaner-hold-memo" class="form-input" placeholder="お客様名・メモ（任意）" style="margin-bottom:8px;">'
+    +   '<div style="display:flex;gap:8px;">'
+    +     '<input type="date" id="loaner-hold-start" class="form-input" style="flex:1;">'
+    +     '<input type="date" id="loaner-hold-end" class="form-input" style="flex:1;">'
+    +   '</div>'
+    +   '<button class="btn ghost" style="width:100%;margin-top:8px;" onclick="provisionalHoldLoaner()">📌 仮抑えする</button>'
+    + '</div>');
+}
+function filterLoanerRowList(q){
+  q = (q||'').trim().toLowerCase();
+  document.querySelectorAll('#loaner-row-list [data-search]').forEach(function(el){
+    el.style.display = el.getAttribute('data-search').indexOf(q)>=0 ? '' : 'none';
+  });
 }
 function assignLoanerRowToCar(carId, key){
   var c = findCar(carId); if(!c) return;
@@ -7464,6 +7483,29 @@ function assignLoanerRowToCar(carId, key){
   // 代車管理の行から来たので、保存/キャンセル後は代車管理に戻す
   _sheetReturnTo = function(){ showSheet(yoteiGridHTML(), true, true); };
   showSheet(loanerAssignHTML(c));
+}
+/* 車種・お客様がまだ決まっていない「とりあえず仮抑え」。中身が最低限の
+   プレースホルダーの車として登録し、あとで車両詳細から車種・お客様名等を
+   埋めていけるようにする(2026-08-28)。 */
+function provisionalHoldLoaner(){
+  var key = _loanerRowKey; if(!key) return;
+  var memo = (document.getElementById('loaner-hold-memo')||{}).value.trim() || '';
+  var start = (document.getElementById('loaner-hold-start')||{}).value || nowISO().slice(0,10);
+  var end = (document.getElementById('loaner-hold-end')||{}).value || '';
+  var newCar = {
+    id: uuid(), cartype:'（車種未定）', number:'', customerName: memo, estimateAmount:0,
+    kind:'板金', category:'', deliveryDate:'', deliveryTime:'', isInsurance:false,
+    status:'yotei', stage:0, stageDur:[], stageBy:[], assignee:'',
+    waitingParts:false, partSince:null, onHold:false, holdReason:'',
+    photos:[], wageLogged:[], stageStart:null,
+    nyukoPlan:start, nyukoAt:null, startAt:null, doneAt:null, projectId:null,
+    loanerCar:key, loanerStart:start, loanerEnd:end
+  };
+  state.cars.push(newCar);
+  persist(newCar);
+  _sheetReturnTo = null;
+  showSheet(yoteiGridHTML(), true, true);
+  toast('📌 仮抑えしました（あとで車両詳細から車種など入力できます）');
 }
 
 /* ---------- 称号・ランキング(表示専用。工賃アプリと同じGASを読むだけ、書き込み・通知は一切しない) ---------- */
