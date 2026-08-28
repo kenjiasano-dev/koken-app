@@ -1923,7 +1923,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = 'app202608281635';
+const APP_VERSION = 'app202608281700';
 // LINEログイン(LIFF) — LINEコンソールで作成したLIFFアプリのIDを入れる
 const LIFF_ID = '2010638896-vJtjkUOr';
 // 公式アカウント「カーコン工賃通知」友だち追加URL（ここに飛ばすとLINEアプリの友だち追加画面が直接開く）
@@ -7345,32 +7345,6 @@ function saveLoanerCars(){
   state.store.loanerCars = cleaned;
   bd_saveLocal(); closeSheet(); toast('代車を保存しました');
 }
-/* 代車の「仮抑え」(お客様の車が車種未定のプレースホルダーとして作られたもの)を、
-   本決まりになったタイミングで実際の車種・ナンバーに書き換えるための入口(2026-08-28)。
-   通常の車は追加時に必ず車種を入れているため、プレースホルダーの時だけ表示する。 */
-let _carTypeEditCarId = null;
-function bd_carTypeEditLine(c){
-  if(c.cartype && c.cartype!=='（車種未定）') return '';
-  return '<div class="deliv deliv-set" onclick="event.stopPropagation();openCarTypeEdit(\''+c.id+'\')">✎ 車種・ナンバーを入力（仮抑え中）</div>';
-}
-function openCarTypeEdit(carId){
-  var c=findCar(carId); if(!c) return;
-  _carTypeEditCarId = carId;
-  showSheet('<h2>車種・ナンバーを入力</h2>'
-    + '<p style="color:var(--muted);font-size:12px;margin:0 0 14px;">本決まりになったら、実際の車種・ナンバーに書き換えてください。</p>'
-    + '<div class="field"><label>車種</label><input id="edit-cartype" value="'+esc(c.cartype==='（車種未定）'?'':c.cartype)+'" placeholder="例）プリウス" style="width:100%;background:var(--bg);border:0.5px solid var(--line2);color:var(--text);font-size:16px;padding:12px;border-radius:10px;box-sizing:border-box;"></div>'
-    + '<div class="field" style="margin-top:10px;"><label>ナンバー（下4桁）</label><input id="edit-number" value="'+esc(c.number)+'" maxlength="4" inputmode="numeric" placeholder="例）1234" style="width:100%;background:var(--bg);border:0.5px solid var(--line2);color:var(--text);font-size:16px;padding:12px;border-radius:10px;letter-spacing:4px;box-sizing:border-box;" oninput="this.value=this.value.replace(/[^0-9]/g,\'\')"></div>'
-    + '<button class="btn" style="width:100%;margin-top:14px;" onclick="saveCarTypeEdit()">保存</button>');
-}
-function saveCarTypeEdit(){
-  var c=findCar(_carTypeEditCarId); if(!c) return;
-  var t=(document.getElementById('edit-cartype')||{}).value.trim();
-  var n=(document.getElementById('edit-number')||{}).value.trim();
-  if(!t){ toast('車種を入力してください'); return; }
-  c.cartype=t; c.number=n;
-  persist(c); closeSheet(); render();
-  toast('車種・ナンバーを更新しました');
-}
 /* 車ごとの代車貸出。期間は基本その車自身の入庫〜納車予定と同じだが、
    代車だけ別期間にしたい場合のためloanerStart/loanerEndで個別に上書きできる。 */
 function bd_loanerLine(c){
@@ -7394,6 +7368,20 @@ function periodsOverlap(aStart, aEnd, bStart, bEnd){
   var aE = aEnd || '9999-12-31';
   var bE = bEnd || '9999-12-31';
   return aStart <= bE && bStart <= aE;
+}
+/* 車がまだ決まっていない「仮抑え」の一覧。作業ボード・入庫予定表には出さず、
+   代車の空き状況(daishaGridHTML・空き判定)にだけ反映する軽量な予約(2026-08-28)。
+   車が来たら通常の入庫フローで別に本登録してもらい、このメモは削除してもらう想定。 */
+function getLoanerHolds(){ return (state.store && Array.isArray(state.store.loanerHolds)) ? state.store.loanerHolds : []; }
+/* 指定の代車(key)を今占有しているもの一覧。実際の車(state.cars)＋仮抑え(loanerHolds)の両方を対象にする。
+   excludeCarIdは「自分自身」を除外するため(期間変更中の車が自分と衝突判定されないように)。 */
+function loanerOccupants(key, excludeCarId){
+  var carItems = state.cars.filter(function(c){
+    return c.id!==excludeCarId && c.loanerCar===key && (c.status==='yotei'||c.status==='nyuko'||c.status==='work');
+  }).map(function(c){ var p=loanerPeriodOf(c); return {kind:'car', id:c.id, label:(c.customerName||c.cartype), sub:c.cartype, s:p.s, e:p.e}; });
+  var holdItems = getLoanerHolds().filter(function(h){ return h.key===key; })
+    .map(function(h){ return {kind:'hold', id:h.id, label:(h.memo||'仮抑え'), sub:'', s:h.start, e:h.end}; });
+  return carItems.concat(holdItems);
 }
 let _loanerAssignCarId = null;
 let _loanerCandStart = '';
@@ -7421,16 +7409,13 @@ function loanerAssignHTML(c){
   // なく、貸出期間が実際に重なっている場合だけ黒(選択不可)にする(2026-08-28)。
   var list = cars.map(function(o){
     var key = loanerKey(o);
-    var conflict = state.cars.filter(function(x){
-      return x.id!==c.id && x.loanerCar===key && (x.status==='yotei'||x.status==='nyuko'||x.status==='work');
-    }).map(function(x){ return {car:x, p:loanerPeriodOf(x)}; })
-      .find(function(x){ return periodsOverlap(startVal, endVal, x.p.s, x.p.e); });
+    var conflict = loanerOccupants(key, c.id)
+      .find(function(x){ return periodsOverlap(startVal, endVal, x.s, x.e); });
     var selected = c.loanerCar===key;
     var style, sub, onclick;
     if(conflict){
-      var op=conflict.p;
       style = 'background:#111;color:#fff;border:1px solid #444;cursor:not-allowed;opacity:.8;';
-      sub = 'その期間は貸出中：'+esc(conflict.car.customerName||conflict.car.cartype)+'（'+(op.s?bd_fmtDateMD(op.s):'?')+'〜'+(op.e?bd_fmtDateMD(op.e):'未定')+'）';
+      sub = (conflict.kind==='hold'?'その期間は仮抑え中：':'その期間は貸出中：')+esc(conflict.label)+'（'+(conflict.s?bd_fmtDateMD(conflict.s):'?')+'〜'+(conflict.e?bd_fmtDateMD(conflict.e):'未定')+'）';
       onclick = '';
     } else {
       style = 'background:#fff;color:#111;'+(selected?'border:2px solid var(--accent);':'border:1px solid #ccc;');
@@ -7510,28 +7495,53 @@ function assignLoanerRowToCar(carId, key){
   _sheetReturnTo = function(){ showSheet(yoteiGridHTML(), true, true); };
   showSheet(loanerAssignHTML(c));
 }
-/* 車種・お客様がまだ決まっていない「とりあえず仮抑え」。中身が最低限の
-   プレースホルダーの車として登録し、あとで車両詳細から車種・お客様名等を
-   埋めていけるようにする(2026-08-28)。 */
+/* 車種・お客様がまだ決まっていない「とりあえず仮抑え」。作業ボード・入庫予定表には
+   出したくない(＝実際の車ではない)、代車の空き状況にだけ反映したい、というリクエストに
+   応じてstate.cars(実車)ではなくstate.store.loanerHoldsという別の軽い予約メモとして
+   保存する(2026-08-28)。実際に車が来たら、通常の入庫フローで別に本登録してもらう想定。 */
 function provisionalHoldLoaner(){
   var key = _loanerRowKey; if(!key) return;
   var memo = (document.getElementById('loaner-hold-memo')||{}).value.trim() || '';
   var start = (document.getElementById('loaner-hold-start')||{}).value || nowISO().slice(0,10);
   var end = (document.getElementById('loaner-hold-end')||{}).value || '';
-  var newCar = {
-    id: uuid(), cartype:'（車種未定）', number:'', customerName: memo, estimateAmount:0,
-    kind:'板金', category:'', deliveryDate:'', deliveryTime:'', isInsurance:false,
-    status:'yotei', stage:0, stageDur:[], stageBy:[], assignee:'',
-    waitingParts:false, partSince:null, onHold:false, holdReason:'',
-    photos:[], wageLogged:[], stageStart:null,
-    nyukoPlan:start, nyukoAt:null, startAt:null, doneAt:null, projectId:null,
-    loanerCar:key, loanerStart:start, loanerEnd:end
-  };
-  state.cars.push(newCar);
-  persist(newCar);
+  if(!state.store) return;
+  if(!Array.isArray(state.store.loanerHolds)) state.store.loanerHolds = [];
+  state.store.loanerHolds.push({ id: uuid(), key: key, memo: memo, start: start, end: end });
+  bd_saveLocal();
   _sheetReturnTo = null;
   showSheet(yoteiGridHTML(), true, true);
-  toast('📌 仮抑えしました（あとで車両詳細から車種など入力できます）');
+  toast('📌 仮抑えしました（作業ボード・入庫予定表には出ません）');
+}
+function openLoanerHold(holdId){
+  var h = getLoanerHolds().find(function(x){ return x.id===holdId; }); if(!h) return;
+  var lo = getLoanerCars().find(function(o){ return loanerKey(o)===h.key; });
+  showSheet('<h2>📌 仮抑え</h2>'
+    + '<p style="color:var(--muted);font-size:12px;margin:0 0 14px;">'+esc(lo?loanerLabel(lo):h.key)+'</p>'
+    + '<div class="field"><label>お客様名・メモ</label><input id="hold-edit-memo" value="'+esc(h.memo)+'" style="width:100%;background:var(--bg);border:0.5px solid var(--line2);color:var(--text);font-size:15px;padding:11px;border-radius:10px;box-sizing:border-box;"></div>'
+    + '<div class="field" style="margin-top:10px;"><label>期間</label><div style="display:flex;gap:8px;">'
+    +   '<input type="date" id="hold-edit-start" value="'+esc(h.start)+'" style="flex:1;background:var(--bg);border:0.5px solid var(--line2);color:var(--text);font-size:15px;padding:11px;border-radius:10px;">'
+    +   '<input type="date" id="hold-edit-end" value="'+esc(h.end)+'" style="flex:1;background:var(--bg);border:0.5px solid var(--line2);color:var(--text);font-size:15px;padding:11px;border-radius:10px;">'
+    + '</div></div>'
+    + '<p style="color:var(--muted);font-size:11px;margin:10px 0 0;">車が来て本登録したら、この仮抑えは削除してください。</p>'
+    + '<div class="sheet-actions" style="margin-top:14px;">'
+    +   '<button class="btn ghost" style="background:var(--red,#e74c3c);color:#fff;border:none;" onclick="deleteLoanerHold(\''+holdId+'\')">🗑 削除</button>'
+    +   '<button class="btn" onclick="saveLoanerHold(\''+holdId+'\')">保存</button>'
+    + '</div>');
+}
+function saveLoanerHold(holdId){
+  var h = getLoanerHolds().find(function(x){ return x.id===holdId; }); if(!h) return;
+  h.memo = (document.getElementById('hold-edit-memo')||{}).value.trim() || '';
+  h.start = (document.getElementById('hold-edit-start')||{}).value || h.start;
+  h.end = (document.getElementById('hold-edit-end')||{}).value || '';
+  bd_saveLocal();
+  showSheet(yoteiGridHTML(), true, true);
+  toast('仮抑えを更新しました');
+}
+function deleteLoanerHold(holdId){
+  state.store.loanerHolds = getLoanerHolds().filter(function(x){ return x.id!==holdId; });
+  bd_saveLocal();
+  showSheet(yoteiGridHTML(), true, true);
+  toast('仮抑えを削除しました');
 }
 
 /* ---------- 称号・ランキング(表示専用。工賃アプリと同じGASを読むだけ、書き込み・通知は一切しない) ---------- */
@@ -8653,13 +8663,6 @@ function daishaGridHTML(){
     return '<h3 style="font-size:14px;margin:0 0 8px;display:flex;align-items:center;gap:8px;">🚙 代車管理'+editBtn+'</h3>'
       + '<p style="color:var(--muted);font-size:12px;">代車が登録されていません。⚙設定→代車 から登録してください。</p>';
   }
-  function loanerPeriod(c){
-    var s = c.loanerStart || (c.status==='yotei' ? (c.nyukoPlan||'').slice(0,10) : (c.nyukoAt||'').slice(0,10));
-    var e = c.loanerEnd || c.deliveryDate || '';
-    return {s:s, e:e};
-  }
-  var assigned=state.cars.filter(function(c){ return c.loanerCar && (c.status==='yotei'||c.status==='nyuko'||c.status==='work'); });
-
   var headCells='<div class="ywlabel" style="grid-column:1/2;grid-row:1;"></div>';
   for(var d=1; d<=days; d++){
     var dow=new Date(_yoteiCalY,_yoteiCalM-1,d).getDay();
@@ -8677,20 +8680,24 @@ function daishaGridHTML(){
       + (loaner.number?('<span class="ywlabel-num">'+esc(loaner.number)+'</span>'):'')
       + '</div>';
     rowsHtml += '<div class="ywrowsep" style="grid-column:1/-1;grid-row:'+rowIdx+';"></div>';
-    assigned.filter(function(c){ return c.loanerCar===key; }).forEach(function(c){
-      var p=loanerPeriod(c);
-      if(!p.s) return;
-      var sm=p.s.slice(0,7), sd=parseInt(p.s.slice(8,10),10);
-      var em=p.e?p.e.slice(0,7):sm, ed=p.e?parseInt(p.e.slice(8,10),10):sd;
+    // 実際の車(state.cars)＋まだ車が決まっていない仮抑え(loanerHolds)の両方を同じ行に並べる。
+    // 仮抑えは作業ボード・入庫予定表には出ないダミー予約なので、見た目でも点線+📌で区別する。
+    loanerOccupants(key, null).forEach(function(occ){
+      var s=occ.s, e=occ.e;
+      if(!s) return;
+      var sm=s.slice(0,7), sd=parseInt(s.slice(8,10),10);
+      var em=e?e.slice(0,7):sm, ed=e?parseInt(e.slice(8,10),10):sd;
       var start, end;
       if(sm===ym) start=sd; else if(sm<ym) start=1; else return;
       if(em===ym) end=ed; else if(em>ym) end=days; else end=start;
       if(end<start) end=start;
-      var periodTxt = bd_fmtDateMD(p.s)+'〜'+(p.e?bd_fmtDateMD(p.e):'未定');
-      var title=esc(loanerLabel(loaner))+'・'+esc(c.cartype)+(c.customerName?('・'+esc(c.customerName)):'')+'・'+periodTxt;
-      rowsHtml += '<div class="ywbar" style="grid-column:'+(start+1)+'/'+(end+2)+';grid-row:'+rowIdx+';" onclick="bd_openCarFromYoteiGrid(\''+c.id+'\')" title="'+title+'">'
-        + (c.customerName?('<span class="ywbcust">👤'+esc(c.customerName)+'</span>'):'')
-        + '<span class="ywbtype">'+esc(c.cartype)+'</span>'
+      var periodTxt = bd_fmtDateMD(s)+'〜'+(e?bd_fmtDateMD(e):'未定');
+      var isHold = occ.kind==='hold';
+      var title=esc(loanerLabel(loaner))+'・'+esc(occ.label)+(occ.sub?('・'+esc(occ.sub)):'')+(isHold?'（仮抑え）':'')+'・'+periodTxt;
+      var onclick = isHold ? ('openLoanerHold(\''+occ.id+'\')') : ('bd_openCarFromYoteiGrid(\''+occ.id+'\')');
+      rowsHtml += '<div class="ywbar'+(isHold?' ywbar-yotei':'')+'" style="grid-column:'+(start+1)+'/'+(end+2)+';grid-row:'+rowIdx+';" onclick="'+onclick+'" title="'+title+'">'
+        + '<span class="ywbcust">'+(isHold?'📌':'👤')+esc(occ.label)+'</span>'
+        + (occ.sub?('<span class="ywbtype">'+esc(occ.sub)+'</span>'):'')
         + '<span class="ywbnum">'+esc(periodTxt)+'</span>'
         + '</div>';
     });
@@ -9192,7 +9199,6 @@ function bd_workCardHtml(c){
       <div class="row-actions">${pinBox}${toggleBtn}</div>
     </div>
     ${bd_custEstLine(c)}
-    ${bd_carTypeEditLine(c)}
     ${bd_loanerLine(c)}
     ${deliveryLine(c)}
     <div class="times">${timesLine(c)}</div>
@@ -9389,7 +9395,6 @@ function bd_yoteiRow(c){
     +   '<div class="row-actions">'+pinBox+'<button class="iconbtn" title="削除" onclick="askDelete(\''+c.id+'\')">🗑</button><button class="pill green" onclick="bd_arriveCar(\''+c.id+'\')">入庫する →</button></div>'
     + '</div>'
     + bd_custEstLine(c)
-    + bd_carTypeEditLine(c)
     + bd_loanerLine(c)
     + '<div style="display:flex;gap:18px;margin-top:9px;flex-wrap:wrap;">'
     +   '<div><div style="font-size:11px;color:var(--muted);margin-bottom:2px;">🚙 入庫予定</div><div style="font-size:19px;font-weight:700;color:var(--accent);">'+inb+'</div></div>'
@@ -9409,7 +9414,6 @@ function bd_nyukoCardHtml(c){
       <div>
         <div><div>${kindBadge(c)}${insBadge(c)}<span class="name">${esc(c.cartype)}</span><span class="num">・${esc(c.number)}</span></div><div style="margin-top:5px;">${assignChip(c)}</div></div>
         ${bd_custEstLine(c)}
-        ${bd_carTypeEditLine(c)}
         ${bd_loanerLine(c)}
         <div class="${subCls}">⏱ ${fmtDateTime(c.nyukoAt)} 入庫・${d}日待ち</div>
         ${deliveryLine(c)}
@@ -9435,7 +9439,6 @@ function bd_doneCardHtml(c){
       <div>
         <div><div>${kindBadge(c)}${insBadge(c)}<span class="name">${esc(c.cartype)}</span><span class="num">・${esc(c.number)}</span></div><div style="margin-top:5px;">${assignChip(c)}</div></div>
         ${bd_custEstLine(c)}
-        ${bd_carTypeEditLine(c)}
         ${bd_loanerLine(c)}
         <div class="sub" style="color:var(--green)">🏁 ${c.doneAt?fmtDateTime(c.doneAt):''} 完成　${leadTxt}</div>
         <div class="times">${timesLine(c)}</div>
@@ -9469,7 +9472,6 @@ function bd_nyukoCardCompactHtml(c){
     +   '<div class="row-actions">'+pinBox+'<button class="pill" onclick="startCar(\''+c.id+'\')">作業開始 →</button></div>'
     + '</div>'
     + bd_custEstLine(c)
-    + bd_carTypeEditLine(c)
     + bd_loanerLine(c)
     + deliveryLine(c)
     + bd_nyukoStatusLine(c)
@@ -9489,7 +9491,6 @@ function bd_doneCardCompactHtml(c){
     +   '<div class="row-actions">'+pinBox+'</div>'
     + '</div>'
     + bd_custEstLine(c)
-    + bd_carTypeEditLine(c)
     + bd_loanerLine(c)
     + bd_doneStatusLine(c)
     + '</div>';
