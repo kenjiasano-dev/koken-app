@@ -189,6 +189,8 @@ input[type="time"]::-webkit-calendar-picker-indicator { filter: invert(1); opaci
 .ywdot{ width:9px; height:9px; border-radius:50%; background:var(--accent,var(--green)); flex:0 0 auto; cursor:pointer; box-shadow:0 0 0 1px rgba(255,255,255,.25) inset; }
 .ywbtype{ font-size:10.5px; font-weight:700; color:var(--text); overflow:hidden; text-overflow:ellipsis; }
 .ywbnum{ font-size:9px; color:var(--muted); font-family:ui-monospace,Menlo,Consolas,monospace; flex-shrink:0; }
+.ywbcust{ font-size:9.5px; color:var(--accent); flex-shrink:0; }
+.ywbamt{ font-size:9px; color:var(--muted2,var(--muted)); flex-shrink:0; }
 
 /* ===== MY CALENDAR (パチンコ収支カレンダー風) ===== */
 .mycal-wrap { padding: 12px; }
@@ -1854,7 +1856,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = 'app202608280935';
+const APP_VERSION = 'app202608280955';
 // LINEログイン(LIFF) — LINEコンソールで作成したLIFFアプリのIDを入れる
 const LIFF_ID = '2010638896-vJtjkUOr';
 // 公式アカウント「カーコン工賃通知」友だち追加URL（ここに飛ばすとLINEアプリの友だち追加画面が直接開く）
@@ -8144,6 +8146,8 @@ function yoteiGridHTML(){
       + '<span class="ywdot" style="'+dotStyle+'" title="色を変える" onclick="event.stopPropagation();bd_yoteiColorPick(event,\''+c.id+'\')"></span>'
       + '<span class="ywbtype">'+esc(c.cartype)+'</span>'
       + (span>1?('<span class="ywbnum">'+esc(c.number)+'</span>'):'')
+      + (c.customerName?('<span class="ywbcust">👤'+esc(c.customerName)+'</span>'):'')
+      + (c.estimateAmount?('<span class="ywbamt">¥'+Number(c.estimateAmount).toLocaleString()+'</span>'):'')
       + '</div>';
   }).join('');
   var gridStyle='grid-template-columns:repeat('+days+',minmax(34px,1fr));grid-template-rows:32px repeat('+lanes+',28px);';
