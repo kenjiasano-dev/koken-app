@@ -1919,7 +1919,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = 'app202608281250';
+const APP_VERSION = 'app202608281305';
 // LINEログイン(LIFF) — LINEコンソールで作成したLIFFアプリのIDを入れる
 const LIFF_ID = '2010638896-vJtjkUOr';
 // 公式アカウント「カーコン工賃通知」友だち追加URL（ここに飛ばすとLINEアプリの友だち追加画面が直接開く）
@@ -7300,10 +7300,22 @@ function loanerCarsHTML(){
     <p style="color:var(--muted); font-size:12px; margin:0 0 12px;">お店で貸し出す代車を登録します。各車のカードで貸出先を選べます。</p>
     <div style="max-height:44vh; overflow:auto; margin-bottom:10px;">${rows || '<p style="color:var(--muted); font-size:13px;">まだ登録がありません。</p>'}</div>
     <button class="btn ghost" onclick="addLoanerCar()" style="margin-bottom:10px;">＋ 代車を追加</button>
-    <div class="sheet-actions">
+    <div style="margin-top:6px;padding-top:12px;border-top:1px solid var(--border);">
+      <div style="font-size:12px;color:var(--muted);margin-bottom:6px;">まとめて登録（1行に1台）</div>
+      <textarea id="loaner-bulk" rows="4" placeholder="大宮8830&#10;福山8409&#10;ノート" style="width:100%;padding:9px 10px;font-size:14px;background:var(--card);border:1px solid var(--border);border-radius:8px;color:var(--text);resize:vertical;"></textarea>
+      <button class="btn ghost" onclick="addLoanerCarsBulk()" style="margin-top:8px;">📋 まとめて追加</button>
+    </div>
+    <div class="sheet-actions" style="margin-top:12px;">
       <button class="btn ghost" onclick="openSettings()">戻る</button>
       <button class="btn" onclick="saveLoanerCars()">保存</button>
     </div>`;
+}
+function addLoanerCarsBulk(){
+  var ta = document.getElementById('loaner-bulk'); if(!ta) return;
+  var names = ta.value.split('\n').map(function(s){ return s.trim(); }).filter(Boolean);
+  if(!names.length) return;
+  editLoanerCars = editLoanerCars.concat(names);
+  rebuildLoanerCars();
 }
 function rebuildLoanerCars(){ const s=document.querySelector('#overlay .sheet'); if(s) s.innerHTML=loanerCarsHTML(); }
 function addLoanerCar(){ editLoanerCars.push(''); rebuildLoanerCars(); }
