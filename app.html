@@ -1919,7 +1919,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = 'app202608281305';
+const APP_VERSION = 'app202608281325';
 // LINEログイン(LIFF) — LINEコンソールで作成したLIFFアプリのIDを入れる
 const LIFF_ID = '2010638896-vJtjkUOr';
 // 公式アカウント「カーコン工賃通知」友だち追加URL（ここに飛ばすとLINEアプリの友だち追加画面が直接開く）
@@ -7347,9 +7347,21 @@ function loanerAssignHTML(c){
   var defEnd = c.deliveryDate || '';
   var startVal = c.loanerStart || defStart;
   var endVal = c.loanerEnd || defEnd;
+  // 他の車が今まさに使用中(yotei/nyuko/work)の代車は貸せないので黒、空いている代車は白で分かりやすく(2026-08-28)
   var list = cars.map(function(n){
-    var on = c.loanerCar===n;
-    return '<button class="btn ghost" style="width:100%;text-align:left;margin-bottom:7px;'+(on?'border-color:var(--accent);color:var(--accent);':'')+'" onclick="pickLoanerCar(\''+esc(n)+'\')">🚙 '+esc(n)+'</button>';
+    var busyCar = state.cars.find(function(o){ return o.id!==c.id && o.loanerCar===n && (o.status==='yotei'||o.status==='nyuko'||o.status==='work'); });
+    var selected = c.loanerCar===n;
+    var style, sub, onclick;
+    if(busyCar){
+      style = 'background:#111;color:#fff;border:1px solid #444;cursor:not-allowed;opacity:.8;';
+      sub = '貸出中：'+esc(busyCar.customerName||busyCar.cartype);
+      onclick = '';
+    } else {
+      style = 'background:#fff;color:#111;'+(selected?'border:2px solid var(--accent);':'border:1px solid #ccc;');
+      sub = '空いています';
+      onclick = ' onclick="pickLoanerCar(\''+esc(n)+'\')"';
+    }
+    return '<button class="btn" style="width:100%;text-align:left;margin-bottom:7px;'+style+'"'+onclick+(busyCar?' disabled':'')+'>🚙 '+esc(n)+' <span style="font-size:11px;opacity:.75;">（'+sub+'）</span></button>';
   }).join('');
   if(!cars.length) list = '<p style="color:var(--muted);font-size:13px;margin:0 0 12px;">代車が登録されていません。⚙設定→代車 で追加してください。</p>';
   return '<h2>代車を貸す</h2>'
@@ -8295,6 +8307,7 @@ function bd_saveWageInput(carId){
 /* ===== 段階3: 保険作業マーク + 納車時刻 ===== */
 function insBadge(c){ return (c && c.isInsurance) ? '<span class="kind" style="background:var(--red-bg);color:var(--red);">🛡 保険</span>' : ''; }
 function insBtn(c){ return '<button class="iconbtn'+(c.isInsurance?' on':'')+'" title="保険作業の切替" style="'+(c.isInsurance?'color:var(--red);':'')+'" onclick="bd_toggleInsurance(\''+c.id+'\')">🛡</button>'; }
+function loanerBtn(c){ return '<button class="iconbtn'+(c.loanerCar?' on':'')+'" title="代車"'+(c.loanerCar?' style="color:var(--accent);"':'')+' onclick="event.stopPropagation();openLoanerAssign(\''+c.id+'\')">🚙</button>'; }
 function bd_toggleInsurance(id){ var c=findCar(id); if(!c) return; c.isInsurance=!c.isInsurance; c.updatedAt=Date.now(); persist(c); render(); toast(c.isInsurance?'🛡 保険作業に設定しました':'保険作業を解除しました'); }
 /* ===== 段階3b: 入庫中の保留フラグ（作業OK / 保留） ===== */
 function holdReasons(){ return ['保険待ち','お客様承認待ち','部品待ち','その他']; }
@@ -9008,7 +9021,7 @@ function bd_workCardHtml(c){
   }
   var expandedPart = `
     <div class="row-actions" style="display:flex;gap:8px;margin-top:9px;flex-wrap:wrap;">
-      ${wageBtn(c)} ${insBtn(c)} ${photoBtn(c)} ${estBtn(c)}
+      ${wageBtn(c)} ${insBtn(c)} ${photoBtn(c)} ${estBtn(c)} ${loanerBtn(c)}
       <button class="flagbtn ${c.waitingParts?'on':''}" title="部品待ち" onclick="toggleParts('${c.id}')">${c.waitingParts?'🚩':'⚑'}</button>
     </div>
     ${body}
@@ -9221,7 +9234,7 @@ function bd_nyukoCardHtml(c){
       </div>
       <div class="row-actions">
         ${pinBox}
-        ${wageBtn(c)} ${insBtn(c)} ${photoBtn(c)} ${estBtn(c)}
+        ${wageBtn(c)} ${insBtn(c)} ${photoBtn(c)} ${estBtn(c)} ${loanerBtn(c)}
         <button class="iconbtn" title="削除" onclick="askDelete('${c.id}')">🗑</button>
         <button class="pill" onclick="startCar('${c.id}')">作業開始 →</button>
       </div>
@@ -9247,7 +9260,7 @@ function bd_doneCardHtml(c){
       </div>
       <div class="row-actions">
         ${pinBox}
-        ${wageBtn(c)} ${insBtn(c)} ${photoBtn(c)} ${estBtn(c)}
+        ${wageBtn(c)} ${insBtn(c)} ${photoBtn(c)} ${estBtn(c)} ${loanerBtn(c)}
         <button class="iconbtn" title="作業中に戻す" onclick="reopenCar('${c.id}')">↩</button>
       </div>
     </div>
