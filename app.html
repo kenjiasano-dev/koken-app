@@ -191,6 +191,7 @@ input[type="time"]::-webkit-calendar-picker-indicator { filter: invert(1); opaci
 .ywbnum{ font-size:9px; color:var(--muted); font-family:ui-monospace,Menlo,Consolas,monospace; flex-shrink:0; }
 .ywbcust{ font-size:9.5px; color:var(--accent); flex-shrink:0; }
 .ywbamt{ font-size:9px; color:var(--muted2,var(--muted)); flex-shrink:0; }
+.ywbloaner{ font-size:9.5px; flex-shrink:0; line-height:1; }
 .ywlabel{ font-size:11px; color:var(--muted); display:flex; align-items:center; padding-right:6px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .ywlabel2{ flex-direction:column; align-items:flex-start; justify-content:center; gap:0; line-height:1.3; }
 .ywlabel-type{ font-weight:700; color:var(--text); font-size:11px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:100%; }
@@ -1924,7 +1925,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = 'app202608282100';
+const APP_VERSION = 'app202608282130';
 // LINEログイン(LIFF) — LINEコンソールで作成したLIFFアプリのIDを入れる
 const LIFF_ID = '2010638896-vJtjkUOr';
 // 公式アカウント「カーコン工賃通知」友だち追加URL（ここに飛ばすとLINEアプリの友だち追加画面が直接開く）
@@ -8798,9 +8799,11 @@ function yoteiMainGanttHTML(){
     var cls = c.status==='yotei' ? 'ywbar ywbar-yotei' : 'ywbar';
     var barStyle = 'grid-column:'+it.start+'/'+(it.end+1)+';grid-row:'+(it.lane+2)+';'+(c.ganttColor?('border-left-color:'+c.ganttColor+';'):'');
     var dotStyle = c.ganttColor ? ('background:'+c.ganttColor+';') : '';
-    var custEstTitle = (c.customerName?('・'+esc(c.customerName)):'') + (c.estimateAmount?('・見積¥'+Number(c.estimateAmount).toLocaleString()):'');
+    var custEstTitle = (c.customerName?('・'+esc(c.customerName)):'') + (c.estimateAmount?('・見積¥'+Number(c.estimateAmount).toLocaleString()):'') + (c.loanerCar?('・🚙代車:'+esc(c.loanerCar.replace(/・$/,''))):'');
+    // 入庫予定表側でも代車が貸し出し中とひと目でわかるように、バーに🚙アイコンを付ける(2026-08-28)
     return '<div class="'+cls+'" style="'+barStyle+'" onclick="bd_openCarFromYoteiGrid(\''+c.id+'\')" title="'+esc(c.cartype)+'・'+esc(c.number)+'・'+statusLabel+'（'+span+'日）'+custEstTitle+'">'
       + '<span class="ywdot" style="'+dotStyle+'" title="色を変える" onclick="event.stopPropagation();bd_yoteiColorPick(event,\''+c.id+'\')"></span>'
+      + (c.loanerCar?'<span class="ywbloaner" title="代車あり">🚙</span>':'')
       + '<span class="ywbtype">'+esc(c.cartype)+'</span>'
       + (span>1?('<span class="ywbnum">'+esc(c.number)+'</span>'):'')
       + (c.customerName?('<span class="ywbcust">👤'+esc(c.customerName)+'</span>'):'')
