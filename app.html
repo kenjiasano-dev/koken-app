@@ -1919,7 +1919,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = 'app202608281410';
+const APP_VERSION = 'app202608281420';
 // LINEログイン(LIFF) — LINEコンソールで作成したLIFFアプリのIDを入れる
 const LIFF_ID = '2010638896-vJtjkUOr';
 // 公式アカウント「カーコン工賃通知」友だち追加URL（ここに飛ばすとLINEアプリの友だち追加画面が直接開く）
@@ -8551,10 +8551,12 @@ function daishaGridHTML(){
       if(sm===ym) start=sd; else if(sm<ym) start=1; else return;
       if(em===ym) end=ed; else if(em>ym) end=days; else end=start;
       if(end<start) end=start;
-      var title=esc(name)+'・'+esc(c.cartype)+(c.customerName?('・'+esc(c.customerName)):'');
+      var periodTxt = bd_fmtDateMD(p.s)+'〜'+(p.e?bd_fmtDateMD(p.e):'未定');
+      var title=esc(name)+'・'+esc(c.cartype)+(c.customerName?('・'+esc(c.customerName)):'')+'・'+periodTxt;
       rowsHtml += '<div class="ywbar" style="grid-column:'+(start+1)+'/'+(end+2)+';grid-row:'+rowIdx+';" onclick="bd_openCarFromYoteiGrid(\''+c.id+'\')" title="'+title+'">'
         + (c.customerName?('<span class="ywbcust">👤'+esc(c.customerName)+'</span>'):'')
         + '<span class="ywbtype">'+esc(c.cartype)+'</span>'
+        + '<span class="ywbnum">'+esc(periodTxt)+'</span>'
         + '</div>';
     });
   });
