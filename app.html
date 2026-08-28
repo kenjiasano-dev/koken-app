@@ -187,7 +187,7 @@ input[type="time"]::-webkit-calendar-picker-indicator { filter: invert(1); opaci
 .ywbar{ background:var(--card2,var(--card)); border:1px solid var(--line2,var(--border)); border-left:3px solid var(--accent,var(--green)); border-radius:5px; padding:3px 6px; cursor:pointer; display:flex; align-items:center; gap:5px; overflow:hidden; white-space:nowrap; min-width:0; }
 .ywbar.ywbar-yotei{ border-style:dashed; opacity:.85; }
 .ywdot{ width:9px; height:9px; border-radius:50%; background:var(--accent,var(--green)); flex:0 0 auto; cursor:pointer; box-shadow:0 0 0 1px rgba(255,255,255,.25) inset; }
-.ywbtype{ font-size:10.5px; font-weight:700; color:var(--text); overflow:hidden; text-overflow:ellipsis; }
+.ywbtype{ font-size:10.5px; font-weight:700; color:var(--text); overflow:hidden; text-overflow:ellipsis; flex-shrink:0; max-width:100%; }
 .ywbnum{ font-size:9px; color:var(--muted); font-family:ui-monospace,Menlo,Consolas,monospace; flex-shrink:0; }
 .ywbcust{ font-size:9.5px; color:var(--accent); flex-shrink:0; }
 .ywbamt{ font-size:9px; color:var(--muted2,var(--muted)); flex-shrink:0; }
@@ -1918,7 +1918,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = 'app202608281150';
+const APP_VERSION = 'app202608281210';
 // LINEログイン(LIFF) — LINEコンソールで作成したLIFFアプリのIDを入れる
 const LIFF_ID = '2010638896-vJtjkUOr';
 // 公式アカウント「カーコン工賃通知」友だち追加URL（ここに飛ばすとLINEアプリの友だち追加画面が直接開く）
