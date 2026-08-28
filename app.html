@@ -192,6 +192,10 @@ input[type="time"]::-webkit-calendar-picker-indicator { filter: invert(1); opaci
 .ywbcust{ font-size:9.5px; color:var(--accent); flex-shrink:0; }
 .ywbamt{ font-size:9px; color:var(--muted2,var(--muted)); flex-shrink:0; }
 .ywlabel{ font-size:11px; color:var(--muted); display:flex; align-items:center; padding-right:6px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.ywlabel2{ flex-direction:column; align-items:flex-start; justify-content:center; gap:0; line-height:1.3; }
+.ywlabel-type{ font-weight:700; color:var(--text); font-size:11px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:100%; }
+.ywlabel-num{ font-size:9.5px; color:var(--muted); font-family:ui-monospace,Menlo,Consolas,monospace; }
+.ywrowsep{ border-bottom:1px solid var(--line2,var(--border)); pointer-events:none; }
 
 /* ===== MY CALENDAR (パチンコ収支カレンダー風) ===== */
 .mycal-wrap { padding: 12px; }
@@ -1919,7 +1923,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = 'app202608281455';
+const APP_VERSION = 'app202608281520';
 // LINEログイン(LIFF) — LINEコンソールで作成したLIFFアプリのIDを入れる
 const LIFF_ID = '2010638896-vJtjkUOr';
 // 公式アカウント「カーコン工賃通知」友だち追加URL（ここに飛ばすとLINEアプリの友だち追加画面が直接開く）
@@ -7281,29 +7285,38 @@ function saveMembers(){
   persist(); closeSheet(); render(); toast('メンバーを保存しました');
 }
 
-/* ---------- 代車（貸出用車両）管理(2026-08-28) ---------- */
-function getLoanerCars(){ return (state.store && Array.isArray(state.store.loanerCars)) ? state.store.loanerCars : []; }
+/* ---------- 代車（貸出用車両）管理(2026-08-28、車種/ナンバーの2項目管理に変更) ---------- */
+/* 以前はcartypeだけの文字列配列だったため、古いデータ(文字列)が来たら車種欄にそのまま
+   移して読み込む(後方互換)。 */
+function getLoanerCars(){
+  var raw = (state.store && Array.isArray(state.store.loanerCars)) ? state.store.loanerCars : [];
+  return raw.map(function(o){ return (typeof o==='string') ? {cartype:o, number:''} : {cartype:o.cartype||'', number:o.number||''}; });
+}
+/* 代車を一意に識別する文字列。carのloanerCarフィールドにはこの形式で保存する。 */
+function loanerKey(o){ return (o.cartype||'')+'・'+(o.number||''); }
+function loanerLabel(o){ return (o.cartype||'（車種未設定）')+(o.number?('　'+o.number):''); }
 let editLoanerCars = [];
 function openLoanerCars(){
   if(!state.store) return;
-  editLoanerCars = getLoanerCars().slice();
+  editLoanerCars = getLoanerCars();
   showSheet(loanerCarsHTML());
 }
 function loanerCarsHTML(){
-  const rows = editLoanerCars.map((n,i)=>`
+  const rows = editLoanerCars.map((o,i)=>`
     <div style="display:flex; gap:6px; align-items:center; margin-bottom:7px;">
       <span style="width:24px; text-align:center;">🚙</span>
-      <input value="${esc(n)}" oninput="editLoanerCars[${i}]=this.value" placeholder="例）大宮8830" style="flex:1; padding:9px 10px; font-size:15px;">
+      <input value="${esc(o.cartype)}" oninput="editLoanerCars[${i}].cartype=this.value" placeholder="車種（例）ワゴンR" style="flex:1.4; padding:9px 10px; font-size:15px;">
+      <input value="${esc(o.number)}" oninput="editLoanerCars[${i}].number=this.value" placeholder="ナンバー" style="flex:1; padding:9px 10px; font-size:15px;">
       <button class="iconbtn danger-text" title="削除" onclick="removeLoanerCar(${i})">✕</button>
     </div>`).join('');
   return `
     <h2>🚙 代車</h2>
-    <p style="color:var(--muted); font-size:12px; margin:0 0 12px;">お店で貸し出す代車を登録します。各車のカードで貸出先を選べます。</p>
+    <p style="color:var(--muted); font-size:12px; margin:0 0 12px;">お店で貸し出す代車を車種・ナンバーで登録します。各車のカードで貸出先を選べます。</p>
     <div style="max-height:44vh; overflow:auto; margin-bottom:10px;">${rows || '<p style="color:var(--muted); font-size:13px;">まだ登録がありません。</p>'}</div>
     <button class="btn ghost" onclick="addLoanerCar()" style="margin-bottom:10px;">＋ 代車を追加</button>
     <div style="margin-top:6px;padding-top:12px;border-top:1px solid var(--border);">
-      <div style="font-size:12px;color:var(--muted);margin-bottom:6px;">まとめて登録（1行に1台）</div>
-      <textarea id="loaner-bulk" rows="4" placeholder="大宮8830&#10;福山8409&#10;ノート" style="width:100%;padding:9px 10px;font-size:14px;background:var(--card);border:1px solid var(--border);border-radius:8px;color:var(--text);resize:vertical;"></textarea>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:6px;">まとめて登録（1行に1台、車種とナンバーは半角スペースで区切り）</div>
+      <textarea id="loaner-bulk" rows="4" placeholder="ワゴンR 232&#10;ノート 342&#10;ハスラー 561" style="width:100%;padding:9px 10px;font-size:14px;background:var(--card);border:1px solid var(--border);border-radius:8px;color:var(--text);resize:vertical;"></textarea>
       <button class="btn ghost" onclick="addLoanerCarsBulk()" style="margin-top:8px;">📋 まとめて追加</button>
     </div>
     <div class="sheet-actions" style="margin-top:12px;">
@@ -7313,16 +7326,22 @@ function loanerCarsHTML(){
 }
 function addLoanerCarsBulk(){
   var ta = document.getElementById('loaner-bulk'); if(!ta) return;
-  var names = ta.value.split('\n').map(function(s){ return s.trim(); }).filter(Boolean);
-  if(!names.length) return;
-  editLoanerCars = editLoanerCars.concat(names);
+  var lines = ta.value.split('\n').map(function(s){ return s.trim(); }).filter(Boolean);
+  if(!lines.length) return;
+  var parsed = lines.map(function(line){
+    var parts = line.split(/\s+/);
+    var number = parts.length>1 ? parts.pop() : '';
+    return {cartype: parts.join(' '), number: number};
+  });
+  editLoanerCars = editLoanerCars.concat(parsed);
   rebuildLoanerCars();
 }
 function rebuildLoanerCars(){ const s=document.querySelector('#overlay .sheet'); if(s) s.innerHTML=loanerCarsHTML(); }
-function addLoanerCar(){ editLoanerCars.push(''); rebuildLoanerCars(); }
+function addLoanerCar(){ editLoanerCars.push({cartype:'', number:''}); rebuildLoanerCars(); }
 function removeLoanerCar(i){ editLoanerCars.splice(i,1); rebuildLoanerCars(); }
 function saveLoanerCars(){
-  state.store.loanerCars = editLoanerCars.map(n=>String(n).trim()).filter(Boolean);
+  var cleaned = editLoanerCars.map(function(o){ return {cartype:String(o.cartype||'').trim(), number:String(o.number||'').trim()}; }).filter(function(o){ return o.cartype; });
+  state.store.loanerCars = cleaned;
   bd_saveLocal(); closeSheet(); toast('代車を保存しました');
 }
 /* 車ごとの代車貸出。期間は基本その車自身の入庫〜納車予定と同じだが、
@@ -7332,7 +7351,7 @@ function bd_loanerLine(c){
     var s = c.loanerStart || (c.status==='yotei' ? (c.nyukoPlan||'').slice(0,10) : (c.nyukoAt||'').slice(0,10));
     var e = c.loanerEnd || c.deliveryDate || '';
     var period = s ? (bd_fmtDateMD(s) + (e?('〜'+bd_fmtDateMD(e)):'〜未定')) : '';
-    return '<div class="deliv" onclick="event.stopPropagation();openLoanerAssign(\''+c.id+'\')">🚙 代車: '+esc(c.loanerCar)+(period?('　'+period):'')+' ✎</div>';
+    return '<div class="deliv" onclick="event.stopPropagation();openLoanerAssign(\''+c.id+'\')">🚙 代車: '+esc(c.loanerCar.replace(/・$/,''))+(period?('　'+period):'')+' ✎</div>';
   }
   return '<div class="deliv deliv-set" onclick="event.stopPropagation();openLoanerAssign(\''+c.id+'\')">＋ 代車を貸す</div>';
 }
@@ -7373,12 +7392,13 @@ function loanerAssignHTML(c){
   var endVal = _loanerCandEnd;
   // 「今借りていても、選んだ期間が重ならなければ予約可」にするため、単に他の車が使っているかでは
   // なく、貸出期間が実際に重なっている場合だけ黒(選択不可)にする(2026-08-28)。
-  var list = cars.map(function(n){
-    var conflict = state.cars.filter(function(o){
-      return o.id!==c.id && o.loanerCar===n && (o.status==='yotei'||o.status==='nyuko'||o.status==='work');
-    }).map(function(o){ return {car:o, p:loanerPeriodOf(o)}; })
+  var list = cars.map(function(o){
+    var key = loanerKey(o);
+    var conflict = state.cars.filter(function(x){
+      return x.id!==c.id && x.loanerCar===key && (x.status==='yotei'||x.status==='nyuko'||x.status==='work');
+    }).map(function(x){ return {car:x, p:loanerPeriodOf(x)}; })
       .find(function(x){ return periodsOverlap(startVal, endVal, x.p.s, x.p.e); });
-    var selected = c.loanerCar===n;
+    var selected = c.loanerCar===key;
     var style, sub, onclick;
     if(conflict){
       var op=conflict.p;
@@ -7388,9 +7408,9 @@ function loanerAssignHTML(c){
     } else {
       style = 'background:#fff;color:#111;'+(selected?'border:2px solid var(--accent);':'border:1px solid #ccc;');
       sub = 'この期間は空いています';
-      onclick = ' onclick="pickLoanerCar(\''+esc(n)+'\')"';
+      onclick = ' onclick="pickLoanerCar(\''+esc(key)+'\')"';
     }
-    return '<button class="btn" style="width:100%;text-align:left;margin-bottom:7px;'+style+'"'+onclick+(conflict?' disabled':'')+'>🚙 '+esc(n)+' <span style="font-size:11px;opacity:.75;">（'+sub+'）</span></button>';
+    return '<button class="btn" style="width:100%;text-align:left;margin-bottom:7px;'+style+'"'+onclick+(conflict?' disabled':'')+'>🚙 '+esc(loanerLabel(o))+' <span style="font-size:11px;opacity:.75;">（'+sub+'）</span></button>';
   }).join('');
   if(!cars.length) list = '<p style="color:var(--muted);font-size:13px;margin:0 0 12px;">代車が登録されていません。⚙設定→代車 で追加してください。</p>';
   return '<h2>代車を貸す</h2>'
@@ -8547,10 +8567,16 @@ function daishaGridHTML(){
     headCells += '<div class="ywh '+wcls+'" style="grid-column:'+(d+1)+'/'+(d+2)+';grid-row:1;">'+d+'<span class="ywdow">'+w+'</span></div>';
   }
   var rowsHtml='';
-  loaners.forEach(function(name, idx){
+  loaners.forEach(function(loaner, idx){
     var rowIdx=idx+2;
-    rowsHtml += '<div class="ywlabel" style="grid-column:1/2;grid-row:'+rowIdx+';" title="'+esc(name)+'">🚙 '+esc(name)+'</div>';
-    assigned.filter(function(c){ return c.loanerCar===name; }).forEach(function(c){
+    var key=loanerKey(loaner);
+    // 車種を上段・ナンバーを下段にして分かりやすく、行の下に区切り線を1本通す(2026-08-28)
+    rowsHtml += '<div class="ywlabel ywlabel2" style="grid-column:1/2;grid-row:'+rowIdx+';" title="'+esc(loanerLabel(loaner))+'">'
+      + '<span class="ywlabel-type">'+esc(loaner.cartype||'（未設定）')+'</span>'
+      + (loaner.number?('<span class="ywlabel-num">'+esc(loaner.number)+'</span>'):'')
+      + '</div>';
+    rowsHtml += '<div class="ywrowsep" style="grid-column:1/-1;grid-row:'+rowIdx+';"></div>';
+    assigned.filter(function(c){ return c.loanerCar===key; }).forEach(function(c){
       var p=loanerPeriod(c);
       if(!p.s) return;
       var sm=p.s.slice(0,7), sd=parseInt(p.s.slice(8,10),10);
@@ -8560,7 +8586,7 @@ function daishaGridHTML(){
       if(em===ym) end=ed; else if(em>ym) end=days; else end=start;
       if(end<start) end=start;
       var periodTxt = bd_fmtDateMD(p.s)+'〜'+(p.e?bd_fmtDateMD(p.e):'未定');
-      var title=esc(name)+'・'+esc(c.cartype)+(c.customerName?('・'+esc(c.customerName)):'')+'・'+periodTxt;
+      var title=esc(loanerLabel(loaner))+'・'+esc(c.cartype)+(c.customerName?('・'+esc(c.customerName)):'')+'・'+periodTxt;
       rowsHtml += '<div class="ywbar" style="grid-column:'+(start+1)+'/'+(end+2)+';grid-row:'+rowIdx+';" onclick="bd_openCarFromYoteiGrid(\''+c.id+'\')" title="'+title+'">'
         + (c.customerName?('<span class="ywbcust">👤'+esc(c.customerName)+'</span>'):'')
         + '<span class="ywbtype">'+esc(c.cartype)+'</span>'
@@ -8568,7 +8594,7 @@ function daishaGridHTML(){
         + '</div>';
     });
   });
-  var gridStyle='grid-template-columns:90px repeat('+days+',minmax(34px,1fr));grid-template-rows:32px repeat('+loaners.length+',28px);';
+  var gridStyle='grid-template-columns:90px repeat('+days+',minmax(34px,1fr));grid-template-rows:32px repeat('+loaners.length+',36px);';
   return '<h3 style="font-size:14px;margin:0 0 8px;display:flex;align-items:center;gap:8px;">🚙 代車管理'+editBtn+'</h3>'
     + '<div class="ywgantt-wrap"><div class="ywgantt" style="'+gridStyle+'">'+headCells+rowsHtml+'</div></div>';
 }
