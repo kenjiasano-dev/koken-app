@@ -1545,6 +1545,19 @@ input[type="time"]::-webkit-calendar-picker-indicator { filter: invert(1); opaci
             <input type="text" class="form-input" id="front-number" maxlength="4" placeholder="0000" inputmode="numeric" oninput="numAutoNext(this,&#39;front-amount&#39;)" style="letter-spacing:6px;font-size:22px;font-weight:700;text-align:center;">
           </div>
           <div class="form-group">
+            <label class="form-label">種別</label>
+            <div id="front-kind-pick" style="display:flex; gap:8px; flex-wrap:wrap;">
+              <button type="button" class="kbtn sel" data-k="bankin" onclick="pickFrontKind('bankin')">🔧 板金塗装</button>
+              <button type="button" class="kbtn" data-k="tenken" onclick="pickFrontKind('tenken')">🚗 車検整備</button>
+              <button type="button" class="kbtn" data-k="ippan" onclick="pickFrontKind('ippan')">🛠 一般整備</button>
+              <button type="button" class="kbtn" data-k="other" onclick="pickFrontKind('other')">❓ その他</button>
+            </div>
+          </div>
+          <div class="form-group" id="front-cat-field" style="display:none;">
+            <label class="form-label">その他の名称</label>
+            <input type="text" class="form-input" id="front-cat-other" placeholder="例）洗車・コーティング" autocomplete="off" oninput="updateFrontOtherCat(this.value)">
+          </div>
+          <div class="form-group">
             <label class="form-label">🚙 入庫予定日時（任意・成約時に現場ボードへ引き継がれます）</label>
             <div id="front-nyuko-disp" style="font-size:14px;margin-bottom:9px;color:var(--text-sub);">未設定（任意）</div>
             <div id="front-nyuko-cal"></div>
@@ -1887,7 +1900,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = 'app202608281115';
+const APP_VERSION = 'app202608281130';
 // LINEログイン(LIFF) — LINEコンソールで作成したLIFFアプリのIDを入れる
 const LIFF_ID = '2010638896-vJtjkUOr';
 // 公式アカウント「カーコン工賃通知」友だち追加URL（ここに飛ばすとLINEアプリの友だち追加画面が直接開く）
@@ -5193,7 +5206,7 @@ function syncEstimateToBoard(entry) {
   var newCar = {
     id: uuid(), cartype: entry.cartype, number: entry.number || '',
     customerName: entry.customerName || '', estimateAmount: entry.orderAmount || entry.amount || 0,
-    kind: '板金', category: '',
+    kind: frontCarKind || '板金', category: frontCarCategory || '',
     deliveryDate: '', deliveryTime: '', isInsurance: false,
     status: 'yotei', stage: 0, stageDur: [], stageBy: [], assignee: '',
     waitingParts: false, partSince: null, onHold: false, holdReason: '',
@@ -6836,6 +6849,7 @@ function fnInit(){
   const n=new Date(); fnCal={y:n.getFullYear(), m:n.getMonth()};
   updateFnDisp(); renderFnCal();
   var t=document.getElementById('front-nyuko-time'); if(t) t.value='';
+  fnInitKind();
 }
 function fnPick(ds){
   frontNyukoDate=ds;
@@ -6852,6 +6866,33 @@ function renderFnCal(){
   const el=document.getElementById('front-nyuko-cal'); if(!el) return;
   if(!fnCal){ const n=new Date(); fnCal={y:n.getFullYear(), m:n.getMonth()}; }
   el.innerHTML = buildCalendarHTML(fnCal.y, fnCal.m, frontNyukoDate, 'fnPick', 'fnMove');
+}
+/* 受付入力の種別選択。現場ボードのopenAddCarと同じ4択だが、両フォームが独立して
+   使われても互いの選択を壊さないよう、変数はfront専用に分けている(2026-08-28)。 */
+let frontCarKind='板金';
+let frontCarCategory='';
+function pickFrontKind(k){
+  if(k==='bankin'){ frontCarKind='板金'; frontCarCategory=''; }
+  else if(k==='tenken'){ frontCarKind='整備'; frontCarCategory='点検整備'; }
+  else if(k==='ippan'){ frontCarKind='整備'; frontCarCategory='一般整備'; }
+  else { frontCarKind='整備'; frontCarCategory=((document.getElementById('front-cat-other')||{}).value||'').trim(); }
+  document.querySelectorAll('#front-kind-pick .kbtn').forEach(function(b){
+    const on=b.dataset.k===k;
+    b.classList.toggle('sel', on);
+    b.classList.toggle('seibi', on && k!=='bankin');
+  });
+  const cat=document.getElementById('front-cat-field');
+  if(cat) cat.style.display = (k==='other') ? '' : 'none';
+}
+function updateFrontOtherCat(v){ frontCarCategory = (v||'').trim(); }
+function fnInitKind(){
+  frontCarKind='板金'; frontCarCategory='';
+  document.querySelectorAll('#front-kind-pick .kbtn').forEach(function(b){
+    b.classList.toggle('sel', b.dataset.k==='bankin');
+    b.classList.remove('seibi');
+  });
+  const cat=document.getElementById('front-cat-field'); if(cat) cat.style.display='none';
+  const oe=document.getElementById('front-cat-other'); if(oe) oe.value='';
 }
 function updateFnDisp(){
   const el=document.getElementById('front-nyuko-disp'); if(!el) return;
