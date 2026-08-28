@@ -1856,7 +1856,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = 'app202608281015';
+const APP_VERSION = 'app202608281030';
 // LINEログイン(LIFF) — LINEコンソールで作成したLIFFアプリのIDを入れる
 const LIFF_ID = '2010638896-vJtjkUOr';
 // 公式アカウント「カーコン工賃通知」友だち追加URL（ここに飛ばすとLINEアプリの友だち追加画面が直接開く）
@@ -7901,7 +7901,9 @@ function setDoneFilter(f){
 
 /* ---------- sheet / modal ---------- */
 function showSheet(innerHTML, dismissable=true, wide=false){
-  closeSheet();
+  // 別のシートへ差し替えるだけなので、closeSheet()は呼ばない(呼ぶと_sheetReturnToが
+  // その場で消費されてしまい、確認ダイアログ等を挟んだ後に元の画面へ戻れなくなる)
+  const oldOverlay=document.getElementById('overlay'); if(oldOverlay) oldOverlay.remove();
   const ov=document.createElement('div');
   ov.className='overlay'+(wide?' overlay-right':''); ov.id='overlay';
   const xbtn = dismissable ? '<button class="sheet-x" title="閉じる" aria-label="閉じる" onclick="closeSheet()">✕</button>' : '';
@@ -8142,7 +8144,7 @@ function yoteiGridHTML(){
     var barStyle = 'grid-column:'+it.start+'/'+(it.end+1)+';grid-row:'+(it.lane+2)+';'+(c.ganttColor?('border-left-color:'+c.ganttColor+';'):'');
     var dotStyle = c.ganttColor ? ('background:'+c.ganttColor+';') : '';
     var custEstTitle = (c.customerName?('・'+esc(c.customerName)):'') + (c.estimateAmount?('・見積¥'+Number(c.estimateAmount).toLocaleString()):'');
-    return '<div class="'+cls+'" style="'+barStyle+'" onclick="bd_openCarModal(\''+c.id+'\')" title="'+esc(c.cartype)+'・'+esc(c.number)+'・'+statusLabel+'（'+span+'日）'+custEstTitle+'">'
+    return '<div class="'+cls+'" style="'+barStyle+'" onclick="bd_openCarFromYoteiGrid(\''+c.id+'\')" title="'+esc(c.cartype)+'・'+esc(c.number)+'・'+statusLabel+'（'+span+'日）'+custEstTitle+'">'
       + '<span class="ywdot" style="'+dotStyle+'" title="色を変える" onclick="event.stopPropagation();bd_yoteiColorPick(event,\''+c.id+'\')"></span>'
       + '<span class="ywbtype">'+esc(c.cartype)+'</span>'
       + (span>1?('<span class="ywbnum">'+esc(c.number)+'</span>'):'')
@@ -8561,7 +8563,17 @@ function bd_openWorkModal(id){
   showSheet('<h2>車両の詳細</h2>' + html);
   _workModalCarId = id;   // showSheet()が内部でcloseSheet()を呼びリセットするため、必ずこの後にセットする
 }
-function closeSheet(){ _workModalCarId = null; const o=document.getElementById('overlay'); if(o) o.remove(); }
+/* 閉じたときに前の画面(入庫予定表など)へ戻るための「戻り先」。showSheetは常に上書きなので
+   スタックは持たず、直前の1画面分だけを覚える単純な仕組み(2026-08-28)。
+   showSheetによる「別のシートへの差し替え」(例: 削除確認ダイアログ)ではこの戻り先を
+   消費しない。ユーザーが本当に閉じきった時(×・背景クリック・キャンセル等)だけ発火する。 */
+var _sheetReturnTo = null;
+function closeSheet(){
+  _workModalCarId = null;
+  var back = _sheetReturnTo; _sheetReturnTo = null;
+  const o=document.getElementById('overlay'); if(o) o.remove();
+  if(back) back();
+}
 
 
 function bd_workCardHtml(c){
@@ -8769,13 +8781,16 @@ function bd_carModalContentHtml(c){
   else if(c.status==='done'){ return bd_doneCardHtml(c); }
   return '';
 }
-function bd_openCarModal(id){
+function bd_openCarModal(id, returnTo){
   var c = findCar(id); if(!c) return;
   var html = bd_carModalContentHtml(c);
   if(!html) return;
   showSheet('<h2>車両の詳細</h2>' + html);
   _workModalCarId = id;
+  _sheetReturnTo = returnTo || null;
 }
+/* 入庫予定表(Ganttチャート)から車両詳細を開いたときは、閉じたら入庫予定表に戻る */
+function bd_openCarFromYoteiGrid(id){ bd_openCarModal(id, openYoteiGrid); }
 function bd_pinCarModal(id, checked){
   if(checked){ bd_openCarModal(id); }
   else if(_workModalCarId===id){ closeSheet(); render(); }
