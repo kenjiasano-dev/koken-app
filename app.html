@@ -1924,7 +1924,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = 'app202608282045';
+const APP_VERSION = 'app202608282100';
 // LINEログイン(LIFF) — LINEコンソールで作成したLIFFアプリのIDを入れる
 const LIFF_ID = '2010638896-vJtjkUOr';
 // 公式アカウント「カーコン工賃通知」友だち追加URL（ここに飛ばすとLINEアプリの友だち追加画面が直接開く）
@@ -8837,7 +8837,7 @@ function daishaGridHTML(){
     var key=loanerKey(loaner);
     // 車種を上段・ナンバーを下段にして分かりやすく、行の下に区切り線を1本通す(2026-08-28)
     rowsHtml += '<div class="ywlabel ywlabel2" style="grid-column:1/2;grid-row:'+rowIdx+';cursor:pointer;" title="タップして貸出先の車を選ぶ：'+esc(loanerLabel(loaner))+'" onclick="openLoanerRowAssign(\''+esc(loaner.cartype)+'\',\''+esc(loaner.number)+'\')">'
-      + '<span class="ywlabel-type">'+esc(loaner.cartype||'（未設定）')+'</span>'
+      + '<span class="ywlabel-type">🚙 '+esc(loaner.cartype||'（未設定）')+'</span>'
       + (loaner.number?('<span class="ywlabel-num">'+esc(loaner.number)+'</span>'):'')
       + '</div>';
     rowsHtml += '<div class="ywrowsep" style="grid-column:1/-1;grid-row:'+rowIdx+';"></div>';
