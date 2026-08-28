@@ -1926,7 +1926,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = 'app202608282440';
+const APP_VERSION = 'app202608282500';
 // LINEログイン(LIFF) — LINEコンソールで作成したLIFFアプリのIDを入れる
 const LIFF_ID = '2010638896-vJtjkUOr';
 // 公式アカウント「カーコン工賃通知」友だち追加URL（ここに飛ばすとLINEアプリの友だち追加画面が直接開く）
@@ -8900,6 +8900,10 @@ function yoteiMainGanttHTML(){
     var lanes=Math.max(bd_yoteiAssignLanes(b.items),1);
     sectionsHtml += '<div class="ywsectionhead" style="grid-column:1/-1;grid-row:'+rowCursor+';">'+b.cat.label+'（'+b.items.length+'台）</div>';
     var laneBaseRow=rowCursor+1;
+    // 代車管理の表と同じように、行ごとに薄い区切り線を入れて見やすくする(2026-08-28)
+    for(var li=0; li<lanes; li++){
+      sectionsHtml += '<div class="ywrowsep" style="grid-column:1/-1;grid-row:'+(laneBaseRow+li)+';"></div>';
+    }
     b.items.forEach(function(it){
       var c=it.car, span=it.end-it.start+1;
       var statusLabel = {yotei:'予定', nyuko:'入庫中', work:'作業中'}[c.status] || '';
