@@ -1926,7 +1926,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = 'app202608282350';
+const APP_VERSION = 'app202608282420';
 // LINEログイン(LIFF) — LINEコンソールで作成したLIFFアプリのIDを入れる
 const LIFF_ID = '2010638896-vJtjkUOr';
 // 公式アカウント「カーコン工賃通知」友だち追加URL（ここに飛ばすとLINEアプリの友だち追加画面が直接開く）
@@ -6700,6 +6700,38 @@ function saveCar(){
 }
 function findCar(id){ return state.cars.find(c=>c.id===id); }
 
+/* 車種・ナンバーはタップして後から修正できるように(2026-08-28、ナンバーの入力ミスで
+   同じ番号の車が誤って重複登録されてしまう事故を受けて追加)。 */
+function bd_carNameNum(c){
+  return '<span class="name" onclick="event.stopPropagation();openCarTypeNumEdit(\''+c.id+'\')" style="cursor:pointer;text-decoration:underline dotted;text-underline-offset:2px;">'+esc(c.cartype)+'</span><span class="num" onclick="event.stopPropagation();openCarTypeNumEdit(\''+c.id+'\')" style="cursor:pointer;">・'+esc(c.number)+'</span>';
+}
+function openCarTypeNumEdit(id){
+  var c=findCar(id); if(!c) return;
+  showSheet(
+    '<h2>車種・ナンバーを修正</h2>'
+    + '<p style="color:var(--muted);font-size:12px;margin:0 0 12px;">入力ミスで違う番号になっている時などに、ここから直せます。</p>'
+    + '<div class="field"><label>車種</label><input id="ctn-type" value="'+esc(c.cartype)+'"></div>'
+    + '<div class="field"><label>ナンバー</label><input id="ctn-num" value="'+esc(c.number)+'"></div>'
+    + '<button class="btn" style="width:100%;margin-top:10px;" onclick="saveCarTypeNumEdit(\''+id+'\')">保存</button>'
+  );
+}
+function saveCarTypeNumEdit(id){
+  var c=findCar(id); if(!c) return;
+  var cartype=(document.getElementById('ctn-type')||{}).value?.trim()||'';
+  var number=(document.getElementById('ctn-num')||{}).value?.trim()||'';
+  if(!cartype){ toast('車種名を入れてください'); return; }
+  if(number){
+    var _dup = state.cars.filter(function(x){ return x.id!==id && !x.deleted && x.status!=='done' && x.cartype===cartype && String(x.number)===String(number); });
+    if(_dup.length){
+      var _st = {yotei:'入庫予定',nyuko:'入庫中',work:'作業中'}[_dup[0].status] || _dup[0].status;
+      if(!confirm('同じ車「'+cartype+'・'+number+'」が既に登録されています（'+_st+'）。\nそれでも変更しますか？')){ return; }
+    }
+  }
+  c.cartype=cartype; c.number=number;
+  persist(c); closeSheet(); render();
+  toast('車種・ナンバーを修正しました');
+}
+
 /* 種別（板金/整備）の色分け */
 function isSeibi(c){ return c.kind==='整備'; }
 function kindClass(c){ return isSeibi(c) ? 'k-seibi' : 'k-bankin'; }
@@ -9432,7 +9464,7 @@ function bd_workCardHtml(c){
   var pinBox = '<label title="チェックすると中央に大きく表示" style="display:flex;align-items:center;cursor:pointer;margin-right:2px;"><input type="checkbox" style="width:16px;height:16px;" '+(pinChecked?'checked':'')+' onchange="bd_pinCarModal(\''+c.id+'\',this.checked)"></label>';
   var compactPart = `
     <div class="top">
-      <div><div>${kindBadge(c)}${insBadge(c)}<span class="name">${esc(c.cartype)}</span><span class="num">・${esc(c.number)}</span></div><div style="margin-top:5px;">${assignChip(c)}</div></div>
+      <div><div>${kindBadge(c)}${insBadge(c)}${bd_carNameNum(c)}</div><div style="margin-top:5px;">${assignChip(c)}</div></div>
       <div class="row-actions">${pinBox}${toggleBtn}</div>
     </div>
     ${bd_custEstLine(c)}
@@ -9628,7 +9660,7 @@ function bd_yoteiRow(c){
   var pinChecked = (_workModalCarId===c.id);
   var pinBox = '<label title="チェックすると中央に大きく表示" style="display:flex;align-items:center;cursor:pointer;"><input type="checkbox" style="width:16px;height:16px;" '+(pinChecked?'checked':'')+' onchange="bd_pinCarModal(\''+c.id+'\',this.checked)"></label>';
   return '<div class="car '+kindClass(c)+'"'+bd_colorStyle(c)+' ondragover="bd_cardDragOver(event)" ondragleave="bd_cardDragLeave(event)" ondrop="bd_cardDrop(event,\''+c.id+'\')">'
-    + '<div class="top"><div>'+kindBadge(c)+insBadge(c)+'<span class="name">'+esc(c.cartype)+'</span><span class="num">・'+esc(c.number)+'</span></div>'
+    + '<div class="top"><div>'+kindBadge(c)+insBadge(c)+bd_carNameNum(c)+'</div>'
     +   '<div class="row-actions">'+pinBox+'<button class="iconbtn" title="削除" onclick="askDelete(\''+c.id+'\')">🗑</button><button class="pill green" onclick="bd_arriveCar(\''+c.id+'\')">入庫する →</button></div>'
     + '</div>'
     + bd_custEstLine(c)
@@ -9649,7 +9681,7 @@ function bd_nyukoCardHtml(c){
   <div class="${cardCls} ${kindClass(c)}"${bd_colorStyle(c)}>
     <div class="top">
       <div>
-        <div><div>${kindBadge(c)}${insBadge(c)}<span class="name">${esc(c.cartype)}</span><span class="num">・${esc(c.number)}</span></div><div style="margin-top:5px;">${assignChip(c)}</div></div>
+        <div><div>${kindBadge(c)}${insBadge(c)}${bd_carNameNum(c)}</div><div style="margin-top:5px;">${assignChip(c)}</div></div>
         ${bd_custEstLine(c)}
         ${bd_loanerLine(c)}
         <div class="${subCls}">⏱ ${fmtDateTime(c.nyukoAt)} 入庫・${d}日待ち</div>
@@ -9674,7 +9706,7 @@ function bd_doneCardHtml(c){
   <div class="car done-card ${kindClass(c)}"${bd_colorStyle(c)}>
     <div class="top">
       <div>
-        <div><div>${kindBadge(c)}${insBadge(c)}<span class="name">${esc(c.cartype)}</span><span class="num">・${esc(c.number)}</span></div><div style="margin-top:5px;">${assignChip(c)}</div></div>
+        <div><div>${kindBadge(c)}${insBadge(c)}${bd_carNameNum(c)}</div><div style="margin-top:5px;">${assignChip(c)}</div></div>
         ${bd_custEstLine(c)}
         ${bd_loanerLine(c)}
         <div class="sub" style="color:var(--green)">🏁 ${c.doneAt?fmtDateTime(c.doneAt):''} 完成　${leadTxt}</div>
@@ -9705,7 +9737,7 @@ function bd_nyukoCardCompactHtml(c){
   var pinBox = '<label title="チェックすると中央に大きく表示" style="display:flex;align-items:center;cursor:pointer;"><input type="checkbox" style="width:16px;height:16px;" '+(pinChecked?'checked':'')+' onchange="bd_pinCarModal(\''+c.id+'\',this.checked)"></label>';
   return '<div class="'+cardCls+' '+kindClass(c)+'"'+bd_colorStyle(c)+' ondragover="bd_cardDragOver(event)" ondragleave="bd_cardDragLeave(event)" ondrop="bd_cardDrop(event,\''+c.id+'\')">'
     + '<div class="top">'
-    +   '<div><div>'+kindBadge(c)+insBadge(c)+'<span class="name">'+esc(c.cartype)+'</span><span class="num">・'+esc(c.number)+'</span></div><div style="margin-top:5px;">'+assignChip(c)+'</div></div>'
+    +   '<div><div>'+kindBadge(c)+insBadge(c)+bd_carNameNum(c)+'</div><div style="margin-top:5px;">'+assignChip(c)+'</div></div>'
     +   '<div class="row-actions">'+pinBox+'<button class="pill" onclick="startCar(\''+c.id+'\')">作業開始 →</button></div>'
     + '</div>'
     + bd_custEstLine(c)
@@ -9724,7 +9756,7 @@ function bd_doneCardCompactHtml(c){
   var pinBox = '<label title="チェックすると中央に大きく表示" style="display:flex;align-items:center;cursor:pointer;"><input type="checkbox" style="width:16px;height:16px;" '+(pinChecked?'checked':'')+' onchange="bd_pinCarModal(\''+c.id+'\',this.checked)"></label>';
   return '<div class="car done-card '+kindClass(c)+'"'+bd_colorStyle(c)+' ondragover="bd_cardDragOver(event)" ondragleave="bd_cardDragLeave(event)" ondrop="bd_cardDrop(event,\''+c.id+'\')">'
     + '<div class="top">'
-    +   '<div><div>'+kindBadge(c)+insBadge(c)+'<span class="name">'+esc(c.cartype)+'</span><span class="num">・'+esc(c.number)+'</span></div><div style="margin-top:5px;">'+assignChip(c)+'</div></div>'
+    +   '<div><div>'+kindBadge(c)+insBadge(c)+bd_carNameNum(c)+'</div><div style="margin-top:5px;">'+assignChip(c)+'</div></div>'
     +   '<div class="row-actions">'+pinBox+'</div>'
     + '</div>'
     + bd_custEstLine(c)
