@@ -1923,7 +1923,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = 'app202608281720';
+const APP_VERSION = 'app202608281740';
 // LINEログイン(LIFF) — LINEコンソールで作成したLIFFアプリのIDを入れる
 const LIFF_ID = '2010638896-vJtjkUOr';
 // 公式アカウント「カーコン工賃通知」友だち追加URL（ここに飛ばすとLINEアプリの友だち追加画面が直接開く）
@@ -6525,10 +6525,21 @@ function pickKind(k){
   if(cat) cat.style.display = (k==='other') ? '' : 'none';
 }
 function updateOtherCat(v){ newCarCategory = (v||'').trim(); }
+/* 入庫を追加する時点で代車も一緒に割り当てられるように(2026-08-28)。
+   ここでは在庫の空き判定はせず単純な選択のみ。競合確認や変更は追加後、
+   車のカードの🚙アイコンから既存のloanerAssignHTML(空き判定つき)で行う。 */
+let newCarLoanerKey='';
+function pickAddCarLoaner(key){
+  newCarLoanerKey = (newCarLoanerKey===key) ? '' : key;
+  document.querySelectorAll('#c-loaner-pick .kbtn').forEach(function(b){
+    b.classList.toggle('sel', b.dataset.lk===newCarLoanerKey);
+  });
+}
 function openAddCar(forceMode){
   editingId = null;
   newCarKind='板金';
   newCarCategory='';
+  newCarLoanerKey='';
   newCarMode = forceMode || 'now';
   // 「予定」タブ・PCダッシュボードの予定列から追加する時は最初から入庫予定確定なので、
   // 「今すぐ入庫」との切り替えは出さない(2026-08-24、選ぶ手間を省くための変更)。
@@ -6608,7 +6619,14 @@ function openAddCar(forceMode){
     </div>
     <div class="field">
       <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-weight:500;"><input type="checkbox" id="c-insurance" style="width:20px;height:20px;"> 🛡 保険作業（保険を使う案件）</label>
-    </div>    <div class="sheet-actions">
+    </div>
+    <div class="field">
+      <label>🚙 代車（任意・あとから車のカードでも変更できます）</label>
+      <div id="c-loaner-pick" style="display:flex; gap:8px; flex-wrap:wrap;">
+        ${getLoanerCars().map(function(o){ var k=loanerKey(o); return '<button type="button" class="kbtn" data-lk="'+esc(k)+'" onclick="pickAddCarLoaner(\''+esc(k)+'\')">🚙 '+esc(loanerLabel(o))+'</button>'; }).join('') || '<p style="color:var(--muted);font-size:12px;margin:0;">代車が登録されていません。⚙設定→代車 で追加できます。</p>'}
+      </div>
+    </div>
+    <div class="sheet-actions">
       <button class="btn ghost" onclick="closeSheet()">キャンセル</button>
       <button class="btn" onclick="saveCar()">${forceMode==='yotei' ? '入庫予定に追加' : '入庫に追加'}</button>
     </div>`;
@@ -6646,6 +6664,8 @@ function saveCar(){
     deliveryDate: deliv,   // 納車予定日 'YYYY-MM-DD'
     deliveryTime: (document.getElementById('c-deliv-time')||{}).value||'',   // 納車時刻 'HH:MM'
     isInsurance: !!((document.getElementById('c-insurance')||{}).checked),
+    loanerCar: newCarLoanerKey || '',   // 代車(任意・キー形式「車種・ナンバー」)
+    loanerStart: '', loanerEnd: '',     // 未指定なら入庫〜納車予定に自動で合わせる(loanerPeriodOf)
     status:'nyuko',   // nyuko → work → done
     stage:0,
     waitingParts:false,
