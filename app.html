@@ -196,6 +196,7 @@ input[type="time"]::-webkit-calendar-picker-indicator { filter: invert(1); opaci
 .ywlabel2{ flex-direction:column; align-items:flex-start; justify-content:center; gap:0; line-height:1.3; }
 .ywlabel-type{ font-weight:700; color:var(--text); font-size:11px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:100%; }
 .ywlabel-num{ font-size:9.5px; color:var(--muted); font-family:ui-monospace,Menlo,Consolas,monospace; }
+.ywsectionhead{ display:flex; align-items:center; padding:0 8px; font-size:11px; font-weight:700; color:var(--muted); background:var(--card2,rgba(255,255,255,.04)); border-top:1px solid var(--line2,var(--border)); border-bottom:1px solid var(--line2,var(--border)); }
 .ywrowsep{ border-bottom:1px solid var(--line2,var(--border)); pointer-events:none; }
 .ywcolsep{ border-right:1px solid var(--line2,var(--border)); pointer-events:none; opacity:.6; }
 
@@ -1925,7 +1926,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = 'app202608282130';
+const APP_VERSION = 'app202608282215';
 // LINEログイン(LIFF) — LINEコンソールで作成したLIFFアプリのIDを入れる
 const LIFF_ID = '2010638896-vJtjkUOr';
 // 公式アカウント「カーコン工賃通知」友だち追加URL（ここに飛ばすとLINEアプリの友だち追加画面が直接開く）
@@ -8780,7 +8781,18 @@ function yoteiMainGanttHTML(){
     }
     return {car:c, start:start, end:Math.min(end,days)};
   }).sort(function(a,b){ return a.start-b.start || a.end-b.end; });
-  var lanes=Math.max(bd_yoteiAssignLanes(items),1);
+
+  // 板金塗装/車検整備/一般整備/その他の4エリアに上から積んで表示する(2026-08-28)。
+  // 種別判定は既存のbd_carCatKey(PCダッシュボードの絞り込みと共通)を流用。
+  var CAT_ORDER=[
+    {key:'bankin', label:'🔧 板金塗装'},
+    {key:'tenken', label:'🚗 車検整備'},
+    {key:'ippan',  label:'🛠 一般整備'},
+    {key:'other',  label:'❓ その他'}
+  ];
+  var buckets=CAT_ORDER.map(function(cat){
+    return {cat:cat, items: items.filter(function(it){ return bd_carCatKey(it.car)===cat.key; })};
+  }).filter(function(b){ return b.items.length>0; });
 
   var headCells='';
   var colSeps='';
@@ -8793,25 +8805,34 @@ function yoteiMainGanttHTML(){
     // 日付が分かりやすいように、日ごとの縦の区切り線を全行にまたがって引く(2026-08-28)
     colSeps += '<div class="ywcolsep" style="grid-column:'+d+'/'+(d+1)+';grid-row:1/-1;"></div>';
   }
-  var bars=items.map(function(it){
-    var c=it.car, span=it.end-it.start+1;
-    var statusLabel = {yotei:'予定', nyuko:'入庫中', work:'作業中'}[c.status] || '';
-    var cls = c.status==='yotei' ? 'ywbar ywbar-yotei' : 'ywbar';
-    var barStyle = 'grid-column:'+it.start+'/'+(it.end+1)+';grid-row:'+(it.lane+2)+';'+(c.ganttColor?('border-left-color:'+c.ganttColor+';'):'');
-    var dotStyle = c.ganttColor ? ('background:'+c.ganttColor+';') : '';
-    var custEstTitle = (c.customerName?('・'+esc(c.customerName)):'') + (c.estimateAmount?('・見積¥'+Number(c.estimateAmount).toLocaleString()):'') + (c.loanerCar?('・🚙代車:'+esc(c.loanerCar.replace(/・$/,''))):'');
-    // 入庫予定表側でも代車が貸し出し中とひと目でわかるように、バーに🚙アイコンを付ける(2026-08-28)
-    return '<div class="'+cls+'" style="'+barStyle+'" onclick="bd_openCarFromYoteiGrid(\''+c.id+'\')" title="'+esc(c.cartype)+'・'+esc(c.number)+'・'+statusLabel+'（'+span+'日）'+custEstTitle+'">'
-      + '<span class="ywdot" style="'+dotStyle+'" title="色を変える" onclick="event.stopPropagation();bd_yoteiColorPick(event,\''+c.id+'\')"></span>'
-      + (c.loanerCar?'<span class="ywbloaner" title="代車あり">🚙</span>':'')
-      + '<span class="ywbtype">'+esc(c.cartype)+'</span>'
-      + (span>1?('<span class="ywbnum">'+esc(c.number)+'</span>'):'')
-      + (c.customerName?('<span class="ywbcust">👤'+esc(c.customerName)+'</span>'):'')
-      + (c.estimateAmount?('<span class="ywbamt">¥'+Number(c.estimateAmount).toLocaleString()+'</span>'):'')
-      + '</div>';
-  }).join('');
-  var gridStyle='grid-template-columns:repeat('+days+',minmax(34px,1fr));grid-template-rows:32px repeat('+lanes+',28px);';
-  return '<div class="ywgantt-wrap"><div class="ywgantt" style="'+gridStyle+'">'+headCells+colSeps+bars+'</div></div>';
+  var rowCursor=2; // 1行目は日付ヘッダ
+  var sectionsHtml='';
+  buckets.forEach(function(b){
+    var lanes=Math.max(bd_yoteiAssignLanes(b.items),1);
+    sectionsHtml += '<div class="ywsectionhead" style="grid-column:1/-1;grid-row:'+rowCursor+';">'+b.cat.label+'（'+b.items.length+'台）</div>';
+    var laneBaseRow=rowCursor+1;
+    b.items.forEach(function(it){
+      var c=it.car, span=it.end-it.start+1;
+      var statusLabel = {yotei:'予定', nyuko:'入庫中', work:'作業中'}[c.status] || '';
+      var cls = c.status==='yotei' ? 'ywbar ywbar-yotei' : 'ywbar';
+      var barStyle = 'grid-column:'+it.start+'/'+(it.end+1)+';grid-row:'+(it.lane+laneBaseRow)+';'+(c.ganttColor?('border-left-color:'+c.ganttColor+';'):'');
+      var dotStyle = c.ganttColor ? ('background:'+c.ganttColor+';') : '';
+      var custEstTitle = (c.customerName?('・'+esc(c.customerName)):'') + (c.estimateAmount?('・見積¥'+Number(c.estimateAmount).toLocaleString()):'') + (c.loanerCar?('・🚙代車:'+esc(c.loanerCar.replace(/・$/,''))):'');
+      // 入庫予定表側でも代車が貸し出し中とひと目でわかるように、バーに🚙アイコンを付ける(2026-08-28)
+      sectionsHtml += '<div class="'+cls+'" style="'+barStyle+'" onclick="bd_openCarFromYoteiGrid(\''+c.id+'\')" title="'+esc(c.cartype)+'・'+esc(c.number)+'・'+statusLabel+'（'+span+'日）'+custEstTitle+'">'
+        + '<span class="ywdot" style="'+dotStyle+'" title="色を変える" onclick="event.stopPropagation();bd_yoteiColorPick(event,\''+c.id+'\')"></span>'
+        + (c.loanerCar?'<span class="ywbloaner" title="代車あり">🚙</span>':'')
+        + '<span class="ywbtype">'+esc(c.cartype)+'</span>'
+        + (span>1?('<span class="ywbnum">'+esc(c.number)+'</span>'):'')
+        + (c.customerName?('<span class="ywbcust">👤'+esc(c.customerName)+'</span>'):'')
+        + (c.estimateAmount?('<span class="ywbamt">¥'+Number(c.estimateAmount).toLocaleString()+'</span>'):'')
+        + '</div>';
+    });
+    rowCursor += 1 + lanes;
+  });
+  var totalDataRows=Math.max(rowCursor-2, 1);
+  var gridStyle='grid-template-columns:repeat('+days+',minmax(34px,1fr));grid-template-rows:32px repeat('+totalDataRows+',28px);';
+  return '<div class="ywgantt-wrap"><div class="ywgantt" style="'+gridStyle+'">'+headCells+colSeps+sectionsHtml+'</div></div>';
 }
 /* 代車管理: 入庫予定表と同じ月・同じ日付軸で、行=登録済みの代車、バー=貸出中の車(お客様名・車種)。
    貸出期間は既定でその車自身の入庫〜納車予定と同じだが、loanerStart/loanerEndで個別に上書きできる。 */
