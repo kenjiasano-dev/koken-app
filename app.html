@@ -1924,7 +1924,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = 'app202608281755';
+const APP_VERSION = 'app202608281815';
 // LINEログイン(LIFF) — LINEコンソールで作成したLIFFアプリのIDを入れる
 const LIFF_ID = '2010638896-vJtjkUOr';
 // 公式アカウント「カーコン工賃通知」友だち追加URL（ここに飛ばすとLINEアプリの友だち追加画面が直接開く）
@@ -7465,18 +7465,53 @@ function loanerOccupants(key, excludeCarId){
 let _loanerAssignCarId = null;
 let _loanerCandStart = '';
 let _loanerCandEnd = '';
+let _loanerStartCalYM = null;
+let _loanerEndCalYM = null;
+/* 開始日・終了日それぞれのカレンダー月を、現在の候補日から初期化(2026-08-28) */
+function initLoanerCalYM(){
+  var sd = _loanerCandStart ? new Date(_loanerCandStart+'T00:00:00') : new Date();
+  var ed = _loanerCandEnd ? new Date(_loanerCandEnd+'T00:00:00') : sd;
+  _loanerStartCalYM = {y:sd.getFullYear(), m:sd.getMonth()};
+  _loanerEndCalYM = {y:ed.getFullYear(), m:ed.getMonth()};
+}
 function openLoanerAssign(carId){
   var c = findCar(carId); if(!c) return;
   _loanerAssignCarId = carId;
   var p = loanerPeriodOf(c);
   _loanerCandStart = p.s;
   _loanerCandEnd = p.e;
+  initLoanerCalYM();
   showSheet(loanerAssignHTML(c));
 }
 /* 貸出期間を変更するたびに、その期間で本当に空いているかを判定し直す */
-function onLoanerCandChange(){
-  _loanerCandStart = (document.getElementById('loaner-start')||{}).value || '';
-  _loanerCandEnd = (document.getElementById('loaner-end')||{}).value || '';
+function loanerPickStart(ds){
+  _loanerCandStart = ds;
+  var d=new Date(ds+'T00:00:00'); _loanerStartCalYM={y:d.getFullYear(), m:d.getMonth()};
+  var c = findCar(_loanerAssignCarId); if(!c) return;
+  showSheet(loanerAssignHTML(c));
+}
+function loanerMoveStart(delta){
+  if(!_loanerStartCalYM) initLoanerCalYM();
+  _loanerStartCalYM.m+=delta;
+  if(_loanerStartCalYM.m<0){_loanerStartCalYM.m=11;_loanerStartCalYM.y--;} else if(_loanerStartCalYM.m>11){_loanerStartCalYM.m=0;_loanerStartCalYM.y++;}
+  var c = findCar(_loanerAssignCarId); if(!c) return;
+  showSheet(loanerAssignHTML(c));
+}
+function loanerPickEnd(ds){
+  _loanerCandEnd = ds;
+  var d=new Date(ds+'T00:00:00'); _loanerEndCalYM={y:d.getFullYear(), m:d.getMonth()};
+  var c = findCar(_loanerAssignCarId); if(!c) return;
+  showSheet(loanerAssignHTML(c));
+}
+function loanerMoveEnd(delta){
+  if(!_loanerEndCalYM) initLoanerCalYM();
+  _loanerEndCalYM.m+=delta;
+  if(_loanerEndCalYM.m<0){_loanerEndCalYM.m=11;_loanerEndCalYM.y--;} else if(_loanerEndCalYM.m>11){_loanerEndCalYM.m=0;_loanerEndCalYM.y++;}
+  var c = findCar(_loanerAssignCarId); if(!c) return;
+  showSheet(loanerAssignHTML(c));
+}
+function loanerClearEnd(){
+  _loanerCandEnd = '';
   var c = findCar(_loanerAssignCarId); if(!c) return;
   showSheet(loanerAssignHTML(c));
 }
@@ -7504,14 +7539,18 @@ function loanerAssignHTML(c){
     return '<button class="btn" style="width:100%;text-align:left;margin-bottom:7px;'+style+'"'+onclick+(conflict?' disabled':'')+'>🚙 '+esc(loanerLabel(o))+' <span style="font-size:11px;opacity:.75;">（'+sub+'）</span></button>';
   }).join('');
   if(!cars.length) list = '<p style="color:var(--muted);font-size:13px;margin:0 0 12px;">代車が登録されていません。⚙設定→代車 で追加してください。</p>';
+  if(!_loanerStartCalYM || !_loanerEndCalYM) initLoanerCalYM();
   return '<h2>代車を貸す</h2>'
     + '<p style="color:var(--muted);font-size:12px;margin:0 0 12px;">'+esc(c.cartype)+'・'+esc(c.number)+'</p>'
-    + '<div class="field"><label>貸出期間（基本は入庫〜納車と同じ・変更できます）</label>'
-    + '<div style="display:flex;gap:8px;">'
-    + '<input type="date" id="loaner-start" value="'+esc(startVal)+'" oninput="onLoanerCandChange()" style="flex:1;background:var(--bg);border:0.5px solid var(--line2);color:var(--text);font-size:15px;padding:11px;border-radius:10px;">'
-    + '<input type="date" id="loaner-end" value="'+esc(endVal)+'" oninput="onLoanerCandChange()" style="flex:1;background:var(--bg);border:0.5px solid var(--line2);color:var(--text);font-size:15px;padding:11px;border-radius:10px;">'
-    + '</div></div>'
-    + '<p style="color:var(--muted);font-size:11px;margin:2px 0 10px;">期間を変えると、下の一覧の空き状況もその期間で判定し直されます</p>'
+    + '<div class="field"><label>貸出開始日（基本は入庫予定日と同じ）</label>'
+    + '<div style="font-size:14px;margin-bottom:6px;color:'+(startVal?'var(--accent)':'var(--muted)')+';">'+(startVal?('選択中: '+bd_fmtDateMD(startVal)):'未設定')+'</div>'
+    + buildCalendarHTML(_loanerStartCalYM.y, _loanerStartCalYM.m, startVal, 'loanerPickStart', 'loanerMoveStart')
+    + '</div>'
+    + '<div class="field" style="margin-top:14px;"><label>貸出終了日（基本は納車予定日と同じ・未定でも可）</label>'
+    + '<div style="font-size:14px;margin-bottom:6px;color:'+(endVal?'var(--accent)':'var(--muted)')+';">'+(endVal?('選択中: '+bd_fmtDateMD(endVal)):'未設定')+(endVal?' <a href="javascript:void(0)" onclick="loanerClearEnd()" style="color:var(--muted);font-size:12px;margin-left:8px;">未定にする</a>':'')+'</div>'
+    + buildCalendarHTML(_loanerEndCalYM.y, _loanerEndCalYM.m, endVal, 'loanerPickEnd', 'loanerMoveEnd')
+    + '</div>'
+    + '<p style="color:var(--muted);font-size:11px;margin:10px 0;">期間を変えると、下の一覧の空き状況もその期間で判定し直されます</p>'
     + '<div style="max-height:30vh;overflow:auto;margin-bottom:10px;">'+list+'</div>'
     + (c.loanerCar ? '<button class="btn ghost" style="margin-bottom:14px;" onclick="pickLoanerCar(\'\')">代車をやめる</button>' : '')
     + '<button class="btn" style="width:100%;margin-top:10px;" onclick="saveLoanerAssign()">保存</button>';
@@ -7524,8 +7563,8 @@ function pickLoanerCar(name){
 }
 function saveLoanerAssign(){
   var c = findCar(_loanerAssignCarId); if(!c) return;
-  c.loanerStart = (document.getElementById('loaner-start')||{}).value || '';
-  c.loanerEnd = (document.getElementById('loaner-end')||{}).value || '';
+  c.loanerStart = _loanerCandStart || '';
+  c.loanerEnd = _loanerCandEnd || '';
   persist(c); closeSheet(); render();
   toast(c.loanerCar ? ('🚙 '+c.loanerCar+' を貸出登録しました') : '代車情報を更新しました');
 }
@@ -7569,6 +7608,7 @@ function assignLoanerRowToCar(carId, key){
   _loanerAssignCarId = carId;
   var p = loanerPeriodOf(c);
   _loanerCandStart = p.s; _loanerCandEnd = p.e;
+  initLoanerCalYM();
   c.loanerCar = key;
   // 代車管理の行から来たので、保存/キャンセル後は代車管理に戻す
   _sheetReturnTo = function(){ showSheet(yoteiGridHTML(), true, true); };
