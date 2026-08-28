@@ -1926,7 +1926,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = 'app202608282215';
+const APP_VERSION = 'app202608282245';
 // LINEログイン(LIFF) — LINEコンソールで作成したLIFFアプリのIDを入れる
 const LIFF_ID = '2010638896-vJtjkUOr';
 // 公式アカウント「カーコン工賃通知」友だち追加URL（ここに飛ばすとLINEアプリの友だち追加画面が直接開く）
@@ -5188,6 +5188,10 @@ function submitEstimate() {
   const nyukoPlan = frontNyukoDate ? (frontNyukoDate + (nyukoTime ? ('T'+nyukoTime) : '')) : '';
   const deliveryDate = frontDelivDate || '';
   const deliveryTime = (document.getElementById('front-deliv-time')||{}).value || '';
+  // 成約＋車種ありは現場ボードに自動反映される(syncEstimateToBoard)ため、
+  // 「納車未定」のまま現場ボードに出てしまわないよう納車予定日を必須にする(2026-08-28)。
+  const willAddToBoard = (contractedState === 'immediate' || contractedState === 'later') && !!cartype;
+  if (willAddToBoard && !deliveryDate) { showToast('納車予定日を入力してください（現場ボードに追加されるため必須です）'); return; }
 
   const entry = {
     date, amount, orderAmount, contractType: contractedState,
@@ -6599,8 +6603,8 @@ function openAddCar(forceMode){
       </div>
     </div>
     <div class="field">
-      <label>納車予定日（任意・後から入れられます）</label>
-      <div id="nc-deliv-disp" style="font-size:15px; margin-bottom:9px; color:var(--muted);">未設定（任意）</div>
+      <label>納車予定日（必須）</label>
+      <div id="nc-deliv-disp" style="font-size:15px; margin-bottom:9px; color:var(--muted);">未設定</div>
       <div id="nc-cal"></div>
     </div>
     <div class="field">
@@ -6650,6 +6654,7 @@ function saveCar(){
   const estimateAmount = parseInt((document.getElementById('c-estimate')||{}).value||'',10) || 0;
   const deliv   = newCarDeliv || '';
   if(!cartype){ toast('車種名を入れてください'); return; }
+  if(!deliv){ toast('納車予定日を入れてください（「納車未定」を無くすため必須にしています）'); return; }
   if(number){
     var _dup = state.cars.filter(function(x){ return !x.deleted && x.status!=='done' && x.cartype===cartype && String(x.number)===String(number); });
     if(_dup.length){
@@ -6852,7 +6857,7 @@ function updateNcDisp(){
     el.textContent = '選択中: '+(d.getMonth()+1)+'/'+d.getDate();
     el.style.color='var(--accent)';
   }else{
-    el.textContent='未設定（任意）';
+    el.textContent='未設定';
     el.style.color='var(--muted)';
   }
 }
