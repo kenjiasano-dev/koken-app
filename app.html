@@ -1919,7 +1919,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = 'app202608281350';
+const APP_VERSION = 'app202608281410';
 // LINEログイン(LIFF) — LINEコンソールで作成したLIFFアプリのIDを入れる
 const LIFF_ID = '2010638896-vJtjkUOr';
 // 公式アカウント「カーコン工賃通知」友だち追加URL（ここに飛ばすとLINEアプリの友だち追加画面が直接開く）
@@ -7336,44 +7336,73 @@ function bd_loanerLine(c){
   }
   return '<div class="deliv deliv-set" onclick="event.stopPropagation();openLoanerAssign(\''+c.id+'\')">＋ 代車を貸す</div>';
 }
+/* 代車の貸出期間(既定はその車の入庫〜納車予定、個別上書きも可)。daishaGridHTMLとも共有。 */
+function loanerPeriodOf(c){
+  var s = c.loanerStart || (c.status==='yotei' ? (c.nyukoPlan||'').slice(0,10) : (c.nyukoAt||'').slice(0,10));
+  var e = c.loanerEnd || c.deliveryDate || '';
+  return {s:s, e:e};
+}
+/* 期間の重なり判定。終了日未定は「まだ先も続く」扱いにする(遠い未来日として比較)。 */
+function periodsOverlap(aStart, aEnd, bStart, bEnd){
+  if(!aStart || !bStart) return false;
+  var aE = aEnd || '9999-12-31';
+  var bE = bEnd || '9999-12-31';
+  return aStart <= bE && bStart <= aE;
+}
 let _loanerAssignCarId = null;
+let _loanerCandStart = '';
+let _loanerCandEnd = '';
 function openLoanerAssign(carId){
   var c = findCar(carId); if(!c) return;
   _loanerAssignCarId = carId;
+  var p = loanerPeriodOf(c);
+  _loanerCandStart = p.s;
+  _loanerCandEnd = p.e;
+  showSheet(loanerAssignHTML(c));
+}
+/* 貸出期間を変更するたびに、その期間で本当に空いているかを判定し直す */
+function onLoanerCandChange(){
+  _loanerCandStart = (document.getElementById('loaner-start')||{}).value || '';
+  _loanerCandEnd = (document.getElementById('loaner-end')||{}).value || '';
+  var c = findCar(_loanerAssignCarId); if(!c) return;
   showSheet(loanerAssignHTML(c));
 }
 function loanerAssignHTML(c){
   var cars = getLoanerCars();
-  var defStart = c.status==='yotei' ? (c.nyukoPlan||'').slice(0,10) : (c.nyukoAt||'').slice(0,10);
-  var defEnd = c.deliveryDate || '';
-  var startVal = c.loanerStart || defStart;
-  var endVal = c.loanerEnd || defEnd;
-  // 他の車が今まさに使用中(yotei/nyuko/work)の代車は貸せないので黒、空いている代車は白で分かりやすく(2026-08-28)
+  var startVal = _loanerCandStart;
+  var endVal = _loanerCandEnd;
+  // 「今借りていても、選んだ期間が重ならなければ予約可」にするため、単に他の車が使っているかでは
+  // なく、貸出期間が実際に重なっている場合だけ黒(選択不可)にする(2026-08-28)。
   var list = cars.map(function(n){
-    var busyCar = state.cars.find(function(o){ return o.id!==c.id && o.loanerCar===n && (o.status==='yotei'||o.status==='nyuko'||o.status==='work'); });
+    var conflict = state.cars.filter(function(o){
+      return o.id!==c.id && o.loanerCar===n && (o.status==='yotei'||o.status==='nyuko'||o.status==='work');
+    }).map(function(o){ return {car:o, p:loanerPeriodOf(o)}; })
+      .find(function(x){ return periodsOverlap(startVal, endVal, x.p.s, x.p.e); });
     var selected = c.loanerCar===n;
     var style, sub, onclick;
-    if(busyCar){
+    if(conflict){
+      var op=conflict.p;
       style = 'background:#111;color:#fff;border:1px solid #444;cursor:not-allowed;opacity:.8;';
-      sub = '貸出中：'+esc(busyCar.customerName||busyCar.cartype);
+      sub = 'その期間は貸出中：'+esc(conflict.car.customerName||conflict.car.cartype)+'（'+(op.s?bd_fmtDateMD(op.s):'?')+'〜'+(op.e?bd_fmtDateMD(op.e):'未定')+'）';
       onclick = '';
     } else {
       style = 'background:#fff;color:#111;'+(selected?'border:2px solid var(--accent);':'border:1px solid #ccc;');
-      sub = '空いています';
+      sub = 'この期間は空いています';
       onclick = ' onclick="pickLoanerCar(\''+esc(n)+'\')"';
     }
-    return '<button class="btn" style="width:100%;text-align:left;margin-bottom:7px;'+style+'"'+onclick+(busyCar?' disabled':'')+'>🚙 '+esc(n)+' <span style="font-size:11px;opacity:.75;">（'+sub+'）</span></button>';
+    return '<button class="btn" style="width:100%;text-align:left;margin-bottom:7px;'+style+'"'+onclick+(conflict?' disabled':'')+'>🚙 '+esc(n)+' <span style="font-size:11px;opacity:.75;">（'+sub+'）</span></button>';
   }).join('');
   if(!cars.length) list = '<p style="color:var(--muted);font-size:13px;margin:0 0 12px;">代車が登録されていません。⚙設定→代車 で追加してください。</p>';
   return '<h2>代車を貸す</h2>'
     + '<p style="color:var(--muted);font-size:12px;margin:0 0 12px;">'+esc(c.cartype)+'・'+esc(c.number)+'</p>'
-    + '<div style="max-height:30vh;overflow:auto;margin-bottom:10px;">'+list+'</div>'
-    + (c.loanerCar ? '<button class="btn ghost" style="margin-bottom:14px;" onclick="pickLoanerCar(\'\')">代車をやめる</button>' : '')
     + '<div class="field"><label>貸出期間（基本は入庫〜納車と同じ・変更できます）</label>'
     + '<div style="display:flex;gap:8px;">'
-    + '<input type="date" id="loaner-start" value="'+esc(startVal)+'" style="flex:1;background:var(--bg);border:0.5px solid var(--line2);color:var(--text);font-size:15px;padding:11px;border-radius:10px;">'
-    + '<input type="date" id="loaner-end" value="'+esc(endVal)+'" style="flex:1;background:var(--bg);border:0.5px solid var(--line2);color:var(--text);font-size:15px;padding:11px;border-radius:10px;">'
+    + '<input type="date" id="loaner-start" value="'+esc(startVal)+'" oninput="onLoanerCandChange()" style="flex:1;background:var(--bg);border:0.5px solid var(--line2);color:var(--text);font-size:15px;padding:11px;border-radius:10px;">'
+    + '<input type="date" id="loaner-end" value="'+esc(endVal)+'" oninput="onLoanerCandChange()" style="flex:1;background:var(--bg);border:0.5px solid var(--line2);color:var(--text);font-size:15px;padding:11px;border-radius:10px;">'
     + '</div></div>'
+    + '<p style="color:var(--muted);font-size:11px;margin:2px 0 10px;">期間を変えると、下の一覧の空き状況もその期間で判定し直されます</p>'
+    + '<div style="max-height:30vh;overflow:auto;margin-bottom:10px;">'+list+'</div>'
+    + (c.loanerCar ? '<button class="btn ghost" style="margin-bottom:14px;" onclick="pickLoanerCar(\'\')">代車をやめる</button>' : '')
     + '<button class="btn" style="width:100%;margin-top:10px;" onclick="saveLoanerAssign()">保存</button>';
 }
 function pickLoanerCar(name){
