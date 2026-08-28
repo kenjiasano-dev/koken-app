@@ -1924,7 +1924,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = 'app202608281815';
+const APP_VERSION = 'app202608281900';
 // LINEログイン(LIFF) — LINEコンソールで作成したLIFFアプリのIDを入れる
 const LIFF_ID = '2010638896-vJtjkUOr';
 // 公式アカウント「カーコン工賃通知」友だち追加URL（ここに飛ばすとLINEアプリの友だち追加画面が直接開く）
@@ -7457,9 +7457,9 @@ function getLoanerHolds(){ return (state.store && Array.isArray(state.store.loan
 function loanerOccupants(key, excludeCarId){
   var carItems = state.cars.filter(function(c){
     return c.id!==excludeCarId && c.loanerCar===key && (c.status==='yotei'||c.status==='nyuko'||c.status==='work');
-  }).map(function(c){ var p=loanerPeriodOf(c); return {kind:'car', id:c.id, label:(c.customerName||c.cartype), sub:c.cartype, s:p.s, e:p.e}; });
+  }).map(function(c){ var p=loanerPeriodOf(c); return {kind:'car', id:c.id, label:(c.customerName||c.cartype), sub:c.cartype, s:p.s, e:p.e, color:c.ganttColor||''}; });
   var holdItems = getLoanerHolds().filter(function(h){ return h.key===key; })
-    .map(function(h){ return {kind:'hold', id:h.id, label:(h.memo||'仮抑え'), sub:'', s:h.start, e:h.end}; });
+    .map(function(h){ return {kind:'hold', id:h.id, label:(h.memo||'仮抑え'), sub:'', s:h.start, e:h.end, color:h.color||''}; });
   return carItems.concat(holdItems);
 }
 let _loanerAssignCarId = null;
@@ -8820,7 +8820,12 @@ function daishaGridHTML(){
       var isHold = occ.kind==='hold';
       var title=esc(loanerLabel(loaner))+'・'+esc(occ.label)+(occ.sub?('・'+esc(occ.sub)):'')+(isHold?'（仮抑え）':'')+'・'+periodTxt;
       var onclick = isHold ? ('openLoanerHold(\''+occ.id+'\')') : ('bd_openCarFromYoteiGrid(\''+occ.id+'\')');
-      rowsHtml += '<div class="ywbar'+(isHold?' ywbar-yotei':'')+'" style="grid-column:'+(start+1)+'/'+(end+2)+';grid-row:'+rowIdx+';" onclick="'+onclick+'" title="'+title+'">'
+      var barStyle = 'grid-column:'+(start+1)+'/'+(end+2)+';grid-row:'+rowIdx+';'+(occ.color?('border-left-color:'+occ.color+';'):'');
+      var dotStyle = occ.color ? ('background:'+occ.color+';') : '';
+      // 実車は既存のganttColor(入庫予定表と共有)、仮抑えはloanerHolds側のcolorで色分け(2026-08-28)
+      var dotClick = isHold ? ('bd_holdColorPick(event,\''+occ.id+'\')') : ('bd_yoteiColorPick(event,\''+occ.id+'\')');
+      rowsHtml += '<div class="ywbar'+(isHold?' ywbar-yotei':'')+'" style="'+barStyle+'" onclick="'+onclick+'" title="'+title+'">'
+        + '<span class="ywdot" style="'+dotStyle+'" title="色を変える" onclick="event.stopPropagation();'+dotClick+'"></span>'
         + '<span class="ywbcust">'+(isHold?'📌':'👤')+esc(occ.label)+'</span>'
         + (occ.sub?('<span class="ywbtype">'+esc(occ.sub)+'</span>'):'')
         + '<span class="ywbnum">'+esc(periodTxt)+'</span>'
@@ -8834,7 +8839,8 @@ function daishaGridHTML(){
 /* バー先頭の丸(ywdot)をタップすると出す、色を選ぶだけの最小限のポップアップ。
    整備・車検・コーチングなど種類が増えても、車ごとに自由に色分けできるように(2026-08-27)。 */
 var YOTEI_COLORS=['#4A9ECC','#e74c3c','#f39c12','#27ae60','#9b59b6','#1abc9c','#e91e63','#795548'];
-function bd_yoteiColorPick(ev, carId){
+/* 色選択ポップアップの共通部分。入庫予定表の車にも代車管理のバー(実車・仮抑え両方)にも使う(2026-08-28)。 */
+function bd_openColorPopup(ev, onPick){
   var old=document.getElementById('yw-colorpop'); if(old) old.remove();
   var pop=document.createElement('div');
   pop.id='yw-colorpop';
@@ -8844,23 +8850,34 @@ function bd_yoteiColorPick(ev, carId){
   YOTEI_COLORS.forEach(function(col){
     var sw=document.createElement('div');
     sw.style.cssText='width:22px;height:22px;border-radius:50%;cursor:pointer;background:'+col+';border:2px solid rgba(255,255,255,.15);';
-    sw.onclick=function(e){ e.stopPropagation(); bd_setYoteiColor(carId, col); };
+    sw.onclick=function(e){ e.stopPropagation(); var p=document.getElementById('yw-colorpop'); if(p) p.remove(); onPick(col); };
     pop.appendChild(sw);
   });
   var clr=document.createElement('div');
   clr.textContent='色なしに戻す';
   clr.style.cssText='width:100%;text-align:center;font-size:10px;color:var(--muted);cursor:pointer;margin-top:6px;padding-top:6px;border-top:1px solid var(--line2,#444);';
-  clr.onclick=function(e){ e.stopPropagation(); bd_setYoteiColor(carId, ''); };
+  clr.onclick=function(e){ e.stopPropagation(); var p=document.getElementById('yw-colorpop'); if(p) p.remove(); onPick(''); };
   pop.appendChild(clr);
   document.body.appendChild(pop);
   setTimeout(function(){
     document.addEventListener('click', function closeOnce(){ var p=document.getElementById('yw-colorpop'); if(p) p.remove(); document.removeEventListener('click',closeOnce); });
   },0);
 }
+function bd_yoteiColorPick(ev, carId){
+  bd_openColorPopup(ev, function(color){ bd_setYoteiColor(carId, color); });
+}
+function bd_holdColorPick(ev, holdId){
+  bd_openColorPopup(ev, function(color){ bd_setHoldColor(holdId, color); });
+}
+function bd_setHoldColor(holdId, color){
+  var h = getLoanerHolds().find(function(x){ return x.id===holdId; }); if(!h) return;
+  h.color = color; bd_saveLocal();
+  showSheet(yoteiGridHTML(), true, true);
+  toast(color?'色を変更しました':'色をリセットしました');
+}
 function bd_setYoteiColor(carId, color){
   var c=findCar(carId); if(!c) return;
   c.ganttColor=color; persist(c);
-  var pop=document.getElementById('yw-colorpop'); if(pop) pop.remove();
   showSheet(yoteiGridHTML(), true, true);
   toast(color?'色を変更しました':'色をリセットしました');
 }
