@@ -1923,7 +1923,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = 'app202608281700';
+const APP_VERSION = 'app202608281720';
 // LINEログイン(LIFF) — LINEコンソールで作成したLIFFアプリのIDを入れる
 const LIFF_ID = '2010638896-vJtjkUOr';
 // 公式アカウント「カーコン工賃通知」友だち追加URL（ここに飛ばすとLINEアプリの友だち追加画面が直接開く）
@@ -7137,7 +7137,65 @@ function settingsHTML(){
     <button class="btn ghost" style="margin-top:9px;" onclick="openRankingBoard()">🏆 称号・ランキング</button>
     <button class="btn ghost" style="margin-top:9px;" onclick="connectGDrive()">🔗 Googleドライブ連携${(localStorage.getItem('gdrive_confirmed_email'))?'（'+esc(localStorage.getItem('gdrive_confirmed_email'))+'）':'（未接続）'}</button>
     <button class="btn ghost" style="margin-top:9px;" onclick="exportAllZip()">📷 全部の工程写真をまとめてZIPで書き出す</button>
-    <button class="btn ghost" style="margin-top:9px;" onclick="openSetup()">店舗名・グループを変更</button>`;
+    <button class="btn ghost" style="margin-top:9px;" onclick="openSetup()">店舗名・グループを変更</button>
+    ${bd_isTestStore() ? '<button class="btn ghost" style="margin-top:9px;background:var(--amber-bg,#3a2600);border-color:var(--amber,#e67e22);color:var(--amber,#e67e22);" onclick="generateTestCars()">🧪 テストデータをまとめて作成（30台・研修用）</button>' : ''}`;
+}
+
+/* ---------- テストデータ一括作成(研修・デモ用、2026-08-28) ----------
+   本番の顧客データを誤って汚さないよう、店舗名・グループコードが研修/テストと
+   分かるものの時だけ設定画面にボタンを出す。生成はこのボタンをユーザー自身が
+   押した時だけ実行される(Claudeが裏側で直接書き込むことはしない)。 */
+function bd_isTestStore(){
+  if(!state.store) return false;
+  var g=String(state.store.group||''), n=String(state.store.name||'');
+  return g==='KOKEN-UJ9UC' || n.indexOf('研修')>=0 || n.indexOf('テスト')>=0 || g.toLowerCase().indexOf('test')>=0;
+}
+async function generateTestCars(){
+  if(!confirm('ランダムな車30台（車種・お客様名・入庫予定日）を、今日から約4週間に分けて作成します。よろしいですか？')) return;
+  var carTypes=['プリウス','アクア','ヴィッツ','ノート','ノア','ヴォクシー','ハスラー','ワゴンR','N-BOX','タント','フリード','セレナ','ekワゴン','ラパン','ジムニー','デイズ','ムーヴ','スペーシア','ヴェゼル','フィット','ミラ','スイフト','アルファード','エクリプスクロス','RAV4'];
+  var surnames=['佐藤','鈴木','高橋','田中','伊藤','渡辺','山本','中村','小林','加藤','吉田','山田','佐々木','山口','松本','井上','木村','林','斎藤','清水'];
+  function pad(n){ return String(n).padStart(2,'0'); }
+  function rnd(n){ return Math.floor(Math.random()*n); }
+  var today=new Date(); today.setHours(0,0,0,0);
+  var totalDays=28;
+  var newCars=[];
+  for(var i=0;i<30;i++){
+    var dayOffset=Math.max(0, Math.min(totalDays, Math.round((i/29)*totalDays + (rnd(3)-1))));
+    var d=new Date(today.getTime()+dayOffset*86400000);
+    var dateStr=d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
+    var timeStr=['09:00','10:00','12:00','14:00','15:00','17:00'][rnd(6)];
+    var isSeibi=rnd(10)<3;
+    var kind=isSeibi?'整備':'板金';
+    var category=isSeibi?(rnd(2)===0?'点検整備':'一般整備'):'';
+    var customerName=rnd(10)<7 ? (surnames[rnd(surnames.length)]+'様') : '';
+    var estimateAmount=rnd(10)<6 ? (rnd(28)+3)*10000 : 0;
+    var status, nyukoPlan='', nyukoAt=null, deliveryDate='';
+    if(dayOffset<=1){
+      status=rnd(2)===0?'work':'nyuko';
+      nyukoAt=d.toISOString();
+      if(rnd(10)<6){ var dd=new Date(d.getTime()+(rnd(6)+2)*86400000); deliveryDate=dd.getFullYear()+'-'+pad(dd.getMonth()+1)+'-'+pad(dd.getDate()); }
+    } else {
+      status='yotei';
+      nyukoPlan=dateStr+'T'+timeStr;
+      if(rnd(10)<5){ var dd2=new Date(d.getTime()+(rnd(6)+2)*86400000); deliveryDate=dd2.getFullYear()+'-'+pad(dd2.getMonth()+1)+'-'+pad(dd2.getDate()); }
+    }
+    newCars.push({
+      id: uuid(), cartype: carTypes[rnd(carTypes.length)], number: pad(rnd(10000)).padStart(4,'0'),
+      customerName: customerName, estimateAmount: estimateAmount,
+      kind: kind, category: category,
+      deliveryDate: deliveryDate, deliveryTime:'', isInsurance: rnd(10)<2,
+      status: status, stage: status==='work'?rnd(4):0, stageDur:[], stageBy:[], assignee:'',
+      waitingParts:false, partSince:null, onHold:false, holdReason:'',
+      photos:[], wageLogged:[], stageStart:null,
+      nyukoPlan: nyukoPlan, nyukoAt: nyukoAt, startAt:null, doneAt:null, projectId:null,
+      updatedAt: Date.now()
+    });
+  }
+  state.cars = state.cars.concat(newCars);
+  bd_saveLocal();
+  await syncBoardCars(state.cars);
+  closeSheet(); render();
+  toast('🧪 テストデータ30台を作成しました');
 }
 
 /* ---------- 担当者（メンバー） ---------- */
