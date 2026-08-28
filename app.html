@@ -1559,6 +1559,22 @@ input[type="time"]::-webkit-calendar-picker-indicator { filter: invert(1); opaci
             <input type="text" class="form-input" id="front-cat-other" placeholder="例）洗車・コーティング" autocomplete="off" oninput="updateFrontOtherCat(this.value)">
           </div>
           <div class="form-group">
+            <label class="form-label">結果</label>
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:8px;">
+              <button class="contract-btn" id="btn-immediate" onclick="setContract('immediate')">⚡ 即成約</button>
+              <button class="contract-btn" id="btn-later" onclick="setContract('later')">📅 後日成約</button>
+              <button class="contract-btn" id="btn-none" onclick="setContract('none')">❌ 未成約</button>
+            </div>
+          </div>
+          <!-- 受注金額（即・後日成約の時だけ表示） -->
+          <div class="form-group" id="order-amount-group" style="display:none;">
+            <label class="form-label">💰 受注金額</label>
+            <div class="amount-input-wrap">
+              <span class="yen">¥</span>
+              <input type="text" class="form-input" id="front-order-amount" placeholder="0" inputmode="numeric" oninput="onFrontOrderAmountInput(this)">
+            </div>
+          </div>
+          <div class="form-group">
             <label class="form-label">🚙 入庫予定日時（任意・成約時に現場ボードへ引き継がれます）</label>
             <div id="front-nyuko-disp" style="font-size:14px;margin-bottom:9px;color:var(--text-sub);">未設定（任意）</div>
             <div id="front-nyuko-cal"></div>
@@ -1600,22 +1616,6 @@ input[type="time"]::-webkit-calendar-picker-indicator { filter: invert(1); opaci
               <input type="text" class="form-input" id="front-amount" placeholder="0" inputmode="numeric" oninput="onFrontAmountInput(this)">
             </div>
 
-          </div>
-          <div class="form-group">
-            <label class="form-label">結果</label>
-            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:8px;">
-              <button class="contract-btn" id="btn-immediate" onclick="setContract('immediate')">⚡ 即成約</button>
-              <button class="contract-btn" id="btn-later" onclick="setContract('later')">📅 後日成約</button>
-              <button class="contract-btn" id="btn-none" onclick="setContract('none')">❌ 未成約</button>
-            </div>
-          </div>
-          <!-- 受注金額（即・後日成約の時だけ表示） -->
-          <div class="form-group" id="order-amount-group" style="display:none;">
-            <label class="form-label">💰 受注金額</label>
-            <div class="amount-input-wrap">
-              <span class="yen">¥</span>
-              <input type="text" class="form-input" id="front-order-amount" placeholder="0" inputmode="numeric" oninput="onFrontOrderAmountInput(this)">
-            </div>
           </div>
           <div class="form-group">
             <label class="form-label">日付</label>
@@ -1919,7 +1919,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = 'app202608281420';
+const APP_VERSION = 'app202608281435';
 // LINEログイン(LIFF) — LINEコンソールで作成したLIFFアプリのIDを入れる
 const LIFF_ID = '2010638896-vJtjkUOr';
 // 公式アカウント「カーコン工賃通知」友だち追加URL（ここに飛ばすとLINEアプリの友だち追加画面が直接開く）
