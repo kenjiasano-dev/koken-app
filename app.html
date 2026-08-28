@@ -1926,7 +1926,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = 'app202608282310';
+const APP_VERSION = 'app202608282330';
 // LINEログイン(LIFF) — LINEコンソールで作成したLIFFアプリのIDを入れる
 const LIFF_ID = '2010638896-vJtjkUOr';
 // 公式アカウント「カーコン工賃通知」友だち追加URL（ここに飛ばすとLINEアプリの友だち追加画面が直接開く）
@@ -6067,7 +6067,7 @@ reclaimFromLineRedirect().then(function(reclaimed) {
 <div id="pc-dash">
   <div class="pcd-head">
     <div class="pcd-title"><span class="logo">工</span><span id="pcd-store">現場コントロール</span></div>
-    <input id="pcd-search" placeholder="🔍 車種・下4桁で検索" oninput="pcdSearch(this.value)">
+    <input id="pcd-search" placeholder="🔍 車種・ナンバー・お客様名で検索" oninput="pcdSearch(this.value)">
     <div class="pcd-date" id="pcd-date"></div>
     <button onclick="openSettings()" title="現場の設定（工程・担当メンバー・代車・Googleドライブ連携・写真ZIP）">⚙ 現場の設定</button>
     <button id="pcd-view-toggle" onclick="bd_pcdCycleView()" title="表示モードを切り替えます(全部表示→簡潔表示→概要表示)">📋 全部表示</button>
@@ -9766,7 +9766,8 @@ function bd_carCatKey(c){
 function pcdSetCatFilter(key, on){ _pcdCatFilter[key]=!!on; renderPcDash(); }
 function renderPcDash(){
   var q=(_pcdQ||'').trim();
-  function mq(c){ return !q || (String(c.number||'').indexOf(q)>=0) || (String(c.cartype||'').indexOf(q)>=0); }
+  // 車種・ナンバーだけでなく名前でも検索できるように(2026-08-28、219台など件数が多い店から要望)
+  function mq(c){ return !q || (String(c.number||'').indexOf(q)>=0) || (String(c.cartype||'').indexOf(q)>=0) || (String(c.customerName||'').indexOf(q)>=0); }
   var cars=state.cars.filter(mq).filter(function(c){ return _pcdCatFilter[bd_carCatKey(c)]; });
   var yotei=cars.filter(function(c){return c.status==='yotei';}).sort(function(a,b){return bd_planMs(a)-bd_planMs(b);});
   var nyuko=cars.filter(function(c){return c.status==='nyuko';}).sort(function(a,b){ return new Date(a.nyukoAt)-new Date(b.nyukoAt); });
