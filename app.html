@@ -1924,7 +1924,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = 'app202608282010';
+const APP_VERSION = 'app202608282045';
 // LINEログイン(LIFF) — LINEコンソールで作成したLIFFアプリのIDを入れる
 const LIFF_ID = '2010638896-vJtjkUOr';
 // 公式アカウント「カーコン工賃通知」友だち追加URL（ここに飛ばすとLINEアプリの友だち追加画面が直接開く）
@@ -7556,9 +7556,10 @@ function loanerAssignHTML(c){
     } else {
       style = 'background:#fff;color:#111;'+(selected?'border:2px solid var(--accent);':'border:1px solid #ccc;');
       sub = 'この期間は空いています';
-      onclick = ' onclick="pickLoanerCar(\''+esc(key)+'\')"';
+      onclick = ' onclick="selectLoanerCandidate(\''+esc(key)+'\')"';
     }
-    return '<button class="btn" style="width:100%;text-align:left;margin-bottom:7px;'+style+'"'+onclick+(conflict?' disabled':'')+'>🚙 '+esc(loanerLabel(o))+' <span style="font-size:11px;opacity:.75;">（'+sub+'）</span></button>';
+    // 一覧を丸ごと再描画すると画面が上まで戻ってしまうため、選択状態はJS側でその場だけ切り替える(2026-08-28)
+    return '<button class="btn loaner-cand-btn" data-key="'+esc(key)+'" style="width:100%;text-align:left;margin-bottom:7px;'+style+'"'+onclick+(conflict?' disabled':'')+'><span class="loaner-cand-icon">'+(selected?'✅':'🚙')+'</span> '+esc(loanerLabel(o))+' <span style="font-size:11px;opacity:.75;">（'+sub+'）</span></button>';
   }).join('');
   if(!cars.length) list = '<p style="color:var(--muted);font-size:13px;margin:0 0 12px;">代車が登録されていません。⚙設定→代車 で追加してください。</p>';
   if(!_loanerStartCalYM || !_loanerEndCalYM) initLoanerCalYM();
@@ -7575,7 +7576,20 @@ function loanerAssignHTML(c){
     + '<p style="color:var(--muted);font-size:11px;margin:10px 0;">期間を変えると、下の一覧の空き状況もその期間で判定し直されます</p>'
     + '<div style="max-height:30vh;overflow:auto;margin-bottom:10px;">'+list+'</div>'
     + (c.loanerCar ? '<button class="btn ghost" style="margin-bottom:14px;" onclick="pickLoanerCar(\'\')">代車をやめる</button>' : '')
-    + '<button class="btn" style="width:100%;margin-top:10px;" onclick="saveLoanerAssign()">保存</button>';
+    + '<button class="btn" style="width:100%;margin-top:10px;" onclick="saveLoanerAssign()">✅ この内容で決定</button>';
+}
+/* 一覧の車をタップした時、画面全体を再描画すると一覧のスクロール位置が上まで飛んでしまうため、
+   選択はメモリ上の値だけ更新し、見た目(枠線・アイコン)はタップしたボタンだけその場で切り替える。
+   実際の保存・トースト通知は下の「決定」ボタン(saveLoanerAssign)で行う(2026-08-28)。 */
+function selectLoanerCandidate(key){
+  var c = findCar(_loanerAssignCarId); if(!c) return;
+  c.loanerCar = key;
+  document.querySelectorAll('.loaner-cand-btn').forEach(function(btn){
+    var isSel = btn.dataset.key===key;
+    btn.style.border = isSel ? '2px solid var(--accent)' : '1px solid #ccc';
+    var icon = btn.querySelector('.loaner-cand-icon');
+    if(icon) icon.textContent = isSel ? '✅' : '🚙';
+  });
 }
 function pickLoanerCar(name){
   var c = findCar(_loanerAssignCarId); if(!c) return;
