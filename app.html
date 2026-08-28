@@ -1926,7 +1926,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = 'app202608282515';
+const APP_VERSION = 'app202608282530';
 // LINEログイン(LIFF) — LINEコンソールで作成したLIFFアプリのIDを入れる
 const LIFF_ID = '2010638896-vJtjkUOr';
 // 公式アカウント「カーコン工賃通知」友だち追加URL（ここに飛ばすとLINEアプリの友だち追加画面が直接開く）
@@ -6804,7 +6804,8 @@ function deliveryLine(c){
   else if(n===0){ cls='red'; extra='本日納車'; }
   else if(n<=2){ cls='amber'; extra='あと'+n+'日'; }
   else { extra='あと'+n+'日'; }
-  return `<div class="deliv ${cls}" onclick="event.stopPropagation();openDelivery('${c.id}')">🚚 納車 ${label}${tm}・${extra}</div>`;
+  // タップで変更できることが伝わるように、他の項目(お客様名・代車など)と同じ✎印を付ける(2026-08-28)
+  return `<div class="deliv ${cls}" onclick="event.stopPropagation();openDelivery('${c.id}')">🚚 納車 ${label}${tm}・${extra} <span style="opacity:.5;">✎</span></div>`;
 }
 /* カレンダーHTMLの共通部品（カード用・入庫フォーム用で使い回す） */
 function buildCalendarHTML(y, m, selected, pickFn, moveFn){
