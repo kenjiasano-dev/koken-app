@@ -1548,7 +1548,7 @@ input[type="time"]::-webkit-calendar-picker-indicator { filter: invert(1); opaci
             <label class="form-label">📋 見積り金額</label>
             <div class="amount-input-wrap">
               <span class="yen">¥</span>
-              <input type="text" class="form-input" id="front-amount" placeholder="0" inputmode="numeric" oninput="formatAmountInput(this)">
+              <input type="text" class="form-input" id="front-amount" placeholder="0" inputmode="numeric" oninput="onFrontAmountInput(this)">
             </div>
 
           </div>
@@ -1565,7 +1565,7 @@ input[type="time"]::-webkit-calendar-picker-indicator { filter: invert(1); opaci
             <label class="form-label">💰 受注金額</label>
             <div class="amount-input-wrap">
               <span class="yen">¥</span>
-              <input type="text" class="form-input" id="front-order-amount" placeholder="0" inputmode="numeric" oninput="formatAmountInput(this)">
+              <input type="text" class="form-input" id="front-order-amount" placeholder="0" inputmode="numeric" oninput="onFrontOrderAmountInput(this)">
             </div>
           </div>
           <div class="form-group">
@@ -1830,6 +1830,20 @@ function formatAmountInput(el) {
   var digits = el.value.replace(/[^0-9]/g, '');
   el.value = digits ? Number(digits).toLocaleString('en-US') : '';
 }
+/* 見積り金額を入力すると、受注金額を自分で触っていない限りは同じ額を追従させる。
+   金額が違う契約(値引き等)の時だけ、受注金額欄を直接編集すればそちらが優先される。 */
+var _frontOrderTouched = false;
+function onFrontAmountInput(el) {
+  formatAmountInput(el);
+  if (!_frontOrderTouched) {
+    var oe = document.getElementById('front-order-amount');
+    if (oe) oe.value = el.value;
+  }
+}
+function onFrontOrderAmountInput(el) {
+  _frontOrderTouched = true;
+  formatAmountInput(el);
+}
 
 // ナンバー4桁で自動的に次のフィールドへ
 function numAutoNext(el, nextId) {
@@ -1856,7 +1870,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = 'app202608281030';
+const APP_VERSION = 'app202608281050';
 // LINEログイン(LIFF) — LINEコンソールで作成したLIFFアプリのIDを入れる
 const LIFF_ID = '2010638896-vJtjkUOr';
 // 公式アカウント「カーコン工賃通知」友だち追加URL（ここに飛ばすとLINEアプリの友だち追加画面が直接開く）
@@ -5128,6 +5142,7 @@ function submitEstimate() {
   saveLocal();
 
   if (!userData.ninjaMode) postToGAS({ action: 'addEstimate', ...entry });
+  const addedToBoard = syncEstimateToBoard(entry);
 
   // リセット
   document.getElementById('front-amount').value = '';
@@ -5136,15 +5151,37 @@ function submitEstimate() {
   document.getElementById('front-cartype').value = '';
   document.getElementById('front-customer').value = '';
   contractedState = null;
+  _frontOrderTouched = false;
   document.getElementById('btn-immediate').className = 'contract-btn';
   document.getElementById('btn-later').className = 'contract-btn';
   document.getElementById('btn-none').className = 'contract-btn';
   const og = document.getElementById('order-amount-group');
   if (og) og.style.display = 'none';
 
-  const msg = entry.immediate ? '⚡ 即成約で登録！' : entry.later ? '📅 後日成約で登録！' : '❌ 未成約で登録';
+  const msg = (entry.immediate ? '⚡ 即成約で登録！' : entry.later ? '📅 後日成約で登録！' : '❌ 未成約で登録') + (addedToBoard ? '（🏭 現場ボードにも追加）' : '');
   showToast(msg);
   renderFrontHistory();
+}
+/* 受付で成約した見積りを、現場ボードの入庫予定へ自動反映する(2026-08-28)。
+   車種が空だとボードに出しても使い物にならないため、車種入力がある成約時だけ作成する。
+   入庫予定日は分からないので未定のまま追加し、実際の予定はボード側で後から入れてもらう。 */
+function syncEstimateToBoard(entry) {
+  if (!entry.contracted || !entry.cartype) return false;
+  if (typeof state === 'undefined' || !state.cars) return false;
+  var newCar = {
+    id: uuid(), cartype: entry.cartype, number: entry.number || '',
+    customerName: entry.customerName || '', estimateAmount: entry.orderAmount || entry.amount || 0,
+    kind: '板金', category: '',
+    deliveryDate: '', deliveryTime: '', isInsurance: false,
+    status: 'yotei', stage: 0, stageDur: [], stageBy: [], assignee: '',
+    waitingParts: false, partSince: null, onHold: false, holdReason: '',
+    photos: [], wageLogged: [], stageStart: null,
+    nyukoPlan: '', nyukoAt: null, startAt: null, doneAt: null, projectId: null
+  };
+  state.cars.push(newCar);
+  if (typeof syncProjectCreate === 'function') syncProjectCreate(newCar);
+  if (typeof persist === 'function') persist(newCar);
+  return true;
 }
 
 // ============================================================
