@@ -1926,7 +1926,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = 'app202608282330';
+const APP_VERSION = 'app202608282350';
 // LINEログイン(LIFF) — LINEコンソールで作成したLIFFアプリのIDを入れる
 const LIFF_ID = '2010638896-vJtjkUOr';
 // 公式アカウント「カーコン工賃通知」友だち追加URL（ここに飛ばすとLINEアプリの友だち追加画面が直接開く）
@@ -7009,7 +7009,7 @@ function startCar(id){
   c.status='work'; c.stage=0; c.startAt=nowISO();
   c.stageDur = c.stageDur || [];
   c.stageStart = Date.now();          // 最初の工程の計測開始
-  persist(c); toast(c.cartype+' を作業中へ'); render();
+  persist(c); pcdClearSearch(); toast(c.cartype+' を作業中へ'); render();
 }
 /* 次へ（工程を進める）＝いま終えた工程に現在の担当を刻む */
 function nextStage(id){
@@ -7047,7 +7047,7 @@ function finishCar(id){
   syncStageProgress(c, c.stage, '完了');      // 最終工程をGASに反映
   c.status='done'; c.waitingParts=false; c.doneAt=nowISO();
   syncProjectComplete(c);                     // 案件完成をGASに反映
-  persist(c); toast(c.cartype+' を完成に記録'); render();
+  persist(c); pcdClearSearch(); toast(c.cartype+' を完成に記録'); render();
 }
 /* 工程の担当は「1名＝文字列」または「複数名＝配列」。どちらで保存されていても配列として読む（古いデータ互換） */
 function byNames(v){ return !v ? [] : (Array.isArray(v) ? v.filter(Boolean) : [v]); }
@@ -7111,13 +7111,13 @@ function backToNyuko(id){
   c.status='nyuko';
   c.stage=0; c.stageStart=null; c.stageDur=[]; c.stageBy=[];
   c.waitingParts=false; c.partSince=null; c.startAt=null;
-  persist(c); toast(c.cartype+' を入庫に戻しました'); render();
+  persist(c); pcdClearSearch(); toast(c.cartype+' を入庫に戻しました'); render();
 }
 function reopenCar(id){
   const c=findCar(id); if(!c) return;
   c.status='work'; c.doneAt=null;
   c.stageStart = Date.now();   // 最終工程の計測を再開
-  persist(c); toast('作業中に戻しました'); render();
+  persist(c); pcdClearSearch(); toast('作業中に戻しました'); render();
 }
 
 /* ---------- 設定：工程の編集 ---------- */
@@ -8706,7 +8706,14 @@ function renderYotei(yotei){
     return '<div style="margin-bottom:18px;"><div style="font-size:14px;color:var(--muted);font-weight:700;margin:2px 2px 9px;border-left:3px solid var(--accent);padding-left:9px;">'+head+'</div>'+cars.map(bd_yoteiRow).join('')+'</div>';
   }).join('');
 }
-function bd_arriveCar(id){ var c=findCar(id); if(!c) return; c.status='nyuko'; c.nyukoAt=nowISO(); c.updatedAt=Date.now(); persist(c); bd_switchTab('nyuko'); toast('入庫にしました'); }
+/* 検索で見つけた車のステータスを進めると、検索語がそのまま残って「その列から消えた」ように
+   見えてしまう(件数が多い店ほど混乱しやすい)ため、ステータスをまたぐ操作の後は検索欄を自動でクリアする(2026-08-28)。 */
+function pcdClearSearch(){
+  if(!_pcdQ) return;
+  _pcdQ='';
+  var si=document.getElementById('pcd-search'); if(si) si.value='';
+}
+function bd_arriveCar(id){ var c=findCar(id); if(!c) return; c.status='nyuko'; c.nyukoAt=nowISO(); c.updatedAt=Date.now(); persist(c); pcdClearSearch(); bd_switchTab('nyuko'); toast('入庫にしました'); }
 /* ===== 入庫予定カレンダー(月表示)。工賃カレンダーと同じcal-*クラスを流用 ===== */
 var _yoteiCalY=null, _yoteiCalM=null;
 function openYoteiCal(){
