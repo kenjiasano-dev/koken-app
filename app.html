@@ -1854,7 +1854,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = 'app202608272335';
+const APP_VERSION = 'app202608280935';
 // LINEログイン(LIFF) — LINEコンソールで作成したLIFFアプリのIDを入れる
 const LIFF_ID = '2010638896-vJtjkUOr';
 // 公式アカウント「カーコン工賃通知」友だち追加URL（ここに飛ばすとLINEアプリの友だち追加画面が直接開く）
@@ -4924,6 +4924,9 @@ function showWelcomeScreen(){
       </div>
     </div>
     <button class="btn" style="width:100%;" onclick="closeWelcomeScreen()">はじめる →</button>
+    <div id="welcome-restore-area" style="margin-top:14px;text-align:center;">
+      <button onclick="showWelcomeRestore()" style="background:none;border:none;color:var(--text-sub);font-size:12px;text-decoration:underline;cursor:pointer;padding:6px;">以前使ったことがある方はこちら（データを復元）</button>
+    </div>
   `, false);
 }
 function closeWelcomeScreen(){
@@ -4931,6 +4934,36 @@ function closeWelcomeScreen(){
   closeSheet();
   switchTab('settings');
   setTimeout(function(){ var el=document.getElementById('set-sei'); if(el) el.focus(); }, 250);
+}
+/* ブラウザの設定などでこの端末のデータが消えてしまった「戻ってきた人」向けの簡易復元。
+   正式な復元(uuid)にはこの端末の以前のUUIDが要るが、それが無い状態なので、
+   名前一致だけで工賃・受付データを引き当てる(restoreUserDataのname検索を流用)。
+   プロフィール(店舗名等)までは復元できないため、その旨を案内する。 */
+function showWelcomeRestore(){
+  var el = document.getElementById('welcome-restore-area'); if(!el) return;
+  el.innerHTML = `
+    <div style="text-align:left;margin-top:4px;">
+      <label style="font-size:12px;color:var(--text-sub);display:block;margin-bottom:6px;">以前登録したお名前を入力してください（工賃・受付の記録を戻します）</label>
+      <input id="welcome-restore-name" class="form-input" placeholder="例）山田 太郎" style="margin-bottom:8px;">
+      <button class="btn ghost" style="width:100%;" onclick="doWelcomeRestore()">📥 このお名前で復元する</button>
+      <div id="welcome-restore-status" style="margin-top:8px;font-size:12px;text-align:center;color:var(--text-sub);"></div>
+    </div>`;
+  setTimeout(function(){ var n=document.getElementById('welcome-restore-name'); if(n) n.focus(); }, 50);
+}
+async function doWelcomeRestore(){
+  var nameEl = document.getElementById('welcome-restore-name');
+  var name = nameEl ? nameEl.value.trim() : '';
+  var statusEl = document.getElementById('welcome-restore-status');
+  if(!name){ showToast('お名前を入力してください'); return; }
+  if(statusEl) statusEl.textContent = '🔄 確認中...';
+  userData.name = name;
+  saveLocal();
+  await restoreFromGAS();
+  try{ localStorage.setItem('koken_welcome_seen', '1'); }catch(e){}
+  showToast('👤 続けて設定画面で店舗名などを入力してください', 4000);
+  closeSheet();
+  switchTab('settings');
+  setTimeout(function(){ var el=document.getElementById('set-store'); if(el) el.focus(); }, 400);
 }
 
 // ============================================================
