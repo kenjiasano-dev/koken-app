@@ -1926,7 +1926,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = 'app202608282245';
+const APP_VERSION = 'app202608282310';
 // LINEログイン(LIFF) — LINEコンソールで作成したLIFFアプリのIDを入れる
 const LIFF_ID = '2010638896-vJtjkUOr';
 // 公式アカウント「カーコン工賃通知」友だち追加URL（ここに飛ばすとLINEアプリの友だち追加画面が直接開く）
@@ -7166,7 +7166,8 @@ function settingsHTML(){
     <button class="btn ghost" style="margin-top:9px;" onclick="connectGDrive()">🔗 Googleドライブ連携${(localStorage.getItem('gdrive_confirmed_email'))?'（'+esc(localStorage.getItem('gdrive_confirmed_email'))+'）':'（未接続）'}</button>
     <button class="btn ghost" style="margin-top:9px;" onclick="exportAllZip()">📷 全部の工程写真をまとめてZIPで書き出す</button>
     <button class="btn ghost" style="margin-top:9px;" onclick="openSetup()">店舗名・グループを変更</button>
-    ${bd_isTestStore() ? '<button class="btn ghost" style="margin-top:9px;background:var(--amber-bg,#3a2600);border-color:var(--amber,#e67e22);color:var(--amber,#e67e22);" onclick="generateTestCars()">🧪 受付テストデータを一括作成（90件・7/1〜10/15・研修用）</button>' : ''}`;
+    ${bd_isTestStore() ? '<button class="btn ghost" style="margin-top:9px;background:var(--amber-bg,#3a2600);border-color:var(--amber,#e67e22);color:var(--amber,#e67e22);" onclick="generateTestCars()">🧪 受付テストデータを一括作成（90件・7/1〜10/15・研修用）</button>' : ''}
+    ${bd_isTestStore() ? '<button class="btn ghost" style="margin-top:9px;background:var(--amber-bg,#3a2600);border-color:var(--amber,#e67e22);color:var(--amber,#e67e22);" onclick="fillMissingDeliveryDates()">🧹 納車未定の車に納車日を補完（過去分もまとめて・研修用）</button>' : ''}`;
 }
 
 /* ---------- テストデータ一括作成(研修・デモ用、2026-08-28) ----------
@@ -7246,6 +7247,28 @@ async function generateTestCars(){
   closeSheet(); render();
   if(typeof renderFrontHistory==='function') renderFrontHistory();
   toast('🧪 受付テストデータ90件（7/1〜10/15）を作成しました');
+}
+
+/* 既存データも含めて「納車未定」を無くすための一括補完(2026-08-28)。
+   入庫予定日/入庫日から5〜14日後を目安の納車日として入れる(新規登録時のバリデーションと同じ考え方)。
+   完成済み(done)の車は対象外(すでに終わった案件のため)。 */
+async function fillMissingDeliveryDates(){
+  var targets = state.cars.filter(function(c){ return !c.deliveryDate && c.status!=='done'; });
+  if(!targets.length){ toast('納車日未定の車はありません'); return; }
+  if(!confirm(targets.length+'台の納車日未定の車に、目安の納車日（入庫予定日から5〜14日後）をまとめて入れます。よろしいですか？')) return;
+  function rnd(n){ return Math.floor(Math.random()*n); }
+  function pad(n){ return String(n).padStart(2,'0'); }
+  targets.forEach(function(c){
+    var baseStr = c.status==='yotei' ? (c.nyukoPlan||'').slice(0,10) : (c.nyukoAt||'').slice(0,10);
+    var base = baseStr ? new Date(baseStr+'T00:00:00') : new Date();
+    var d = new Date(base.getTime() + (rnd(10)+5)*86400000);
+    c.deliveryDate = d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
+    c.updatedAt = Date.now();
+  });
+  bd_saveLocal();
+  await syncBoardCars(state.cars);
+  closeSheet(); render();
+  toast('🧹 '+targets.length+'台の納車日を補完しました');
 }
 
 /* ---------- 担当者（メンバー） ---------- */
