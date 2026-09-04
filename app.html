@@ -1926,7 +1926,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = 'app202609041745';
+const APP_VERSION = 'app202609041800';
 // LINEログイン(LIFF) — LINEコンソールで作成したLIFFアプリのIDを入れる
 const LIFF_ID = '2010638896-vJtjkUOr';
 // 公式アカウント「カーコン工賃通知」友だち追加URL（ここに飛ばすとLINEアプリの友だち追加画面が直接開く）
@@ -4525,16 +4525,41 @@ function toggleNinjaMode(on) {
 // ============================================================
 // データ復元（GAS → localStorage）
 // ============================================================
+/* サーバーが返したプロフィール(店舗名・都道府県・グループコード等)を取り込む。
+   これがあるおかげで「名前だけで復元→店舗名は手入力し直し」という再設定が不要になる。
+   既に入っている値は上書きしない(利用者が入力した内容を消さないため)。
+   groupCodesは{code,name}の配列。以前は生の文字列をpushしており型が壊れていた(2026-09-04修正)。 */
+function applyServerProfile(p, adoptUuid) {
+  if (!p) return false;
+  if (!userData.name && p.name) userData.name = p.name;
+  if (!userData.store && p.store) userData.store = p.store;
+  if (!userData.pref && p.pref) userData.pref = p.pref;
+  if (!userData.role && p.role) userData.role = p.role;
+  if (p.goal && !userData.goal) userData.goal = p.goal;
+  if (p.groupCode) {
+    if (!userData.groupCode) userData.groupCode = p.groupCode;
+    if (!userData.activeGroupCode) userData.activeGroupCode = p.groupCode;
+    if (!Array.isArray(userData.groupCodes)) userData.groupCodes = [];
+    var already = userData.groupCodes.some(function(g){ return g && g.code === p.groupCode; });
+    if (!already) userData.groupCodes.push({ code: p.groupCode, name: p.store || p.groupCode });
+  }
+  if (adoptUuid && p.uuid) userData.uuid = p.uuid;
+  return true;
+}
+
 async function restoreFromGAS() {
   var statusEl = document.getElementById('restore-status');
   if (!userData.name) { showToast('⚠️ 先に名前を設定してください'); return; }
   if (statusEl) statusEl.textContent = '🔄 サーバーから取得中...';
   try {
-    var res = await fetchFromGAS('restoreUserData', { name: userData.name, uuid: userData.uuid || '' });
+    // groupCodeを渡すと、名前一致は同じお店の中だけに限定される(同姓同名の取り違え防止)
+    var res = await fetchFromGAS('restoreUserData', { name: userData.name, uuid: userData.uuid || '', groupCode: userData.activeGroupCode || userData.groupCode || '' });
     if (!res || res.error) {
       if (statusEl) statusEl.textContent = '❌ 取得失敗: ' + (res && res.error ? res.error : 'ネットワークエラー');
       return;
     }
+    // 端末が空(=復元目的)のときは、サーバー側のIDも引き継いで同一人物として扱う
+    applyServerProfile(res.profile, !userData.store);
     var wCount = 0, fCount = 0;
     if (res.wageData && res.wageData.length) {
       // 既存ローカルにないものだけ追加（日付+金額で重複チェック）
@@ -5100,10 +5125,17 @@ async function doWelcomeRestore(){
   saveLocal();
   await restoreFromGAS();
   try{ localStorage.setItem('koken_welcome_seen', '1'); }catch(e){}
-  showToast('👤 続けて設定画面で店舗名などを入力してください', 4000);
   closeSheet();
-  switchTab('settings');
-  setTimeout(function(){ var el=document.getElementById('set-store'); if(el) el.focus(); }, 400);
+  if (userData.store) {
+    // 店舗名・グループまで戻っているので、そのまま使い始められる
+    showToast('✅ ' + userData.name + 'さん（' + userData.store + '）のデータを復元しました', 4000);
+    if (typeof initSettings === 'function') initSettings();
+    switchTab('genba');
+  } else {
+    showToast('👤 続けて設定画面で店舗名などを入力してください', 4000);
+    switchTab('settings');
+    setTimeout(function(){ var el=document.getElementById('set-store'); if(el) el.focus(); }, 400);
+  }
 }
 
 // ============================================================
@@ -6037,8 +6069,8 @@ async function reclaimFromLineRedirect() {
     userData.role = profile.role || '';
     userData.groupCode = profile.groupCode || '';
     userData.activeGroupCode = profile.groupCode || '';
-    if (profile.groupCode && userData.groupCodes.indexOf(profile.groupCode) === -1) userData.groupCodes.push(profile.groupCode);
-    var res = await fetchFromGAS('restoreUserData', { uuid: rejoinUuid });
+    if (profile.groupCode && !userData.groupCodes.some(function(g){ return g && g.code === profile.groupCode; })) userData.groupCodes.push({ code: profile.groupCode, name: profile.store || profile.groupCode });
+    var res = await fetchFromGAS('restoreUserData', { uuid: rejoinUuid, groupCode: profile.groupCode || '' });
     if (res && res.wageData) {
       res.wageData.forEach(function(r) {
         var exists = wageData.some(function(w){ return w.date === r.date && w.amount === r.amount; });
@@ -6086,7 +6118,7 @@ async function attemptCookieUuidRecovery() {
         userData.role = profile.role || '';
         userData.groupCode = profile.groupCode || '';
         userData.activeGroupCode = profile.groupCode || '';
-        if (profile.groupCode && userData.groupCodes.indexOf(profile.groupCode) === -1) userData.groupCodes.push(profile.groupCode);
+        applyServerProfile(profile, false);
         restored = true;
       }
     }
@@ -6097,7 +6129,9 @@ async function attemptCookieUuidRecovery() {
       restored = true;
     }
     if (!restored) return false;
-    var res = await fetchFromGAS('restoreUserData', { name: userData.name, uuid: userData.uuid || '' });
+    var res = await fetchFromGAS('restoreUserData', { name: userData.name, uuid: userData.uuid || '', groupCode: userData.activeGroupCode || userData.groupCode || '' });
+    // 名前だけで戻ってきた場合でも、ここで店舗名・グループまで揃うので再設定が要らない
+    applyServerProfile(res && res.profile, !userData.store);
     var rows = (res && (res.wageData || res.wages)) || [];
     rows.forEach(function(r) {
       var exists = wageData.some(function(w){ return w.date === r.date && w.amount === r.amount; });
