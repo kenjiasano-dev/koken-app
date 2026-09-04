@@ -1926,7 +1926,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = 'app202609041530';
+const APP_VERSION = 'app202609041555';
 // LINEログイン(LIFF) — LINEコンソールで作成したLIFFアプリのIDを入れる
 const LIFF_ID = '2010638896-vJtjkUOr';
 // 公式アカウント「カーコン工賃通知」友だち追加URL（ここに飛ばすとLINEアプリの友だち追加画面が直接開く）
@@ -9325,13 +9325,18 @@ function renderPcStorePanel(){
   sp.innerHTML=pcAchievementHTML('🏪 お店の達成率', _pcdStoreTotal||0, sgoal)+((_pcdStoreTotal==null)?'<div style="font-size:11px;color:var(--muted2);margin-top:8px;">読込中…</div>':'')+pcdMemberCardsHtml();
 }
 function pcdMembers(){
-  // 「担当者（メンバー）」の名簿(getMembers())を唯一の一覧として使う。
-  // 以前はgetStoreRanking由来の名前をそのまま使い、表記ゆれ(全角/半角スペース等)で
-  // 自分が二重に出ることがあった(2026-08-27修正)。
-  var names=(typeof getMembers==='function')?getMembers().slice():[];
+  // 現場ボードの担当者名簿(getMembers())と、グループ登録者全員(_pcdAllMembers、
+  // 工賃0件の新人も含む)の両方を合わせる。以前はgetMembers()のみだったため、
+  // グループコードで参加しただけ(工賃未入力)の新人がプルダウンに出なかった(2026-09-04修正)。
+  // 表記ゆれ(全角/半角スペース等)で同一人物が二重に出ないよう、正規化した文字列で重複除去する
+  // (2026-08-27修正の意図はここで維持)。
+  var norm=function(s){ return (s||'').replace(/[　\s]+/g,' ').trim(); };
+  var seen={}, names=[];
   var me=(typeof userData!=='undefined'&&userData&&userData.name)||'';
-  if(me && names.indexOf(me)<0) names.unshift(me);
-  if(!names.length && me) names=[me];
+  var add=function(n){ var k=norm(n); if(!k||seen[k]) return; seen[k]=true; names.push(n); };
+  add(me);
+  ((typeof getMembers==='function')?getMembers():[]).forEach(add);
+  (_pcdAllMembers||[]).forEach(function(m){ add(m&&m.name); });
   return names;
 }
 function pcdSelectedMember(){ var me=(typeof userData!=='undefined'&&userData&&userData.name)||''; var ms=pcdMembers(); var sel=_pcdMember||me; if(ms.length && ms.indexOf(sel)<0) sel=ms[0]; return sel; }
