@@ -1926,7 +1926,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = 'app202609041610';
+const APP_VERSION = 'app202609041620';
 // LINEログイン(LIFF) — LINEコンソールで作成したLIFFアプリのIDを入れる
 const LIFF_ID = '2010638896-vJtjkUOr';
 // 公式アカウント「カーコン工賃通知」友だち追加URL（ここに飛ばすとLINEアプリの友だち追加画面が直接開く）
@@ -1984,6 +1984,9 @@ if (!settings.notifRankup) settings.notifRankup = true;
 if (!settings.notifGoal) settings.notifGoal = true;
 if (!settings.notifRocket) settings.notifRocket = true;
 if (!settings.notifReceive) settings.notifReceive = true;
+// Cookieバックアップは、新uuid発行(直後のsaveLocal)で上書きされる前に読んでおく必要がある
+// (2026-09-04: 復元処理より先にここでCookieを上書きしてしまい保険が効かないバグを修正)
+var _uuidCookieBackupAtLoad = (typeof getCookie === 'function') ? getCookie('koken_uuid_backup') : '';
 // UUID初期化（let userData宣言後に実行）
 if (!userData.uuid) { userData.uuid = generateUUID(); saveLocal(); }
 
@@ -6007,7 +6010,9 @@ async function reclaimFromLineRedirect() {
    表紙(ようこそ画面)を出す前に静かにサーバーから本人プロフィール＋データを復元する。 */
 async function attemptCookieUuidRecovery() {
   if (userData.name) return false;
-  var backupUuid = getCookie('koken_uuid_backup');
+  // 注意: ここでgetCookie()を呼んでも、直前のuuid発行(saveLocal)で既にCookieが
+  // 新uuidに上書きされた後なので手遅れ。読み込み直後に確保した値を使う。
+  var backupUuid = _uuidCookieBackupAtLoad;
   if (!backupUuid || backupUuid === userData.uuid) return false;
   try {
     var profile = await fetchFromGAS('getUserProfileByUuid', { uuid: backupUuid });
