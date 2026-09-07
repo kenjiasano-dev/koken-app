@@ -1949,7 +1949,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = 'app202609071449';
+const APP_VERSION = 'app202609071458';
 // LINEログイン(LIFF) — LINEコンソールで作成したLIFFアプリのIDを入れる
 const LIFF_ID = '2010638896-vJtjkUOr';
 // 公式アカウント「カーコン工賃通知」友だち追加URL（ここに飛ばすとLINEアプリの友だち追加画面が直接開く）
@@ -9140,7 +9140,7 @@ function yoteiGridHTML(){
   var mode = bd_yoteiViewMode();
   var mbtn = function(m, label){ return '<button class="btn'+(mode===m?'':' ghost')+'" style="flex:1;width:auto;padding:8px 10px;font-size:12px;white-space:nowrap;" onclick="bd_setYoteiViewMode(\''+m+'\')">'+label+'</button>'; };
   var modeBtns = '<div style="display:flex;gap:6px;margin:10px 0 4px;flex-wrap:wrap;">'
-    + mbtn('yotei','📋 入庫予定') + mbtn('daisha','🚙 代車管理') + mbtn('both','⬍ 半々')
+    + mbtn('yotei','📋 入庫予定') + mbtn('daisha','🚙 代車管理') + mbtn('shift','🗓 シフト') + mbtn('both','⬍ 半々')
     + '</div>';
   var head = '<h2>📋 入庫予定表（'+_yoteiCalY+'年'+_yoteiCalM+'月）</h2>'
     + '<p style="color:var(--muted);font-size:11px;margin:2px 0 4px;">棒の長さ＝お預かり日数（点線縁＝入庫予定・実線縁＝入庫済み）。納車日未定の入庫済み車は月末まで居座っているものとして表示</p>'
@@ -9152,6 +9152,7 @@ function yoteiGridHTML(){
     + modeBtns;
   if(mode==='yotei') return head + '<div style="margin-top:8px;">'+yoteiMainGanttHTML()+'</div>';
   if(mode==='daisha') return head + '<div style="margin-top:8px;">'+daishaGridHTML()+'</div>';
+  if(mode==='shift') return head + '<div style="margin-top:8px;">'+shiftGridBodyHTML()+'</div>';
   return head
     + '<div style="display:flex;flex-direction:column;gap:14px;margin-top:8px;height:calc(100vh - 250px);min-height:300px;">'
     +   '<div style="flex:1;min-height:0;overflow-y:auto;">'+yoteiMainGanttHTML()+'</div>'
@@ -9333,27 +9334,18 @@ function toggleShift(dateStr, name){
 /* メンバー名には記号や空白が入りうるので、id生成には配列内インデックスを使う(名前を直接idに埋め込まない) */
 var _shiftMemberOrder = [];
 function _shiftCellIdx(name){ var i=_shiftMemberOrder.indexOf(name); return i>=0 ? i : _shiftMemberOrder.push(name)-1; }
+/* シフトも入庫予定表・代車管理と同じモード切替タブ(yoteiGridHTML)の1つとして開く(2026-09-07、
+   ユーザー要望で単独シートから統合)。⚙現場の設定からの入口も同じ経路に揃える。 */
 function openShiftGrid(){
   if(_yoteiCalY==null){ var now=new Date(); _yoteiCalY=now.getFullYear(); _yoteiCalM=now.getMonth()+1; }
-  showSheet(shiftGridHTML(), true, true);
+  bd_setYoteiViewMode('shift');
 }
-function changeShiftGridMonth(delta){
-  _yoteiCalM+=delta;
-  if(_yoteiCalM>12){ _yoteiCalM=1; _yoteiCalY++; }
-  if(_yoteiCalM<1){ _yoteiCalM=12; _yoteiCalY--; }
-  showSheet(shiftGridHTML(), true, true);
-}
-function shiftGridHTML(){
+function shiftGridBodyHTML(){
   _shiftMemberOrder = [];
   var days=new Date(_yoteiCalY,_yoteiCalM,0).getDate();
   var members=getMembers();
-  var head = '<h2 style="font-size:16px;margin:0 0 6px;">🗓 シフト（'+_yoteiCalY+'年'+_yoteiCalM+'月）</h2>'
-    + '<p style="color:var(--muted);font-size:11px;margin:2px 0 8px;">マスをタップで出勤⇄休みを切り替え（空欄＝出勤、赤の「休」＝休み）</p>'
-    + '<div class="cal-header" style="margin-bottom:8px;">'
-    +   '<button class="cal-nav" onclick="changeShiftGridMonth(-1)">◀</button>'
-    +   '<button class="btn ghost" style="padding:6px 14px;font-size:12px;" onclick="openMembers()">担当者（メンバー）を編集</button>'
-    +   '<button class="cal-nav" onclick="changeShiftGridMonth(1)">▶</button>'
-    + '</div>';
+  var head = '<p style="color:var(--muted);font-size:11px;margin:2px 0 8px;">マスをタップで出勤⇄休みを切り替え（空欄＝出勤、赤の「休」＝休み）</p>'
+    + '<button class="btn ghost" style="padding:6px 14px;font-size:12px;margin-bottom:8px;" onclick="openMembers()">担当者（メンバー）を編集</button>';
   if(!members.length){
     return head + '<div style="text-align:center;padding:20px 12px;">'
       + '<p style="color:var(--muted);font-size:12px;margin:0 0 12px;">メンバーが登録されていません。</p>'
