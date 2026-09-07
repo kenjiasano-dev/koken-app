@@ -1938,7 +1938,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = 'app202609071030';
+const APP_VERSION = 'app202609071100';
 // LINEログイン(LIFF) — LINEコンソールで作成したLIFFアプリのIDを入れる
 const LIFF_ID = '2010638896-vJtjkUOr';
 // 公式アカウント「カーコン工賃通知」友だち追加URL（ここに飛ばすとLINEアプリの友だち追加画面が直接開く）
@@ -9814,13 +9814,30 @@ function bd_syncKanbanToggle(){
 }
 /* 作業中の車を「今どの工程にいるか」で横に並べたボード。種別(鈑金/整備)ごとに工程が違うため、
    台数が一番多い種別の工程を軸の列にし、それ以外の種別の車は末尾の「他の種別」列にまとめる。 */
+var _kanbanKind = null; // null=自動(件数が多い種別)。'bankin'/'seibi'/'other'を選ぶと固定される
+function bd_setKanbanKind(k){ _kanbanKind = (_kanbanKind===k) ? null : k; if(typeof render==='function') render(); var pd=document.getElementById('pc-dash'); if(pd && pd.style.display==='flex' && typeof renderPcDash==='function') renderPcDash(); }
+/* 板金塗装/整備/その他を判定する簡易版(bd_carCatKeyは点検/一般を分けるが、工程軸としては
+   同じ「整備」でよいのでtenken/ippanはseibiにまとめる)。 */
+function bd_kanbanGroup(c){
+  var k=bd_carCatKey(c);
+  if(k==='tenken'||k==='ippan') return 'seibi';
+  return k; // 'bankin' | 'other'
+}
 function bd_kanbanHtml(work){
   if(!work.length) return '<div style="color:var(--muted2);font-size:12px;padding:12px 4px;">作業中の車はありません。</div>';
-  var counts={};
-  work.forEach(function(c){ counts[c.kind]=(counts[c.kind]||0)+1; });
-  var kinds=Object.keys(counts).sort(function(a,b){ return counts[b]-counts[a]; });
-  var mainKind=kinds[0];
-  var stages=getStages(mainKind)||[];
+  var groupN={bankin:0, seibi:0, other:0};
+  work.forEach(function(c){ groupN[bd_kanbanGroup(c)]++; });
+  var order=['bankin','seibi','other'];
+  var labels={bankin:'板金塗装', seibi:'整備', other:'その他'};
+  var kindOf={bankin:'板金', seibi:'整備', other:''};
+  var auto = order.filter(function(k){return groupN[k]>0;}).sort(function(a,b){return groupN[b]-groupN[a];})[0] || 'bankin';
+  var activeGroup = _kanbanKind || auto;
+  var switcherHtml = '<div style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap;">' + order.map(function(k){
+    var on = (k===activeGroup);
+    return '<button onclick="bd_setKanbanKind(\''+k+'\')" style="padding:5px 10px;border-radius:16px;font-size:12px;font-weight:700;cursor:pointer;border:1px solid '+(on?'var(--accent)':'var(--line2)')+';background:'+(on?'var(--accent)':'var(--card2)')+';color:'+(on?'#fff':'var(--muted)')+';">'+labels[k]+' '+groupN[k]+'</button>';
+  }).join('') + '</div>';
+  var groupCars = work.filter(function(c){ return bd_kanbanGroup(c)===activeGroup; });
+  var stages = activeGroup==='other' ? [] : (getStages(kindOf[activeGroup])||[]);
   function cardHtml(c){
     return '<div class="kanban-card" onclick="bd_openCarModal(\''+c.id+'\')">'
       + '<div class="kn">'+esc(c.number||'')+'</div>'
@@ -9830,20 +9847,20 @@ function bd_kanbanHtml(work){
       + '</div>';
   }
   var colsHtml;
-  if(!stages.length){
-    // カスタム工程が無い種別(整備の既定など)は、工程列を出しようがないのでそのまま一覧にする
-    colsHtml = '<div class="kanban-col"><div class="kanban-col-head">'+esc(mainKind||'工程未設定')+'<span>'+work.filter(function(c){return c.kind===mainKind;}).length+'</span></div>'
-      + work.filter(function(c){return c.kind===mainKind;}).map(cardHtml).join('') + '</div>';
+  if(!groupCars.length){
+    colsHtml = '<div style="color:var(--muted2);font-size:12px;padding:8px 4px;">'+labels[activeGroup]+'の作業中はありません。</div>';
+  } else if(!stages.length){
+    // 工程が定義されていない種別(整備の既定・その他)は、そのまま一覧にする
+    colsHtml = '<div class="kanban-col"><div class="kanban-col-head">'+labels[activeGroup]+'<span>'+groupCars.length+'</span></div>'
+      + groupCars.map(cardHtml).join('') + '</div>';
   } else {
     colsHtml = stages.map(function(name,i){
-      var cars=work.filter(function(c){ return c.kind===mainKind && (c.stage||0)===i; });
+      var cars=groupCars.filter(function(c){ return (c.stage||0)===i; });
       return '<div class="kanban-col"><div class="kanban-col-head">'+(i+1)+'. '+esc(name)+'<span>'+cars.length+'</span></div>'
         + cars.map(cardHtml).join('') + '</div>';
     }).join('');
   }
-  var others=work.filter(function(c){ return c.kind!==mainKind; });
-  var otherHtml = others.length ? ('<div class="kanban-col kanban-other"><div class="kanban-col-head">他の種別<span>'+others.length+'</span></div>'+others.map(cardHtml).join('')+'</div>') : '';
-  return '<div class="kanban-wrap">'+colsHtml+otherHtml+'</div>';
+  return switcherHtml + '<div class="kanban-wrap">'+colsHtml+'</div>';
 }
 function bd_tile(c){
   var cls='pcd-tile';
