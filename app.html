@@ -750,6 +750,7 @@ input[type="time"]::-webkit-calendar-picker-indicator { filter: invert(1); opaci
   <span class="si">🔍</span>
   <input id="board-search" inputmode="numeric" placeholder="下4桁で検索（例 6610）" oninput="onSearch(this.value)">
   <button id="search-clear" class="hidden" onclick="clearSearch()">✕</button>
+  <button id="mobile-tile-toggle" title="タイル表示に切り替え（車種・ナンバーだけを一覧できます）" onclick="bd_toggleMobileOverview()">🔲</button>
   <button title="現場の設定（工程・担当メンバー・Googleドライブ連携・写真ZIP）" onclick="openSettings()">⚙</button>
 </div>
 <div id="search-hint" class="search-hint hidden"></div>
@@ -1926,7 +1927,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = 'app202609041800';
+const APP_VERSION = 'app202609071000';
 // LINEログイン(LIFF) — LINEコンソールで作成したLIFFアプリのIDを入れる
 const LIFF_ID = '2010638896-vJtjkUOr';
 // 公式アカウント「カーコン工賃通知」友だち追加URL（ここに飛ばすとLINEアプリの友だち追加画面が直接開く）
@@ -8974,6 +8975,10 @@ function renderYotei(yotei){
   yotei.sort(function(a,b){ return bd_planMs(a)-bd_planMs(b); });
   var groups={}, order=[];
   yotei.forEach(function(c){ var key=(c.nyukoPlan||'').slice(0,10)||'未定'; if(!groups[key]){groups[key]=[];order.push(key);} groups[key].push(c); });
+  if(_pcdOverviewMode){
+    listEl.innerHTML = '<div class="pcd-tilegrid">'+yotei.map(bd_tile).join('')+'</div>';
+    return;
+  }
   listEl.innerHTML = order.map(function(key){
     var cars=groups[key];
     var head=bd_dayHeader(key)+'・'+cars.length+'件';
@@ -9594,7 +9599,7 @@ function renderWork(work){
     const bd = b.deliveryDate ? daysUntil(b.deliveryDate) : Infinity;
     return ad-bd;
   });
-  list.innerHTML = work.map(bd_workCardHtml).join('');
+  list.innerHTML = _pcdOverviewMode ? ('<div class="pcd-tilegrid">'+work.map(bd_tile).join('')+'</div>') : work.map(bd_workCardHtml).join('');
 }
 
 /* ---------- PCダッシュボードの4列を、スマホと全く同じカードHTML(同じボタン・同じ工程ゲージ)で描画 ---------- */
@@ -9764,7 +9769,22 @@ function bd_workCardHtml(c){
 }
 /* ===== 段階20: 概要表示(タイル)モード ===== */
 var _pcdOverviewMode = false;
-function bd_pcdToggleOverview(){ _pcdOverviewMode = !_pcdOverviewMode; renderPcDash(); }
+function bd_pcdToggleOverview(){ _pcdOverviewMode = !_pcdOverviewMode; renderPcDash(); bd_syncMobileTileToggle(); }
+/* スマホの🔲タイル表示切替。PCの「概要表示」と同じ_pcdOverviewModeを共有するので、
+   スマホでONにするとPC側も概要表示になる(逆も同様)。データの見せ方は1つで統一する。 */
+function bd_toggleMobileOverview(){
+  _pcdOverviewMode = !_pcdOverviewMode;
+  bd_syncMobileTileToggle();
+  if(typeof render==='function') render();
+  if(document.getElementById('pc-dash') && document.getElementById('pc-dash').style.display==='flex' && typeof renderPcDash==='function') renderPcDash();
+  if(typeof bd_pcdUpdateViewBtnLabel==='function') bd_pcdUpdateViewBtnLabel();
+}
+function bd_syncMobileTileToggle(){
+  var b=document.getElementById('mobile-tile-toggle'); if(!b) return;
+  b.classList.toggle('on', !!_pcdOverviewMode);
+  b.style.background = _pcdOverviewMode ? 'var(--accent)' : '';
+  b.style.color = _pcdOverviewMode ? '#fff' : '';
+}
 function bd_tile(c){
   var cls='pcd-tile';
   if(c.status==='work' && c.waitingParts) cls+=' wait';
@@ -9878,6 +9898,7 @@ function bd_pinCarModal(id, checked){
 }
 function render(){
   renderStoreLabel();
+  if(typeof bd_syncMobileTileToggle==="function") bd_syncMobileTileToggle();
   const nyuko = state.cars.filter(c=>c.status==='nyuko');
   const work  = state.cars.filter(c=>c.status==='work');
   const done  = state.cars.filter(c=>c.status==='done');
@@ -10037,7 +10058,7 @@ function renderNyuko(nyuko){
   const list=document.getElementById('nyuko-list');
   document.getElementById('nyuko-empty').classList.toggle('hidden', nyuko.length>0);
   nyuko.sort((a,b)=> new Date(a.nyukoAt)-new Date(b.nyukoAt));
-  list.innerHTML = nyuko.map(bd_nyukoCardCompactHtml).join('');
+  list.innerHTML = _pcdOverviewMode ? ('<div class="pcd-tilegrid">'+nyuko.map(bd_tile).join('')+'</div>') : nyuko.map(bd_nyukoCardCompactHtml).join('');
 }
 function renderDone(done){
   const todayN = done.filter(c=>isSameDay(c.doneAt)).length;
@@ -10056,7 +10077,7 @@ function renderDone(done){
                     : (doneFilter==='month') ? '今月の完成はまだありません。'
                     : 'まだ完成した車はありません。';
   const list=document.getElementById('done-list');
-  list.innerHTML = shown.map(bd_doneCardCompactHtml).join('');
+  list.innerHTML = _pcdOverviewMode ? ('<div class="pcd-tilegrid">'+shown.map(bd_tile).join('')+'</div>') : shown.map(bd_doneCardCompactHtml).join('');
 }
 /* 種別(板金塗装/車検整備/一般整備/その他)フィルタ。PCダッシュボード上部のチェックボックスで切替。 */
 var _pcdCatFilter={bankin:true, tenken:true, ippan:true, other:true};
