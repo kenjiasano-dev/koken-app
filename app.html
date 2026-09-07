@@ -1562,7 +1562,10 @@ input[type="time"]::-webkit-calendar-picker-indicator { filter: invert(1); opaci
           </div>
           <div class="form-group">
             <label class="form-label">👤 お客様名（任意）</label>
-            <input type="text" class="form-input" id="front-customer" placeholder="例: 山田 太郎" autocomplete="off">
+            <div style="display:flex;gap:8px;">
+              <input type="text" class="form-input" id="front-customer-sei" placeholder="姓（例: 山田）" autocomplete="off" style="flex:1;">
+              <input type="text" class="form-input" id="front-customer-mei" placeholder="名（例: 太郎）" autocomplete="off" style="flex:1;">
+            </div>
           </div>
           <div class="form-group">
             <label class="form-label">🚗 車種（任意）</label>
@@ -1570,8 +1573,14 @@ input[type="time"]::-webkit-calendar-picker-indicator { filter: invert(1); opaci
           </div>
           <div class="form-group">
             <label class="form-label">ナンバー（任意）</label>
+            <div style="display:flex;gap:6px;margin-bottom:6px;">
+              <input type="text" class="form-input" id="front-plate-region" list="plate-region-options" placeholder="地名（例: 横浜）" autocomplete="off" style="flex:1.3;">
+              <input type="text" class="form-input" id="front-plate-class" maxlength="3" placeholder="分類（例: 301）" inputmode="numeric" autocomplete="off" style="flex:0.9;text-align:center;">
+              <input type="text" class="form-input" id="front-plate-kana" maxlength="1" placeholder="かな" autocomplete="off" style="flex:0.6;text-align:center;">
+            </div>
             <input type="text" class="form-input" id="front-number" maxlength="4" placeholder="0000" inputmode="numeric" oninput="numAutoNext(this,&#39;front-amount&#39;)" style="letter-spacing:6px;font-size:22px;font-weight:700;text-align:center;">
           </div>
+          <datalist id="plate-region-options"></datalist>
           <div class="form-group">
             <label class="form-label">種別</label>
             <div id="front-kind-pick" style="display:flex; gap:8px; flex-wrap:wrap;">
@@ -1950,7 +1959,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = 'app202609071547';
+const APP_VERSION = 'app202609071605';
 // LINEログイン(LIFF) — LINEコンソールで作成したLIFFアプリのIDを入れる
 const LIFF_ID = '2010638896-vJtjkUOr';
 // 公式アカウント「カーコン工賃通知」友だち追加URL（ここに飛ばすとLINEアプリの友だち追加画面が直接開く）
@@ -5172,6 +5181,7 @@ function init() {
   // 空で上書きしてしまう恐れがあった(受付の代車ピッカーが「未登録」と出る不具合の根本原因でもある)。
   // 起動時に一度だけ読み込んでおくことで、どのタブから使い始めても実データを参照できるようにする。
   if (typeof loadState === 'function') loadState();
+  if (typeof renderPlateRegionDatalist === 'function') renderPlateRegionDatalist();
   flushQueue();
   initCalendar();
   initInputPage();
@@ -5309,7 +5319,12 @@ function submitEstimate() {
   const date = document.getElementById('front-date').value || new Date().toISOString().slice(0,10);
   const number = document.getElementById('front-number').value.trim();
   const cartype = document.getElementById('front-cartype').value.trim();
-  const customerName = document.getElementById('front-customer').value.trim();
+  const customerSei = document.getElementById('front-customer-sei').value.trim();
+  const customerMei = document.getElementById('front-customer-mei').value.trim();
+  const customerName = (customerSei + ' ' + customerMei).trim();
+  const plateRegion = document.getElementById('front-plate-region').value.trim();
+  const plateClass = document.getElementById('front-plate-class').value.trim();
+  const plateKana = document.getElementById('front-plate-kana').value.trim();
   const orderAmount = (contractedState === 'immediate' || contractedState === 'later')
     ? (parseAmount(document.getElementById('front-order-amount').value) || amount)
     : 0;
@@ -5328,7 +5343,7 @@ function submitEstimate() {
     contracted: contractedState !== 'none',
     immediate: contractedState === 'immediate',
     later: contractedState === 'later',
-    number, cartype, customerName, nyukoPlan, deliveryDate, deliveryTime,
+    number, cartype, customerName, plateRegion, plateClass, plateKana, nyukoPlan, deliveryDate, deliveryTime,
     name: userData.name || '', store: userData.store || '', pref: userData.pref || '',
     groupCode: userData.activeGroupCode || userData.groupCode || ''
   };
@@ -5344,8 +5359,12 @@ function submitEstimate() {
   document.getElementById('front-amount').value = '';
   document.getElementById('front-order-amount').value = '';
   document.getElementById('front-number').value = '';
+  document.getElementById('front-plate-region').value = '';
+  document.getElementById('front-plate-class').value = '';
+  document.getElementById('front-plate-kana').value = '';
   document.getElementById('front-cartype').value = '';
-  document.getElementById('front-customer').value = '';
+  document.getElementById('front-customer-sei').value = '';
+  document.getElementById('front-customer-mei').value = '';
   contractedState = null;
   _frontOrderTouched = false;
   fnInit();
@@ -5367,6 +5386,7 @@ function syncEstimateToBoard(entry) {
   if (typeof state === 'undefined' || !state.cars) return false;
   var newCar = {
     id: uuid(), cartype: entry.cartype, number: entry.number || '',
+    plateRegion: entry.plateRegion || '', plateClass: entry.plateClass || '', plateKana: entry.plateKana || '',
     customerName: entry.customerName || '', estimateAmount: entry.orderAmount || entry.amount || 0,
     kind: frontCarKind || '板金', category: frontCarCategory || '',
     deliveryDate: entry.deliveryDate || '', deliveryTime: entry.deliveryTime || '', isInsurance: false,
@@ -6763,14 +6783,22 @@ function openAddCar(forceMode){
     ${modeToggleHtml}
     <div class="field">
       <label>お客様名（任意）</label>
-      <input id="c-customer" placeholder="例）山田 太郎" autocomplete="off">
+      <div style="display:flex; gap:8px;">
+        <input id="c-customer-sei" placeholder="姓（例）山田" autocomplete="off" style="flex:1;">
+        <input id="c-customer-mei" placeholder="名（例）太郎" autocomplete="off" style="flex:1;">
+      </div>
     </div>
     <div class="field">
       <label>車種名 <span class="req">必須</span></label>
       <input id="c-type" placeholder="例）ノア" autocomplete="off">
     </div>
     <div class="field">
-      <label>ナンバー（下4桁）</label>
+      <label>ナンバー（任意）</label>
+      <div style="display:flex; gap:6px; margin-bottom:6px;">
+        <input id="c-plate-region" list="plate-region-options" placeholder="地名（例）横浜" autocomplete="off" style="flex:1.3;">
+        <input id="c-plate-class" maxlength="3" placeholder="分類（例）301" inputmode="numeric" autocomplete="off" style="flex:0.9;text-align:center;">
+        <input id="c-plate-kana" maxlength="1" placeholder="かな" autocomplete="off" style="flex:0.6;text-align:center;">
+      </div>
       <input id="c-num" placeholder="例）4821" inputmode="numeric" maxlength="4" autocomplete="off" oninput="this.value=this.value.replace(/[^0-9]/g,''); if(this.value.length>=4) this.blur();">
     </div>
     <div class="field">
@@ -6851,7 +6879,12 @@ function ncToggleCal(){
 function saveCar(){
   const cartype = document.getElementById('c-type').value.trim();
   const number  = document.getElementById('c-num').value.trim();
-  const customerName = (document.getElementById('c-customer')||{}).value?.trim() || '';
+  const plateRegion = (document.getElementById('c-plate-region')||{}).value?.trim() || '';
+  const plateClass = (document.getElementById('c-plate-class')||{}).value?.trim() || '';
+  const plateKana = (document.getElementById('c-plate-kana')||{}).value?.trim() || '';
+  const customerSei = (document.getElementById('c-customer-sei')||{}).value?.trim() || '';
+  const customerMei = (document.getElementById('c-customer-mei')||{}).value?.trim() || '';
+  const customerName = (customerSei + ' ' + customerMei).trim();
   const estimateAmount = parseInt((document.getElementById('c-estimate')||{}).value||'',10) || 0;
   const deliv   = newCarDeliv || '';
   if(!cartype){ toast('車種名を入れてください'); return; }
@@ -6866,6 +6899,7 @@ function saveCar(){
   state.cars.push({
     id: uuid(),
     cartype, number,
+    plateRegion, plateClass, plateKana,   // ナンバーの地名・分類番号・ひらがな(任意)
     customerName,          // お客様名(任意)
     estimateAmount,        // 見積金額(任意・円)
     kind: newCarKind,      // 板金 / 整備
@@ -6904,7 +6938,8 @@ function findCar(id){ return state.cars.find(c=>c.id===id); }
 /* 車種・ナンバーはタップして後から修正できるように(2026-08-28、ナンバーの入力ミスで
    同じ番号の車が誤って重複登録されてしまう事故を受けて追加)。 */
 function bd_carNameNum(c){
-  return '<span class="name" onclick="event.stopPropagation();openCarTypeNumEdit(\''+c.id+'\')" style="cursor:pointer;text-decoration:underline dotted;text-underline-offset:2px;">'+esc(c.cartype)+'</span><span class="num" onclick="event.stopPropagation();openCarTypeNumEdit(\''+c.id+'\')" style="cursor:pointer;">・'+esc(c.number)+'</span>';
+  var numDisp = (c.plateRegion||c.plateClass||c.plateKana) ? fullPlateLabel(c) : c.number;
+  return '<span class="name" onclick="event.stopPropagation();openCarTypeNumEdit(\''+c.id+'\')" style="cursor:pointer;text-decoration:underline dotted;text-underline-offset:2px;">'+esc(c.cartype)+'</span><span class="num" onclick="event.stopPropagation();openCarTypeNumEdit(\''+c.id+'\')" style="cursor:pointer;">・'+esc(numDisp)+'</span>';
 }
 function openCarTypeNumEdit(id){
   var c=findCar(id); if(!c) return;
@@ -7158,6 +7193,86 @@ function renderFnCal(){
   const el=document.getElementById('front-nyuko-cal'); if(!el) return;
   if(!fnCal){ const n=new Date(); fnCal={y:n.getFullYear(), m:n.getMonth()}; }
   el.innerHTML = buildCalendarHTML(fnCal.y, fnCal.m, frontNyukoDate, 'fnPick', 'fnMove');
+}
+/* ナンバープレートのフル入力(地名・分類番号・ひらがな・4桁ナンバー)対応(2026-09-07)。
+   4桁ナンバー(number)自体は既存の検索・重複チェック・GAS連携で使われている中核データなので
+   意味は変えず、地名/分類/ひらがなは表示用の追加フィールド(plateRegion/plateClass/plateKana)
+   として別に持たせる。地名は全国一覧を大まかに用意し、店舗の都道府県から近い地名を
+   datalistの先頭に並べる(なければ自由入力もできる、ユーザー要望どおり)。 */
+var PLATE_REGIONS_BY_PREF = {
+  '北海道':['札幌','函館','旭川','室蘭','釧路','帯広','北見'],
+  '青森県':['青森','弘前','八戸'],
+  '岩手県':['岩手'],
+  '宮城県':['宮城','仙台'],
+  '秋田県':['秋田'],
+  '山形県':['山形','庄内'],
+  '福島県':['福島','会津','いわき'],
+  '茨城県':['茨城','土浦','つくば'],
+  '栃木県':['とちぎ','宇都宮'],
+  '群馬県':['群馬','高崎'],
+  '埼玉県':['埼玉','大宮','川越','熊谷','所沢','春日部'],
+  '千葉県':['千葉','習志野','袖ヶ浦','野田'],
+  '東京都':['品川','練馬','足立','世田谷','杉並','八王子','多摩','江東','板橋'],
+  '神奈川県':['横浜','川崎','相模','湘南'],
+  '新潟県':['新潟','長岡'],
+  '富山県':['富山'],
+  '石川県':['石川'],
+  '福井県':['福井'],
+  '山梨県':['山梨'],
+  '長野県':['長野','松本'],
+  '岐阜県':['岐阜','飛騨'],
+  '静岡県':['静岡','浜松','沼津'],
+  '愛知県':['名古屋','三河','尾張小牧','豊橋'],
+  '三重県':['三重','鈴鹿'],
+  '滋賀県':['滋賀'],
+  '京都府':['京都'],
+  '大阪府':['大阪','なにわ','和泉','堺'],
+  '兵庫県':['神戸','姫路'],
+  '奈良県':['奈良'],
+  '和歌山県':['和歌山'],
+  '鳥取県':['鳥取'],
+  '島根県':['島根'],
+  '岡山県':['岡山','倉敷'],
+  '広島県':['広島','福山'],
+  '山口県':['山口','下関'],
+  '徳島県':['徳島'],
+  '香川県':['香川'],
+  '愛媛県':['愛媛'],
+  '高知県':['高知'],
+  '福岡県':['福岡','北九州','久留米','筑豊'],
+  '佐賀県':['佐賀'],
+  '長崎県':['長崎','佐世保'],
+  '熊本県':['熊本'],
+  '大分県':['大分'],
+  '宮崎県':['宮崎'],
+  '鹿児島県':['鹿児島'],
+  '沖縄県':['沖縄']
+};
+/* datalistの並び順(id属性で共有、front・現場ボード追加フォーム両方から参照する)。
+   店舗の都道府県(userData.pref)に近い地名を先頭に、残りは全国分をそのまま続ける。
+   完全な一覧ではない(地名は全国100件超あり増減もある)ので、無ければ自由入力もできる。 */
+function plateRegionOptionsHTML(){
+  var pref = (typeof userData!=='undefined' && userData) ? (userData.pref||'') : '';
+  var priority = PLATE_REGIONS_BY_PREF[pref] || [];
+  var all = [];
+  Object.keys(PLATE_REGIONS_BY_PREF).forEach(function(k){ all = all.concat(PLATE_REGIONS_BY_PREF[k]); });
+  var seen = {};
+  var ordered = priority.concat(all).filter(function(r){ if(seen[r]) return false; seen[r]=true; return true; });
+  return ordered.map(function(r){ return '<option value="'+esc(r)+'">'; }).join('');
+}
+/* ページ内に1つだけ置いた<datalist id="plate-region-options">(受付入力ページ内、
+   静的HTML)へ地名候補を流し込む。現場ボードの追加フォーム(showSheetで動的生成)からも
+   id参照で共有できるので、ここで一度作れば両方で使える。 */
+function renderPlateRegionDatalist(){
+  var el = document.getElementById('plate-region-options');
+  if(el) el.innerHTML = plateRegionOptionsHTML();
+}
+/* 車のプレート情報(地名・分類番号・ひらがな・4桁)を「品川 301 あ ・1234」のように整形。
+   4桁ナンバー以外が1つも無ければ従来通り4桁だけを返す(既存表示との互換維持)。 */
+function fullPlateLabel(c){
+  var parts = [c.plateRegion, c.plateClass, c.plateKana].filter(Boolean);
+  if(!parts.length) return c.number||'';
+  return parts.join(' ') + (c.number ? ('・'+c.number) : '');
 }
 /* 受付入力の種別選択。現場ボードのopenAddCarと同じ4択だが、両フォームが独立して
    使われても互いの選択を壊さないよう、変数はfront専用に分けている(2026-08-28)。 */
