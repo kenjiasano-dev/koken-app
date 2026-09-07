@@ -1959,7 +1959,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = 'app202609071612';
+const APP_VERSION = 'app202609071618';
 // LINEログイン(LIFF) — LINEコンソールで作成したLIFFアプリのIDを入れる
 const LIFF_ID = '2010638896-vJtjkUOr';
 // 公式アカウント「カーコン工賃通知」友だち追加URL（ここに飛ばすとLINEアプリの友だち追加画面が直接開く）
@@ -7957,10 +7957,13 @@ function bd_loanerLine(c){
    (お客様名・代車など)と同じ「値があれば表示、無ければ＋追加」の作りに揃える。state.cars経由で
    既存の同期(syncBoardCars)にそのまま乗るので、追加のGAS対応なしで他端末からも見える。 */
 function bd_noteLine(c){
+  // .delivは display:inline-block なので、代車・納車予定などの短い項目と同じ行に
+  // 詰まって埋もれてしまっていた(ユーザー報告「コメント欄ないよ」)。メモは長文にもなりうる
+  // ので、他とはっきり区別できるよう独立した行・枠付きのボックスにする(2026-09-07)。
   if(!c.note){
-    return '<div class="deliv" onclick="event.stopPropagation();openNoteEdit(\''+c.id+'\')"><span class="deliv-set">＋ メモ</span></div>';
+    return '<div onclick="event.stopPropagation();openNoteEdit(\''+c.id+'\')" style="display:block;margin-top:6px;cursor:pointer;color:var(--accent);font-size:12px;">＋ メモを追加</div>';
   }
-  return '<div class="deliv" style="white-space:pre-wrap;" onclick="event.stopPropagation();openNoteEdit(\''+c.id+'\')">📝 '+esc(c.note)+' <span style="opacity:.5;">✎</span></div>';
+  return '<div onclick="event.stopPropagation();openNoteEdit(\''+c.id+'\')" style="display:block;margin-top:6px;padding:8px 10px;border-radius:8px;background:var(--card2,rgba(255,255,255,.04));border:1px solid var(--line2,var(--border));cursor:pointer;font-size:12px;color:var(--text);white-space:pre-wrap;">📝 '+esc(c.note)+' <span style="opacity:.5;">✎</span></div>';
 }
 function openNoteEdit(id){
   var c=findCar(id); if(!c) return;
