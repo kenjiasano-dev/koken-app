@@ -1950,7 +1950,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = 'app202609071526';
+const APP_VERSION = 'app202609071547';
 // LINEログイン(LIFF) — LINEコンソールで作成したLIFFアプリのIDを入れる
 const LIFF_ID = '2010638896-vJtjkUOr';
 // 公式アカウント「カーコン工賃通知」友だち追加URL（ここに飛ばすとLINEアプリの友だち追加画面が直接開く）
@@ -7253,6 +7253,7 @@ function setDelivery(id,val){
   const c=findCar(id); if(!c) return;
   c.deliveryDate = val||'';
   persist(c); closeSheet(); render();
+  checkLoanerConflictAfterDateChange(c);
 }
 
 /* 入庫日もタップで変更できるように(2026-08-28、納車日と同じ考え方)。
@@ -7305,6 +7306,7 @@ function saveNyukoEdit(id){
   }
   persist(c); closeSheet(); render();
   toast('入庫日時を変更しました');
+  checkLoanerConflictAfterDateChange(c);
 }
 
 /* 入庫 → 作業開始 */
@@ -7861,6 +7863,25 @@ function loanerOccupants(key, excludeCarId){
   var holdItems = getLoanerHolds().filter(function(h){ return h.key===key; })
     .map(function(h){ return {kind:'hold', id:h.id, label:(h.memo||'仮抑え'), sub:'', s:h.start, e:h.end, color:h.color||''}; });
   return carItems.concat(holdItems);
+}
+/* 納車予定日・入庫日を変えた時、その車に付いている代車の貸出期間(loanerStart/loanerEnd
+   を個別指定していなければ入庫〜納車予定に自動追従する=loanerPeriodOf)が、他の予約と
+   重なっていないかチェックする。自動での付け替えはせず、気づかせるだけに留める
+   (別のお客様の代車が知らない間に入れ替わる事故を避けるため、2026-09-07)。 */
+function checkLoanerConflictAfterDateChange(c){
+  if(!c || !c.loanerCar) return;
+  if(c.loanerStart || c.loanerEnd) return; // 個別に期間指定済みなら、この車自身の日付変更では動かない
+  var p = loanerPeriodOf(c);
+  if(!p.s) return;
+  var conflicts = loanerOccupants(c.loanerCar, c.id).filter(function(x){ return periodsOverlap(p.s, p.e, x.s, x.e); });
+  if(!conflicts.length) return;
+  var label = c.loanerCar.replace(/・$/,'');
+  var lines = conflicts.map(function(x){
+    return '・'+(x.label||'')+(x.sub?('（'+x.sub+'）'):'')+'：'+(x.s?bd_fmtDateMD(x.s):'?')+'〜'+(x.e?bd_fmtDateMD(x.e):'未定');
+  }).join('\n');
+  setTimeout(function(){
+    alert('⚠️ 代車「'+label+'」の貸出期間（'+bd_fmtDateMD(p.s)+'〜'+(p.e?bd_fmtDateMD(p.e):'未定')+'）が、他の予約と重なっています。\n\n'+lines+'\n\n今の貸出はそのままにしています。別の代車への付け替えは、この車のカードの🚙代車から手動で調整してください。');
+  }, 50);
 }
 let _loanerAssignCarId = null;
 let _loanerCandStart = '';
@@ -9079,6 +9100,10 @@ function pcdClearSearch(){
 function bd_arriveCar(id){ var c=findCar(id); if(!c) return; c.status='nyuko'; c.nyukoAt=nowISO(); c.updatedAt=Date.now(); persist(c); pcdClearSearch(); bd_switchTab('nyuko'); toast('入庫にしました'); }
 /* ===== 入庫予定カレンダー(月表示)。工賃カレンダーと同じcal-*クラスを流用 ===== */
 var _yoteiCalY=null, _yoteiCalM=null;
+/* 入庫予定表・代車管理・シフトの3表を同時に表示した時、日付の列が縦にきれいに揃って
+   「1枚のスケジュール表」に見えるよう、左ラベル列幅・1日あたりの列幅を3表で共通にする
+   (2026-09-07)。以前は表ごとにminmax(34px,1fr)/固定28px等バラバラで、並べるとズレていた。 */
+var YOTEI_LABEL_W=90, YOTEI_DAY_W=30;
 function openYoteiCal(){
   if(_yoteiCalY==null){ var now=new Date(); _yoteiCalY=now.getFullYear(); _yoteiCalM=now.getMonth()+1; }
   showSheet(
@@ -9285,16 +9310,18 @@ function yoteiMainGanttHTML(){
     return {cat:cat, items: items.filter(function(it){ return bd_carCatKey(it.car)===cat.key; })};
   }).filter(function(b){ return b.items.length>0; });
 
-  var headCells='';
+  // 代車管理・シフトと縦の日付位置を揃えるため、この表にも同じ幅の左端ラベル列(空欄)を
+  // 用意する(2026-09-07、3つのタブを同時に開いた時に日付の列がずれて見えていた不具合)。
+  var headCells='<div class="ywlabel" style="grid-column:1/2;grid-row:1;"></div>';
   var colSeps='';
   for(var d=1; d<=days; d++){
     var dow=new Date(_yoteiCalY,_yoteiCalM-1,d).getDay();
     var w=['日','月','火','水','木','金','土'][dow];
     var wcls = isJpHoliday(_yoteiCalY,_yoteiCalM,d) ? 'holiday' : (dow===0?'sun':(dow===6?'sat':''));
     var isToday=today.getFullYear()===_yoteiCalY && today.getMonth()+1===_yoteiCalM && today.getDate()===d;
-    headCells += '<div class="ywh '+wcls+(isToday?' today':'')+'" style="grid-column:'+d+'/'+(d+1)+';grid-row:1;">'+d+'<span class="ywdow">'+w+'</span></div>';
+    headCells += '<div class="ywh '+wcls+(isToday?' today':'')+'" style="grid-column:'+(d+1)+'/'+(d+2)+';grid-row:1;">'+d+'<span class="ywdow">'+w+'</span></div>';
     // 日付が分かりやすいように、日ごとの縦の区切り線を全行にまたがって引く(2026-08-28)
-    colSeps += '<div class="ywcolsep" style="grid-column:'+d+'/'+(d+1)+';grid-row:1/-1;"></div>';
+    colSeps += '<div class="ywcolsep" style="grid-column:'+(d+1)+'/'+(d+2)+';grid-row:1/-1;"></div>';
   }
   var rowCursor=2; // 1行目は日付ヘッダ
   var sectionsHtml='';
@@ -9310,7 +9337,7 @@ function yoteiMainGanttHTML(){
       var c=it.car, span=it.end-it.start+1;
       var statusLabel = {yotei:'予定', nyuko:'入庫中', work:'作業中'}[c.status] || '';
       var cls = c.status==='yotei' ? 'ywbar ywbar-yotei' : 'ywbar';
-      var barStyle = 'grid-column:'+it.start+'/'+(it.end+1)+';grid-row:'+(it.lane+laneBaseRow)+';'+(c.ganttColor?('border-left-color:'+c.ganttColor+';'):'');
+      var barStyle = 'grid-column:'+(it.start+1)+'/'+(it.end+2)+';grid-row:'+(it.lane+laneBaseRow)+';'+(c.ganttColor?('border-left-color:'+c.ganttColor+';'):'');
       var dotStyle = c.ganttColor ? ('background:'+c.ganttColor+';') : '';
       var custEstTitle = (c.customerName?('・'+esc(c.customerName)):'') + (c.estimateAmount?('・見積¥'+Number(c.estimateAmount).toLocaleString()):'') + (c.loanerCar?('・🚙代車:'+esc(c.loanerCar.replace(/・$/,''))):'');
       // 入庫予定表側でも代車が貸し出し中とひと目でわかるように、バーに🚙アイコンを付ける(2026-08-28)
@@ -9326,7 +9353,10 @@ function yoteiMainGanttHTML(){
     rowCursor += 1 + lanes;
   });
   var totalDataRows=Math.max(rowCursor-2, 1);
-  var gridStyle='grid-template-columns:repeat('+days+',minmax(34px,1fr));grid-template-rows:32px repeat('+totalDataRows+',28px);';
+  // 代車管理・シフトと日付列の幅・開始位置を揃えるため、列幅は他の2表と同じ固定値にする
+  // (2026-09-07。以前はminmax(34px,1fr)で画面幅に応じて伸縮していたため、3表を並べた時に
+  // 日付の位置がずれて見えていた)。
+  var gridStyle='grid-template-columns:'+YOTEI_LABEL_W+'px repeat('+days+','+YOTEI_DAY_W+'px);grid-template-rows:32px repeat('+totalDataRows+',28px);';
   return '<div class="ywgantt-wrap"><div class="ywgantt" style="'+gridStyle+'">'+headCells+colSeps+sectionsHtml+'</div></div>';
 }
 /* 代車管理: 入庫予定表と同じ月・同じ日付軸で、行=登録済みの代車、バー=貸出中の車(お客様名・車種)。
@@ -9390,7 +9420,7 @@ function daishaGridHTML(){
         + '</div>';
     });
   });
-  var gridStyle='grid-template-columns:90px repeat('+days+',minmax(34px,1fr));grid-template-rows:32px repeat('+loaners.length+',36px);';
+  var gridStyle='grid-template-columns:'+YOTEI_LABEL_W+'px repeat('+days+','+YOTEI_DAY_W+'px);grid-template-rows:32px repeat('+loaners.length+',36px);';
   return '<h3 style="font-size:14px;margin:0 0 8px;display:flex;align-items:center;gap:8px;">🚙 代車管理'+editBtn+'</h3>'
     + '<div class="ywgantt-wrap"><div class="ywgantt" style="'+gridStyle+'">'+headCells+colSeps+rowsHtml+'</div></div>';
 }
@@ -9441,7 +9471,7 @@ function shiftGridBodyHTML(){
       + '<button class="btn" onclick="openMembers()">＋ メンバーを登録する</button></div>';
   }
   var today=new Date();
-  var colTemplate='88px repeat('+days+',28px)';
+  var colTemplate=YOTEI_LABEL_W+'px repeat('+days+','+YOTEI_DAY_W+'px)';
   var headRow='<div style="display:grid;grid-template-columns:'+colTemplate+';gap:2px;"><div></div>';
   for(var d=1; d<=days; d++){
     var dow=new Date(_yoteiCalY,_yoteiCalM-1,d).getDay();
