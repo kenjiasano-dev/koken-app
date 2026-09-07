@@ -491,6 +491,7 @@ input[type="time"]::-webkit-calendar-picker-indicator { filter: invert(1); opaci
 .deliv.amber{color:var(--amber); font-weight:600;}
 .deliv.red{color:var(--red); font-weight:600;}
 .deliv-set{color:var(--accent); font-size:12px;}
+.deliv-shadow{opacity:.28; filter:grayscale(1); font-size:16px; line-height:1;}
 .assign{display:inline-flex; align-items:center; gap:3px; border:0.5px solid var(--line2); background:var(--card2); color:var(--muted); font-size:15px; padding:10px 15px; border-radius:20px; margin-left:8px; line-height:1.4; vertical-align:middle; box-shadow:var(--shadow);}
 .assign.has{color:var(--accent); border-color:#2c4a72; background:var(--accent-bg);}
 .assign:active{transform:scale(.96);}
@@ -1948,7 +1949,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = 'app202609071345';
+const APP_VERSION = 'app202609071406';
 // LINEログイン(LIFF) — LINEコンソールで作成したLIFFアプリのIDを入れる
 const LIFF_ID = '2010638896-vJtjkUOr';
 // 公式アカウント「カーコン工賃通知」友だち追加URL（ここに飛ばすとLINEアプリの友だち追加画面が直接開く）
@@ -5164,6 +5165,12 @@ async function doWelcomeRestore(){
 // INIT
 // ============================================================
 function init() {
+  // 現場ボード側のstate(店舗設定・登録済み代車・車データ)は、以前は現場タブを開くまで
+  // 読み込まれず、その間に受付入力から成約→現場ボード反映(syncEstimateToBoard)が走ると
+  // 未読込のstate({store:null,cars:[]})のままpersist()され、localStorage上の実データを
+  // 空で上書きしてしまう恐れがあった(受付の代車ピッカーが「未登録」と出る不具合の根本原因でもある)。
+  // 起動時に一度だけ読み込んでおくことで、どのタブから使い始めても実データを参照できるようにする。
+  if (typeof loadState === 'function') loadState();
   flushQueue();
   initCalendar();
   initInputPage();
@@ -7802,7 +7809,7 @@ function bd_loanerLine(c){
     var period = s ? (bd_fmtDateMD(s) + (e?('〜'+bd_fmtDateMD(e)):'〜未定')) : '';
     return '<div class="deliv" onclick="event.stopPropagation();openLoanerAssign(\''+c.id+'\')">🚙 代車: '+esc(c.loanerCar.replace(/・$/,''))+(period?('　'+period):'')+' ✎</div>';
   }
-  return '<div class="deliv deliv-set" onclick="event.stopPropagation();openLoanerAssign(\''+c.id+'\')">＋ 代車を貸す</div>';
+  return '<div class="deliv deliv-shadow" title="代車を貸す" onclick="event.stopPropagation();openLoanerAssign(\''+c.id+'\')">🚙</div>';
 }
 /* 代車の貸出期間(既定はその車の入庫〜納車予定、個別上書きも可)。daishaGridHTMLとも共有。 */
 function loanerPeriodOf(c){
