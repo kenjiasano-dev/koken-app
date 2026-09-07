@@ -1949,7 +1949,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = 'app202609071406';
+const APP_VERSION = 'app202609071434';
 // LINEログイン(LIFF) — LINEコンソールで作成したLIFFアプリのIDを入れる
 const LIFF_ID = '2010638896-vJtjkUOr';
 // 公式アカウント「カーコン工賃通知」友だち追加URL（ここに飛ばすとLINEアプリの友だち追加画面が直接開く）
@@ -7771,8 +7771,18 @@ function loanerCarsHTML(){
     <div style="max-height:44vh; overflow:auto; margin-bottom:10px;">${rows || '<p style="color:var(--muted); font-size:13px;">まだ登録がありません。</p>'}</div>
     <button class="btn ghost" onclick="addLoanerCar()" style="margin-bottom:10px;">＋ 代車を追加</button>
     <div style="margin-top:6px;padding-top:12px;border-top:1px solid var(--border);">
-      <div style="font-size:12px;color:var(--muted);margin-bottom:6px;">まとめて登録（1行に1台、車種とナンバーは半角スペースで区切り）</div>
-      <textarea id="loaner-bulk" rows="4" placeholder="ワゴンR 232&#10;ノート 342&#10;ハスラー 561" style="width:100%;padding:9px 10px;font-size:14px;background:var(--card);border:1px solid var(--border);border-radius:8px;color:var(--text);resize:vertical;"></textarea>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:6px;">まとめて登録（1行に1台、車種とナンバーを別々の欄に）</div>
+      <div style="display:flex; gap:8px;">
+        <div style="flex:1.4;">
+          <div style="font-size:11px;color:var(--muted);margin-bottom:4px;">車種</div>
+          <textarea id="loaner-bulk-type" rows="4" placeholder="ワゴンR&#10;ノート&#10;ハスラー" style="width:100%;padding:9px 10px;font-size:14px;background:var(--card);border:1px solid var(--border);border-radius:8px;color:var(--text);resize:vertical;"></textarea>
+        </div>
+        <div style="flex:1;">
+          <div style="font-size:11px;color:var(--muted);margin-bottom:4px;">ナンバー</div>
+          <textarea id="loaner-bulk-number" rows="4" placeholder="232&#10;342&#10;561" style="width:100%;padding:9px 10px;font-size:14px;background:var(--card);border:1px solid var(--border);border-radius:8px;color:var(--text);resize:vertical;"></textarea>
+        </div>
+      </div>
+      <p style="color:var(--muted);font-size:11px;margin:4px 0 0;">同じ行同士（車種の1行目とナンバーの1行目）が1台分になります。</p>
       <button class="btn ghost" onclick="addLoanerCarsBulk()" style="margin-top:8px;">📋 まとめて追加</button>
     </div>
     <div class="sheet-actions" style="margin-top:12px;">
@@ -7781,14 +7791,19 @@ function loanerCarsHTML(){
     </div>`;
 }
 function addLoanerCarsBulk(){
-  var ta = document.getElementById('loaner-bulk'); if(!ta) return;
-  var lines = ta.value.split('\n').map(function(s){ return s.trim(); }).filter(Boolean);
-  if(!lines.length) return;
-  var parsed = lines.map(function(line){
-    var parts = line.split(/\s+/);
-    var number = parts.length>1 ? parts.pop() : '';
-    return {cartype: parts.join(' '), number: number};
-  });
+  var taType = document.getElementById('loaner-bulk-type');
+  var taNum = document.getElementById('loaner-bulk-number');
+  if(!taType || !taNum) return;
+  var types = taType.value.split('\n').map(function(s){ return s.trim(); });
+  var nums = taNum.value.split('\n').map(function(s){ return s.trim(); });
+  var len = Math.max(types.length, nums.length);
+  var parsed = [];
+  for(var i=0; i<len; i++){
+    var t = types[i]||'', n = nums[i]||'';
+    if(!t && !n) continue;
+    parsed.push({cartype:t, number:n});
+  }
+  if(!parsed.length) return;
   editLoanerCars = editLoanerCars.concat(parsed);
   rebuildLoanerCars();
 }
@@ -7799,6 +7814,12 @@ function saveLoanerCars(){
   var cleaned = editLoanerCars.map(function(o){ return {cartype:String(o.cartype||'').trim(), number:String(o.number||'').trim()}; }).filter(function(o){ return o.cartype; });
   state.store.loanerCars = cleaned;
   bd_saveLocal(); closeSheet(); toast('代車を保存しました');
+  // 代車一覧はこれまでこの端末のlocalStorageにしか無く、端末のstorageが空で
+  // 返ってくる不具合が起きると復旧できず消失していた。工程設定と同じくGASにも
+  // 控えを保存し、他端末や再読込後にloadGroupStages()で復元できるようにする(2026-09-07)。
+  if(state.store.group){
+    postToBoardGAS('setGroupStages', { groupCode: state.store.group, loanerCars: state.store.loanerCars });
+  }
 }
 /* 車ごとの代車貸出。期間は基本その車自身の入庫〜納車予定と同じだが、
    代車だけ別期間にしたい場合のためloanerStart/loanerEndで個別に上書きできる。 */
@@ -8151,6 +8172,12 @@ async function loadGroupStages(){
   let changed = false;
   if(Array.isArray(res.stages)){ state.store.stages = res.stages; changed = true; }
   if(Array.isArray(res.seibiStages)){ state.store.seibiStages = res.seibiStages; changed = true; }
+  // 代車一覧はローカルのstorageが空で返る不具合が起きると消えてしまうため、サーバー側に
+  // 登録があればそれを正として復元する(2026-09-07)。ローカルにまだ無い時だけ埋める
+  // (stages/seibiStagesと違い、こちらは端末側で先に登録済みのケースが多いため上書きしない)。
+  if(Array.isArray(res.loanerCars) && res.loanerCars.length && (!Array.isArray(state.store.loanerCars) || !state.store.loanerCars.length)){
+    state.store.loanerCars = res.loanerCars; changed = true;
+  }
   if(!changed) return;
   bd_saveLocal();
   state.cars.forEach(c=>{
@@ -9210,7 +9237,10 @@ function daishaGridHTML(){
   var editBtn='<button class="btn ghost" style="padding:4px 10px;font-size:11px;margin-left:auto;" onclick="openLoanerCars()">代車を編集</button>';
   if(!loaners.length){
     return '<h3 style="font-size:14px;margin:0 0 8px;display:flex;align-items:center;gap:8px;">🚙 代車管理'+editBtn+'</h3>'
-      + '<p style="color:var(--muted);font-size:12px;">代車が登録されていません。⚙設定→代車 から登録してください。</p>';
+      + '<div style="text-align:center;padding:20px 12px;">'
+      +   '<p style="color:var(--muted);font-size:12px;margin:0 0 12px;">代車がまだ登録されていません。</p>'
+      +   '<button class="btn" onclick="openLoanerCars()">＋ 代車を登録する</button>'
+      + '</div>';
   }
   var headCells='<div class="ywlabel" style="grid-column:1/2;grid-row:1;"></div>';
   var colSeps='';
@@ -10298,7 +10328,7 @@ function seedStoreFromUser(){
   var u = (typeof userData!=='undefined' && userData) ? userData : {};
   state.store = Object.assign({}, state.store||{}, {
     name:  (state.store&&state.store.name)  || u.storeName || u.store || '',
-    group: (state.store&&state.store.group) || u.groupCode || '',
+    group: (state.store&&state.store.group) || u.activeGroupCode || u.groupCode || '',
     myName:(state.store&&state.store.myName)|| u.name || '',
     uuid:  (state.store&&state.store.uuid)  || u.uuid || uuid()
   });
