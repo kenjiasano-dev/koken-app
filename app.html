@@ -1950,7 +1950,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = 'app202609071518';
+const APP_VERSION = 'app202609071526';
 // LINEログイン(LIFF) — LINEコンソールで作成したLIFFアプリのIDを入れる
 const LIFF_ID = '2010638896-vJtjkUOr';
 // 公式アカウント「カーコン工賃通知」友だち追加URL（ここに飛ばすとLINEアプリの友だち追加画面が直接開く）
@@ -9252,7 +9252,9 @@ function yoteiMainGanttHTML(){
     if(!startKey) return false;
     var startYm = startKey.slice(0,7);
     if(startYm > ym) return false;   // まだ始まっていない(表示月より先の入庫予定)
-    if(c.deliveryDate && c.deliveryDate.slice(0,7) < ym) return false;   // 表示月より前に納車済みのはず
+    // 納車予定日は「予定」であって実際の完成日ではない。過ぎていても完成(status==='done')に
+    // なっていなければ延滞中でまだ居座っている車なので、deliveryDateだけでは除外しない
+    // (2026-09-07、この除外条件のせいで延滞中の車が入庫予定表から丸ごと消える regression があった)。
     return true;
   }).map(function(c){
     var startKey = c.status==='yotei' ? (c.nyukoPlan||'').slice(0,10) : (c.nyukoAt||'').slice(0,10);
@@ -9264,6 +9266,7 @@ function yoteiMainGanttHTML(){
       var dm=c.deliveryDate.slice(0,7), dd=parseInt(c.deliveryDate.slice(8,10),10);
       if(dm===ym && dd>=start) end=dd;
       else if(dm>ym) end=days;   // 納車が翌月以降＝今月末まで伸ばして表示(簡易表現)
+      else if(dm<ym) end=days;   // 納車予定日が過ぎてもまだ完成していない(延滞)＝今月も居座っている
     } else if(c.status!=='yotei' || startYm<ym){
       end=days;   // 納車日未定(または開始が前月以前で今も予定継続中)＝月末まで伸ばして表示
     }
