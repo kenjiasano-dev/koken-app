@@ -1949,7 +1949,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = 'app202609071434';
+const APP_VERSION = 'app202609071449';
 // LINEログイン(LIFF) — LINEコンソールで作成したLIFFアプリのIDを入れる
 const LIFF_ID = '2010638896-vJtjkUOr';
 // 公式アカウント「カーコン工賃通知」友だち追加URL（ここに飛ばすとLINEアプリの友だち追加画面が直接開く）
@@ -6296,6 +6296,7 @@ reclaimFromLineRedirect().then(function(reclaimed) {
     <button class="pcdv-btn" data-pcdview="settings" onclick="pcdSwitchView('settings')">⚙️ 設定</button>
     <button class="pcdv-btn" onclick="openYoteiGrid()" title="入庫予定表（月間ガントチャート）を表示">📋 入庫予定表</button>
     <button class="pcdv-btn" onclick="openDaishaGrid()" title="代車管理を表示">🚙 代車管理</button>
+    <button class="pcdv-btn" onclick="openShiftGrid()" title="シフト（出勤・休み）を表示">🗓 シフト</button>
   </div>
   <div class="pcd-grid">
     <div class="pcd-genba">
@@ -7464,6 +7465,7 @@ function settingsHTML(){
     </div>
     <button class="btn ghost" style="margin-top:9px;" onclick="openMembers()">担当者（メンバー）の編集</button>
     <button class="btn ghost" style="margin-top:9px;" onclick="openLoanerCars()">🚙 代車の編集</button>
+    <button class="btn ghost" style="margin-top:9px;" onclick="openShiftGrid()">🗓 シフトの編集</button>
     <button class="btn ghost" style="margin-top:9px;" onclick="openRankingBoard()">🏆 称号・ランキング</button>
     <button class="btn ghost" style="margin-top:9px;" onclick="connectGDrive()">🔗 Googleドライブ連携${(localStorage.getItem('gdrive_confirmed_email'))?'（'+esc(localStorage.getItem('gdrive_confirmed_email'))+'）':'（未接続）'}</button>
     <button class="btn ghost" style="margin-top:9px;" onclick="exportAllZip()">📷 全部の工程写真をまとめてZIPで書き出す</button>
@@ -8177,6 +8179,11 @@ async function loadGroupStages(){
   // (stages/seibiStagesと違い、こちらは端末側で先に登録済みのケースが多いため上書きしない)。
   if(Array.isArray(res.loanerCars) && res.loanerCars.length && (!Array.isArray(state.store.loanerCars) || !state.store.loanerCars.length)){
     state.store.loanerCars = res.loanerCars; changed = true;
+  }
+  // シフトも同じ理由でサーバーに控える(2026-09-07)。ローカルが空の時だけ丸ごと採用
+  const localShiftEmpty = !state.store.shifts || typeof state.store.shifts!=='object' || Array.isArray(state.store.shifts) || !Object.keys(state.store.shifts).length;
+  if(res.shifts && typeof res.shifts==='object' && !Array.isArray(res.shifts) && Object.keys(res.shifts).length && localShiftEmpty){
+    state.store.shifts = res.shifts; changed = true;
   }
   if(!changed) return;
   bd_saveLocal();
@@ -9088,7 +9095,11 @@ function openYoteiCal(){
 /* ===== 1〜31日を横軸に、各日の車種・ナンバーを縦に並べる一覧表(加盟店の紙の入庫予定表と同じ見方) ===== */
 function openYoteiGrid(){
   if(_yoteiCalY==null){ var now=new Date(); _yoteiCalY=now.getFullYear(); _yoteiCalM=now.getMonth()+1; }
-  showSheet(yoteiGridHTML(), true, true);
+  // 「📋入庫予定表」ボタンは常に入庫予定タブから見せたい。表示モードは3種とも
+  // settings.yoteiViewModeで記憶する作りなので、代車管理を最後に見ていた直後だと
+  // このボタンから開いても代車管理のまま出てしまっていた。openDaishaGrid()と同じく
+  // 明示的にモードを固定してから開く(2026-09-07)。
+  bd_setYoteiViewMode('yotei');
 }
 /* PCヘッダーから代車管理へ直接ジャンプするショートカット。入庫予定表を開いた後
    「代車予定表だけ」を選ぶ手間を省く(2026-08-28)。 */
@@ -9292,6 +9303,85 @@ function daishaGridHTML(){
   var gridStyle='grid-template-columns:90px repeat('+days+',minmax(34px,1fr));grid-template-rows:32px repeat('+loaners.length+',36px);';
   return '<h3 style="font-size:14px;margin:0 0 8px;display:flex;align-items:center;gap:8px;">🚙 代車管理'+editBtn+'</h3>'
     + '<div class="ywgantt-wrap"><div class="ywgantt" style="'+gridStyle+'">'+headCells+colSeps+rowsHtml+'</div></div>';
+}
+
+/* ===== シフト(2026-09-07): 日単位で出勤/休みだけを管理する簡易表。入庫予定表・代車管理と
+   同じ月(_yoteiCalY/_yoteiCalM)を共有し、行=メンバー、列=日付のマス目をタップで切り替える。
+   時間帯までは持たず「休みだけ記録・それ以外は出勤扱い」にしてデータ量を小さく保つ。 */
+function getShifts(){ return (state.store && state.store.shifts && typeof state.store.shifts==='object' && !Array.isArray(state.store.shifts)) ? state.store.shifts : {}; }
+function isShiftOff(dateStr, name){ var day = getShifts()[dateStr]; return !!(day && day[name]); }
+function toggleShift(dateStr, name){
+  if(!state.store) return;
+  if(!state.store.shifts || typeof state.store.shifts!=='object' || Array.isArray(state.store.shifts)) state.store.shifts = {};
+  var day = Object.assign({}, state.store.shifts[dateStr]);
+  if(day[name]) delete day[name]; else day[name] = true;
+  if(Object.keys(day).length) state.store.shifts[dateStr] = day; else delete state.store.shifts[dateStr];
+  bd_saveLocal();
+  // 工程設定・代車一覧と同じ経路でGASにも保存(端末側のstorageが空で返る不具合が起きても復元できるように)
+  if(state.store.group){
+    postToBoardGAS('setGroupStages', { groupCode: state.store.group, shifts: state.store.shifts });
+  }
+  var cell = document.getElementById('shiftcell-'+dateStr+'-'+_shiftCellIdx(name));
+  if(cell){
+    var off = isShiftOff(dateStr, name);
+    cell.style.background = off ? 'var(--red-bg,#3a1a1a)' : 'var(--card2)';
+    cell.style.borderColor = off ? 'var(--red,#e74c3c)' : 'var(--line2)';
+    cell.style.color = off ? 'var(--red,#e74c3c)' : 'var(--muted)';
+    cell.textContent = off ? '休' : '';
+  }
+}
+/* メンバー名には記号や空白が入りうるので、id生成には配列内インデックスを使う(名前を直接idに埋め込まない) */
+var _shiftMemberOrder = [];
+function _shiftCellIdx(name){ var i=_shiftMemberOrder.indexOf(name); return i>=0 ? i : _shiftMemberOrder.push(name)-1; }
+function openShiftGrid(){
+  if(_yoteiCalY==null){ var now=new Date(); _yoteiCalY=now.getFullYear(); _yoteiCalM=now.getMonth()+1; }
+  showSheet(shiftGridHTML(), true, true);
+}
+function changeShiftGridMonth(delta){
+  _yoteiCalM+=delta;
+  if(_yoteiCalM>12){ _yoteiCalM=1; _yoteiCalY++; }
+  if(_yoteiCalM<1){ _yoteiCalM=12; _yoteiCalY--; }
+  showSheet(shiftGridHTML(), true, true);
+}
+function shiftGridHTML(){
+  _shiftMemberOrder = [];
+  var days=new Date(_yoteiCalY,_yoteiCalM,0).getDate();
+  var members=getMembers();
+  var head = '<h2 style="font-size:16px;margin:0 0 6px;">🗓 シフト（'+_yoteiCalY+'年'+_yoteiCalM+'月）</h2>'
+    + '<p style="color:var(--muted);font-size:11px;margin:2px 0 8px;">マスをタップで出勤⇄休みを切り替え（空欄＝出勤、赤の「休」＝休み）</p>'
+    + '<div class="cal-header" style="margin-bottom:8px;">'
+    +   '<button class="cal-nav" onclick="changeShiftGridMonth(-1)">◀</button>'
+    +   '<button class="btn ghost" style="padding:6px 14px;font-size:12px;" onclick="openMembers()">担当者（メンバー）を編集</button>'
+    +   '<button class="cal-nav" onclick="changeShiftGridMonth(1)">▶</button>'
+    + '</div>';
+  if(!members.length){
+    return head + '<div style="text-align:center;padding:20px 12px;">'
+      + '<p style="color:var(--muted);font-size:12px;margin:0 0 12px;">メンバーが登録されていません。</p>'
+      + '<button class="btn" onclick="openMembers()">＋ メンバーを登録する</button></div>';
+  }
+  var today=new Date();
+  var colTemplate='88px repeat('+days+',28px)';
+  var headRow='<div style="display:grid;grid-template-columns:'+colTemplate+';gap:2px;"><div></div>';
+  for(var d=1; d<=days; d++){
+    var dow=new Date(_yoteiCalY,_yoteiCalM-1,d).getDay();
+    var isToday=today.getFullYear()===_yoteiCalY && today.getMonth()+1===_yoteiCalM && today.getDate()===d;
+    var col = dow===0?'var(--red,#e74c3c)':(dow===6?'var(--accent)':'var(--muted)');
+    headRow += '<div style="text-align:center;font-size:10px;color:'+col+';'+(isToday?'font-weight:700;text-decoration:underline;':'')+'">'+d+'</div>';
+  }
+  headRow += '</div>';
+  var bodyRows = members.map(function(name){
+    var idx=_shiftCellIdx(name);
+    var row='<div style="display:grid;grid-template-columns:'+colTemplate+';gap:2px;align-items:center;margin-top:2px;">'
+      + '<div style="font-size:12px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding-right:4px;" title="'+esc(name)+'">'+esc(name)+'</div>';
+    for(var d=1; d<=days; d++){
+      var ds=_yoteiCalY+'-'+String(_yoteiCalM).padStart(2,'0')+'-'+String(d).padStart(2,'0');
+      var off=isShiftOff(ds,name);
+      row += '<div id="shiftcell-'+ds+'-'+idx+'" onclick="toggleShift(\''+ds+'\',\''+esc(name)+'\')" style="height:26px;border-radius:5px;cursor:pointer;background:'+(off?'var(--red-bg,#3a1a1a)':'var(--card2)')+';border:1px solid '+(off?'var(--red,#e74c3c)':'var(--line2)')+';color:'+(off?'var(--red,#e74c3c)':'var(--muted)')+';display:flex;align-items:center;justify-content:center;font-size:10px;">'+(off?'休':'')+'</div>';
+    }
+    row += '</div>';
+    return row;
+  }).join('');
+  return head + '<div style="overflow-x:auto;padding-bottom:8px;">'+headRow+bodyRows+'</div>';
 }
 /* バー先頭の丸(ywdot)をタップすると出す、色を選ぶだけの最小限のポップアップ。
    整備・車検・コーチングなど種類が増えても、車ごとに自由に色分けできるように(2026-08-27)。 */
