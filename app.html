@@ -1959,7 +1959,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = 'app202609081210';
+const APP_VERSION = 'app202609081303';
 // LINEログイン(LIFF) — LINEコンソールで作成したLIFFアプリのIDを入れる
 const LIFF_ID = '2010638896-vJtjkUOr';
 // 公式アカウント「カーコン工賃通知」友だち追加URL（ここに飛ばすとLINEアプリの友だち追加画面が直接開く）
@@ -6940,7 +6940,9 @@ function findCar(id){ return state.cars.find(c=>c.id===id); }
    同じ番号の車が誤って重複登録されてしまう事故を受けて追加)。 */
 function bd_carNameNum(c){
   var numDisp = (c.plateRegion||c.plateClass||c.plateKana) ? fullPlateLabel(c) : c.number;
-  return '<span class="name" onclick="event.stopPropagation();openCarTypeNumEdit(\''+c.id+'\')" style="cursor:pointer;text-decoration:underline dotted;text-underline-offset:2px;">'+esc(c.cartype)+'</span><span class="num" onclick="event.stopPropagation();openCarTypeNumEdit(\''+c.id+'\')" style="cursor:pointer;">・'+esc(numDisp)+'</span>';
+  // 枠の色を選んだ時は車種名の文字色も揃えて、一目でその色の車と分かるように(2026-09-08)
+  var nameColor = c.ganttColor ? ('color:'+c.ganttColor+';') : '';
+  return '<span class="name" onclick="event.stopPropagation();openCarTypeNumEdit(\''+c.id+'\')" style="cursor:pointer;text-decoration:underline dotted;text-underline-offset:2px;'+nameColor+'">'+esc(c.cartype)+'</span><span class="num" onclick="event.stopPropagation();openCarTypeNumEdit(\''+c.id+'\')" style="cursor:pointer;">・'+esc(numDisp)+'</span>';
 }
 function openCarTypeNumEdit(id){
   var c=findCar(id); if(!c) return;
