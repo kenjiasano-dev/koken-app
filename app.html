@@ -1966,7 +1966,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = 'app202609081539';
+const APP_VERSION = 'app202609081615';
 // LINEログイン(LIFF) — LINEコンソールで作成したLIFFアプリのIDを入れる
 const LIFF_ID = '2010638896-vJtjkUOr';
 // 公式アカウント「カーコン工賃通知」友だち追加URL（ここに飛ばすとLINEアプリの友だち追加画面が直接開く）
@@ -6539,6 +6539,11 @@ function mergeServerCars(serverCars){
 function boardSyncNow(){ if(state.store && state.store.group) syncBoardCars(state.cars); }
 window.addEventListener('online', boardSyncNow);
 setInterval(boardSyncNow, 25000);
+/* 工程設定・代車一覧・シフトも、車データ(state.cars)と同じく定期的に他端末の変更を
+   取り込む(2026-09-08)。以前はbd_boot()の起動時1回だけだったため、アプリを開いた
+   まま他端末で代車を登録しても、開き直すまで反映されなかった(ユーザー報告で発覚)。 */
+window.addEventListener('online', function(){ if(typeof loadGroupStages==='function') loadGroupStages(); });
+setInterval(function(){ if(typeof loadGroupStages==='function') loadGroupStages(); }, 30000);
 const BOARD_GAS_QUEUE_KEY = 'board_gasSendQueue';
 let _boardGasFlushing = false;
 
@@ -8389,15 +8394,12 @@ async function loadGroupStages(){
   let changed = false;
   if(Array.isArray(res.stages)){ state.store.stages = res.stages; changed = true; }
   if(Array.isArray(res.seibiStages)){ state.store.seibiStages = res.seibiStages; changed = true; }
-  // 代車一覧はローカルのstorageが空で返る不具合が起きると消えてしまうため、サーバー側に
-  // 登録があればそれを正として復元する(2026-09-07)。ローカルにまだ無い時だけ埋める
-  // (stages/seibiStagesと違い、こちらは端末側で先に登録済みのケースが多いため上書きしない)。
-  if(Array.isArray(res.loanerCars) && res.loanerCars.length && (!Array.isArray(state.store.loanerCars) || !state.store.loanerCars.length)){
-    state.store.loanerCars = res.loanerCars; changed = true;
-  }
-  // シフトも同じ理由でサーバーに控える(2026-09-07)。ローカルが空の時だけ丸ごと採用
-  const localShiftEmpty = !state.store.shifts || typeof state.store.shifts!=='object' || Array.isArray(state.store.shifts) || !Object.keys(state.store.shifts).length;
-  if(res.shifts && typeof res.shifts==='object' && !Array.isArray(res.shifts) && Object.keys(res.shifts).length && localShiftEmpty){
+  // 代車一覧・シフトも、stages/seibiStagesと同じく「サーバー側を正として常に反映」に統一する
+  // (2026-09-08。以前は「ローカルが空の時だけ埋める」にしていたが、これだとPCで代車を追加しても
+  // 既にローカルに何か1件でも登録があるスマホには永遠に反映されない、という同期漏れの原因になって
+  // いた。保存のたびに即サーバーへも送る作りなので、常にサーバーを正としても取りこぼしは起きない)。
+  if(Array.isArray(res.loanerCars)){ state.store.loanerCars = res.loanerCars; changed = true; }
+  if(res.shifts && typeof res.shifts==='object' && !Array.isArray(res.shifts)){
     state.store.shifts = res.shifts; changed = true;
   }
   if(!changed) return;
