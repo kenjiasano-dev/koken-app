@@ -1966,7 +1966,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = 'app202609081442';
+const APP_VERSION = 'app202609081539';
 // LINEログイン(LIFF) — LINEコンソールで作成したLIFFアプリのIDを入れる
 const LIFF_ID = '2010638896-vJtjkUOr';
 // 公式アカウント「カーコン工賃通知」友だち追加URL（ここに飛ばすとLINEアプリの友だち追加画面が直接開く）
@@ -8716,7 +8716,12 @@ async function uploadOnePhoto(c, photoId, token){
       c.gdriveFolderId=folderId; persist(c);
     }
     const ext = p.isPdf ? '.pdf' : '.jpg';
-    const fileName='p_'+p.stageLabel+'_'+new Date(p.ts).toISOString().slice(0,16).replace(/[:T]/g,'-')+ext;
+    // ファイル名は分単位の時刻までしか含んでいなかったため、同じ工程で1分以内に2枚撮ると
+    // 同名になり、「既に同名ファイルがある＝他端末が送信済み」の重複防止ロジックに引っかかって
+    // 2枚目が実際にはアップロードされないまま(1枚目のgdriveIdを間借りして)成功扱いになる
+    // 不具合があった(2026-09-08、ユーザー報告「2枚送ったのに1枚しかドライブに無い」で発覚)。
+    // 写真ごとに一意なp.idをファイル名にも含めて衝突しないようにする。
+    const fileName='p_'+p.stageLabel+'_'+new Date(p.ts).toISOString().slice(0,19).replace(/[:T]/g,'-')+'_'+p.id+ext;
     const existing=await gdriveFindFile(fileName, c.gdriveFolderId, auth);
     if(existing){ p.gdriveId=existing; persist(c); return true; }   // 他の端末が先に送信済み
     let rec; try{ rec=await pdbGet(p.id); }catch(e){}
