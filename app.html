@@ -1959,7 +1959,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = 'app202609081333';
+const APP_VERSION = 'app202609081342';
 // LINEログイン(LIFF) — LINEコンソールで作成したLIFFアプリのIDを入れる
 const LIFF_ID = '2010638896-vJtjkUOr';
 // 公式アカウント「カーコン工賃通知」友だち追加URL（ここに飛ばすとLINEアプリの友だち追加画面が直接開く）
@@ -10283,9 +10283,12 @@ function bd_kanbanHtml(work, opts){
   var groupCars = work.filter(function(c){ return bd_kanbanGroup(c)===activeGroup; });
   var stages = activeGroup==='other' ? [] : (getStages(kindOf[activeGroup])||[]);
   function cardHtml(c){
-    return '<div class="kanban-card" onclick="bd_openCarModal(\''+c.id+'\')">'
+    // 工程別ボードのカードにも、選んだ色を反映する(2026-09-08、タイル表示と同じ扱い)
+    var colorStyle = c.ganttColor ? (' style="border:2px solid '+c.ganttColor+';"') : '';
+    var ktStyle = c.ganttColor ? (' style="color:'+c.ganttColor+';"') : '';
+    return '<div class="kanban-card"'+colorStyle+' onclick="bd_openCarModal(\''+c.id+'\')">'
       + '<div class="kn">'+esc(c.number||'')+'</div>'
-      + '<div class="kt">'+esc(c.cartype||'')+'</div>'
+      + '<div class="kt"'+ktStyle+'>'+esc(c.cartype||'')+'</div>'
       + (c.assignee?('<div class="kw">👤 '+esc(c.assignee)+'</div>'):'')
       + (c.waitingParts?'<div class="kw" style="color:var(--red);">🚩 部品待ち</div>':'')
       + '</div>';
