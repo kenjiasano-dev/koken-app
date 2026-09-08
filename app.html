@@ -430,11 +430,17 @@ input[type="time"]::-webkit-calendar-picker-indicator { filter: invert(1); opaci
 .hstep.curw .hbar{background:var(--red);}
 .hstep.curw .hname{color:var(--red); font-weight:600;}
 .hstep.curw .htime{color:var(--red);}
+/* 部品待ちとは別の理由(待機)で工程が止まっている時のマーク(2026-09-08)。色をamberにして
+   部品待ち(赤)と見分けられるようにする(保留=onHoldと同じ配色に揃えた)。 */
+.hstep.curs .hbar{background:var(--amber);}
+.hstep.curs .hname{color:var(--amber); font-weight:600;}
+.hstep.curs .htime{color:var(--amber);}
 /* 現在工程を大きく見せる */
 .nowline{display:flex; align-items:baseline; justify-content:space-between; gap:8px; margin:10px 0 7px;}
 .nowstage{font-size:20px; font-weight:600; color:var(--accent); line-height:1.2;}
 .nowlabel{font-size:12px; color:var(--muted); margin-right:4px; font-weight:400;}
 .nowline.waiting .nowstage{color:var(--red);}
+.nowline.standby .nowstage{color:var(--amber);}
 .livedot{display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--accent);margin-right:5px;position:relative;top:-1px;animation:livepulse 1.6s ease-in-out infinite;}
 @keyframes livepulse{0%,100%{opacity:1;transform:scale(1);}50%{opacity:.55;transform:scale(1.25);}}
 .stepcount{font-size:14px; color:var(--muted); white-space:nowrap;}
@@ -499,6 +505,7 @@ input[type="time"]::-webkit-calendar-picker-indicator { filter: invert(1); opaci
 
 /* card state: part waiting */
 .car.waiting{background:var(--red-bg); border-color:#5a2626;}
+.car.standby{background:var(--amber-bg); border-color:var(--amber);}
 .car.done-card{background:var(--green-bg); border-color:#2c5648;}
 
 /* chips (入庫 quick) */
@@ -1959,7 +1966,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = 'app202609081357';
+const APP_VERSION = 'app202609081432';
 // LINEログイン(LIFF) — LINEコンソールで作成したLIFFアプリのIDを入れる
 const LIFF_ID = '2010638896-vJtjkUOr';
 // 公式アカウント「カーコン工賃通知」友だち追加URL（ここに飛ばすとLINEアプリの友だち追加画面が直接開く）
@@ -7452,7 +7459,7 @@ function startCar(id){
 }
 /* 次へ（工程を進める）＝いま終えた工程に現在の担当を刻む */
 function nextStage(id){
-  const c=findCar(id); if(!c||c.waitingParts) return;
+  const c=findCar(id); if(!c||c.waitingParts||c.onStandby) return;
   if(c.stage < getStages(c.kind).length-1){
     accStageMinutes(c);                       // 終えた工程の時間を確定
     c.stageBy = c.stageBy || [];
@@ -7466,7 +7473,7 @@ function nextStage(id){
 }
 /* 戻る（工程を一つ戻す）＝戻った工程はやり直しなので担当をクリア */
 function prevStage(id){
-  const c=findCar(id); if(!c||c.waitingParts) return;
+  const c=findCar(id); if(!c||c.waitingParts||c.onStandby) return;
   if(c.stage > 0){
     accStageMinutes(c);                       // 今の工程分を確定してから
     c.stage--;
@@ -7484,7 +7491,7 @@ function finishCar(id){
   c.stageBy = c.stageBy || [];
   if(!byNames(c.stageBy[c.stage]).length) c.stageBy[c.stage] = c.assignee ? [c.assignee] : [];
   syncStageProgress(c, c.stage, '完了');      // 最終工程をGASに反映
-  c.status='done'; c.waitingParts=false; c.doneAt=nowISO();
+  c.status='done'; c.waitingParts=false; c.onStandby=false; c.doneAt=nowISO();
   syncProjectComplete(c);                     // 案件完成をGASに反映
   persist(c); pcdClearSearch(); toast(c.cartype+' を完成に記録'); render();
 }
@@ -7513,12 +7520,31 @@ function toggleParts(id){
   const c=findCar(id); if(!c) return;
   c.waitingParts=!c.waitingParts;
   if(c.waitingParts){
+    // 待機中に部品待ちへ切り替えた場合、停止理由が二重にならないよう待機は解除する
+    if(c.onStandby){ c.onStandby=false; c.standbySince=null; }
     c.partSince = nowISO();
     accStageMinutes(c);        // それまでの分を確定して
     c.stageStart = null;       // 計測を止める（部品待ち中は数えない）
   }else{
     c.partSince = null;
     c.stageStart = Date.now(); // 再開
+  }
+  persist(c); render();
+}
+/* 待機トグル(2026-09-08)。部品待ち以外の理由(お客様確認待ち・他の作業者待ちなど)で
+   その工程で止まっていることもあるため、部品待ちとは独立した別のマークとして追加。
+   挙動(工程時間の計測を止める/再開する)はtoggleParts()と同じ。 */
+function toggleStandby(id){
+  const c=findCar(id); if(!c) return;
+  c.onStandby=!c.onStandby;
+  if(c.onStandby){
+    if(c.waitingParts){ c.waitingParts=false; c.partSince=null; }
+    c.standbySince = nowISO();
+    accStageMinutes(c);
+    c.stageStart = null;
+  }else{
+    c.standbySince = null;
+    c.stageStart = Date.now();
   }
   persist(c); render();
 }
@@ -7549,7 +7575,7 @@ function backToNyuko(id){
   const c=findCar(id); if(!c) return;
   c.status='nyuko';
   c.stage=0; c.stageStart=null; c.stageDur=[]; c.stageBy=[];
-  c.waitingParts=false; c.partSince=null; c.startAt=null;
+  c.waitingParts=false; c.partSince=null; c.onStandby=false; c.standbySince=null; c.startAt=null;
   persist(c); pcdClearSearch(); toast(c.cartype+' を入庫に戻しました'); render();
 }
 function reopenCar(id){
@@ -8026,9 +8052,9 @@ function getLoanerHolds(){ return (state.store && Array.isArray(state.store.loan
 function loanerOccupants(key, excludeCarId){
   var carItems = state.cars.filter(function(c){
     return c.id!==excludeCarId && c.loanerCar===key && (c.status==='yotei'||c.status==='nyuko'||c.status==='work');
-  }).map(function(c){ var p=loanerPeriodOf(c); return {kind:'car', id:c.id, label:(c.customerName||c.cartype), sub:c.cartype, s:p.s, e:p.e, color:c.ganttColor||''}; });
+  }).map(function(c){ var p=loanerPeriodOf(c); return {kind:'car', id:c.id, label:(c.customerName||c.cartype), sub:c.cartype, s:p.s, e:p.e, color:c.ganttColor||'', fill:!!c.ganttFill}; });
   var holdItems = getLoanerHolds().filter(function(h){ return h.key===key; })
-    .map(function(h){ return {kind:'hold', id:h.id, label:(h.memo||'仮抑え'), sub:'', s:h.start, e:h.end, color:h.color||''}; });
+    .map(function(h){ return {kind:'hold', id:h.id, label:(h.memo||'仮抑え'), sub:'', s:h.start, e:h.end, color:h.color||'', fill:false}; });
   return carItems.concat(holdItems);
 }
 /* 納車予定日・入庫日を変えた時、その車に付いている代車の貸出期間(loanerStart/loanerEnd
@@ -9504,7 +9530,7 @@ function yoteiMainGanttHTML(){
       var c=it.car, span=it.end-it.start+1;
       var statusLabel = {yotei:'予定', nyuko:'入庫中', work:'作業中'}[c.status] || '';
       var cls = c.status==='yotei' ? 'ywbar ywbar-yotei' : 'ywbar';
-      var barStyle = 'grid-column:'+(it.start+1)+'/'+(it.end+2)+';grid-row:'+(it.lane+laneBaseRow)+';'+(c.ganttColor?('border-left-color:'+c.ganttColor+';'):'');
+      var barStyle = 'grid-column:'+(it.start+1)+'/'+(it.end+2)+';grid-row:'+(it.lane+laneBaseRow)+';'+(c.ganttColor?('border-left-color:'+c.ganttColor+';'+(c.ganttFill?('background:'+c.ganttColor+'26;'):'')):'');
       var dotStyle = c.ganttColor ? ('background:'+c.ganttColor+';') : '';
       var custEstTitle = (c.customerName?('・'+esc(c.customerName)):'') + (c.estimateAmount?('・見積¥'+Number(c.estimateAmount).toLocaleString()):'') + (c.loanerCar?('・🚙代車:'+esc(c.loanerCar.replace(/・$/,''))):'');
       // 入庫予定表側でも代車が貸し出し中とひと目でわかるように、バーに🚙アイコンを付ける(2026-08-28)
@@ -9575,7 +9601,7 @@ function daishaGridHTML(){
       var isHold = occ.kind==='hold';
       var title=esc(loanerLabel(loaner))+'・'+esc(occ.label)+(occ.sub?('・'+esc(occ.sub)):'')+(isHold?'（仮抑え）':'')+'・'+periodTxt;
       var onclick = isHold ? ('openLoanerHold(\''+occ.id+'\')') : ('bd_openCarFromYoteiGrid(\''+occ.id+'\')');
-      var barStyle = 'grid-column:'+(start+1)+'/'+(end+2)+';grid-row:'+rowIdx+';'+(occ.color?('border-left-color:'+occ.color+';'):'');
+      var barStyle = 'grid-column:'+(start+1)+'/'+(end+2)+';grid-row:'+rowIdx+';'+(occ.color?('border-left-color:'+occ.color+';'+(occ.fill?('background:'+occ.color+'26;'):'')):'');
       var dotStyle = occ.color ? ('background:'+occ.color+';') : '';
       // 実車は既存のganttColor(入庫予定表と共有)、仮抑えはloanerHolds側のcolorで色分け(2026-08-28)
       var dotClick = isHold ? ('bd_holdColorPick(event,\''+occ.id+'\')') : ('bd_yoteiColorPick(event,\''+occ.id+'\')');
@@ -9689,6 +9715,15 @@ function bd_openColorPopup(ev, onPick){
     document.addEventListener('click', function closeOnce(){ var p=document.getElementById('yw-colorpop'); if(p) p.remove(); document.removeEventListener('click',closeOnce); });
   },0);
 }
+/* 色選択を2段階にする(2026-09-08、以前の「枠だけ」の見た目に戻したいという要望)。
+   ①違う色(または初めて)を選ぶ→枠・丸だけ色が付く(塗りつぶし無し)
+   ②同じ色をもう一度選ぶ→中まで塗りつぶす(もう一度選べば塗りつぶし解除、枠だけに戻る)
+   「色なしに戻す」は今まで通りどちらも一気にクリアする。 */
+function bd_applyCarColor(c, color){
+  if(!color){ c.ganttColor=''; c.ganttFill=false; return; }
+  if(c.ganttColor===color){ c.ganttFill=!c.ganttFill; }
+  else { c.ganttColor=color; c.ganttFill=false; }
+}
 function bd_yoteiColorPick(ev, carId){
   bd_openColorPopup(ev, function(color){ bd_setYoteiColor(carId, color); });
 }
@@ -9698,7 +9733,7 @@ function bd_yoteiColorPick(ev, carId){
 function bd_cardColorPick(ev, carId){
   bd_openColorPopup(ev, function(color){
     var c=findCar(carId); if(!c) return;
-    c.ganttColor=color; persist(c); render();
+    bd_applyCarColor(c, color); persist(c); render();
     toast(color?'色を変更しました':'色をリセットしました');
   });
 }
@@ -9717,7 +9752,7 @@ function bd_setHoldColor(holdId, color){
 }
 function bd_setYoteiColor(carId, color){
   var c=findCar(carId); if(!c) return;
-  c.ganttColor=color; persist(c);
+  bd_applyCarColor(c, color); persist(c);
   showSheet(yoteiGridHTML(), true, true);
   toast(color?'色を変更しました':'色をリセットしました');
 }
@@ -10048,8 +10083,12 @@ function crewGauge(c){
 /* ---------- スマホ版のrenderWork/renderNyuko/renderDoneを、上の共通カード関数を使うよう再定義 ---------- */
 function renderWork(work){
   work = work.filter(matchQ);
+  var _partN = work.filter(c=>c.waitingParts).length, _standbyN = work.filter(c=>c.onStandby).length;
+  var _stopLabels = [];
+  if(_partN) _stopLabels.push('部品待ち'+_partN);
+  if(_standbyN) _stopLabels.push('待機'+_standbyN);
   document.getElementById('work-count').textContent = work.length+'台'
-    + (work.some(c=>c.waitingParts)? '（部品待ち'+work.filter(c=>c.waitingParts).length+'）':'');
+    + (_stopLabels.length? ('（'+_stopLabels.join('・')+'）') : '');
   const list=document.getElementById('work-list');
   document.getElementById('work-empty').classList.toggle('hidden', work.length>0);
   const me = (state.store && state.store.myName) || '';
@@ -10126,16 +10165,25 @@ function closeSheet(){
 function bd_workCardHtml(c){
   const S = getStages(c.kind);
   let body, action, cardCls='car';
+  // 部品待ち・待機はどちらも「この工程で止まっている」という点では同じ扱いなので、
+  // ラベル・記録先の日時だけ出し分ける(2026-09-08、待機=部品以外の理由で止まっている時用に追加)。
+  const stopped = c.waitingParts || c.onStandby;
+  const stopLabel = c.waitingParts ? '部品待ち' : '待機';
+  const stopSince = c.waitingParts ? c.partSince : c.standbySince;
+  const stopHint = c.waitingParts ? '部品が来たら🚩を押して再開' : '再開できるようになったら⏸を押して再開';
+  const stopCardCls = c.waitingParts ? 'car waiting' : 'car standby';
+  const stopNowlineCls = c.waitingParts ? 'nowline waiting' : 'nowline standby';
+  const stopSubCls = c.waitingParts ? 'sub danger' : 'sub warn';
   if(S.length===0){
     c.stage = 0;
-    if(c.waitingParts){
-      cardCls='car waiting';
-      const d = c.partSince? daysBetween(c.partSince, nowISO()) : 0;
+    if(stopped){
+      cardCls=stopCardCls;
+      const d = stopSince? daysBetween(stopSince, nowISO()) : 0;
       body = `
-      <div class="nowline waiting" style="margin:8px 0 4px;">
-        <span class="nowstage"><span class="nowlabel">状態</span>● 部品待ち</span>
+      <div class="${stopNowlineCls}" style="margin:8px 0 4px;">
+        <span class="nowstage"><span class="nowlabel">状態</span>● ${stopLabel}</span>
       </div>
-      <div class="sub danger" style="margin-top:2px;">⏸ 停止中・${d}日（部品が来たら🚩を押して再開）</div>`;
+      <div class="${stopSubCls}" style="margin-top:2px;">⏸ 停止中・${d}日（${stopHint}）</div>`;
       action = '';
     }else{
       body = `
@@ -10152,11 +10200,11 @@ function bd_workCardHtml(c){
         cls='hstep done';
         const m=(c.stageDur&&c.stageDur[i])||0; if(m>0) t=fmtMinShort(m);
       }else if(i===c.stage){
-        if(c.waitingParts){ cls='hstep curw'; t='停止'; }
+        if(stopped){ cls = c.waitingParts ? 'hstep curw' : 'hstep curs'; t='停止'; }
         else { cls='hstep cur'; const m=curStageMinutes(c); if(m>0) t=fmtMinShort(m); }
       }
       let arr=byNames(c.stageBy&&c.stageBy[i]), whoStyle='color:var(--accent);';
-      if(!arr.length && i===c.stage && !c.waitingParts){ arr=c.assignee?[c.assignee]:[]; whoStyle='color:var(--muted2);'; }
+      if(!arr.length && i===c.stage && !stopped){ arr=c.assignee?[c.assignee]:[]; whoStyle='color:var(--muted2);'; }
       const who = arr.length ? (arr.length>1 ? arr[0]+'+'+(arr.length-1) : arr[0]) : '';
       const whoHtml = who
         ? `<div class="hwho" style="font-size:11px;line-height:1.15;margin-top:1px;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;${whoStyle}">${esc(who)}</div>`
@@ -10165,16 +10213,16 @@ function bd_workCardHtml(c){
     }).join('');
     const isLast = c.stage===S.length-1;
     const curName = `${mark(c.stage)} ${esc(S[c.stage])}`;
-    if(c.waitingParts){
-      cardCls='car waiting';
-      const d = c.partSince? daysBetween(c.partSince, nowISO()) : 0;
+    if(stopped){
+      cardCls=stopCardCls;
+      const d = stopSince? daysBetween(stopSince, nowISO()) : 0;
       body = `
-      <div class="nowline waiting" style="margin:8px 0 6px;">
-        <span class="nowstage"><span class="nowlabel">部品待ち</span>${curName}</span>
+      <div class="${stopNowlineCls}" style="margin:8px 0 6px;">
+        <span class="nowstage"><span class="nowlabel">${stopLabel}</span>${curName}</span>
         <span class="stepcount">${c.stage+1} / ${S.length}</span>
       </div>
       <div class="hsteps">${steps}</div>
-      <div class="sub danger" style="margin-top:4px;">⏸ 停止中・${d}日（部品が来たら🚩を押して再開）</div>`;
+      <div class="${stopSubCls}" style="margin-top:4px;">⏸ 停止中・${d}日（${stopHint}）</div>`;
       action = '';
     }else{
       body = `
@@ -10220,13 +10268,14 @@ function bd_workCardHtml(c){
     <div class="row-actions" style="display:flex;gap:8px;margin-top:9px;flex-wrap:wrap;">
       ${wageBtn(c)} ${insBtn(c)} ${photoBtn(c)} ${estBtn(c)} ${loanerBtn(c)}
       <button class="flagbtn ${c.waitingParts?'on':''}" title="部品待ち" onclick="toggleParts('${c.id}')">${c.waitingParts?'🚩':'⚑'}</button>
+      <button class="flagbtn ${c.onStandby?'on':''}" title="待機（部品以外の理由でこの工程が止まっている時）" onclick="toggleStandby('${c.id}')">${c.onStandby?'⏸':'⏳'}</button>
     </div>
     ${body}
     ${action}
     ${(function(){
       var cur=curStageMinutes(c), tot=totalMinutes(c);
       if(tot<=0) return '';
-      var now = c.waitingParts ? '' : `この工程 ${fmtMin(cur)}　/　`;
+      var now = stopped ? '' : `この工程 ${fmtMin(cur)}　/　`;
       return `<div class="crew"><b>⏱</b> ${now}累計 ${fmtMin(tot)}</div>`;
     })()}
     ${crewGauge(c)}
@@ -10304,6 +10353,7 @@ function bd_kanbanHtml(work, opts){
       + '<div class="kt"'+ktStyle+'>'+esc(c.cartype||'')+'</div>'
       + (c.assignee?('<div class="kw">👤 '+esc(c.assignee)+'</div>'):'')
       + (c.waitingParts?'<div class="kw" style="color:var(--red);">🚩 部品待ち</div>':'')
+      + (c.onStandby?'<div class="kw" style="color:var(--amber);">⏸ 待機</div>':'')
       + '</div>';
   }
   var colsHtml;
@@ -10326,6 +10376,7 @@ function bd_kanbanHtml(work, opts){
 function bd_tile(c){
   var cls='pcd-tile';
   if(c.status==='work' && c.waitingParts) cls+=' wait';
+  else if(c.status==='work' && c.onStandby) cls+=' hold';
   else if(c.status==='nyuko' && c.onHold) cls+=' hold';
   else if(c.status==='nyuko' && daysBetween(c.nyukoAt, nowISO())>=7) cls+=' wait';
   else if(c.status==='done') cls+=' done';
@@ -10403,6 +10454,10 @@ function bd_stageSummaryLine(c){
   if(c.waitingParts){
     var d = c.partSince? daysBetween(c.partSince, nowISO()) : 0;
     return '<div style="font-size:12px;color:var(--red);font-weight:700;margin-top:5px;">🚩 部品待ち・'+d+'日</div>';
+  }
+  if(c.onStandby){
+    var d2 = c.standbySince? daysBetween(c.standbySince, nowISO()) : 0;
+    return '<div style="font-size:12px;color:var(--amber);font-weight:700;margin-top:5px;">⏸ 待機・'+d2+'日</div>';
   }
   if(S.length===0){ return '<div style="font-size:12px;color:var(--accent);font-weight:700;margin-top:5px;">作業中</div>'; }
   var stage = Math.min(c.stage||0, S.length-1);
@@ -10693,11 +10748,12 @@ function renderPcDash(){
     if(pcdKanbanFull) pcdKanbanFull.style.display='none';
     fillHtml('pcd-work', _pcdOverviewMode ? (work.length? ('<div class="pcd-tilegrid">'+work.map(bd_tile).join('')+'</div>') : '') : work.map(bd_workCardHtml).join(''));
   }
-  var holdN=nyuko.filter(function(c){return c.onHold;}).length, partN=work.filter(function(c){return c.waitingParts;}).length;
+  var holdN=nyuko.filter(function(c){return c.onHold;}).length, partN=work.filter(function(c){return c.waitingParts;}).length, standbyN=work.filter(function(c){return c.onStandby;}).length;
+  var workLabels=[]; if(partN) workLabels.push('部品待ち'+partN); if(standbyN) workLabels.push('待機'+standbyN);
   var setTx=function(id,v){ var e=document.getElementById(id); if(e) e.textContent=v; };
   setTx('pcd-c-yotei', yotei.length+'台');
   setTx('pcd-c-nyuko', nyuko.length+'台'+(holdN?('（保留'+holdN+'）'):''));
-  setTx('pcd-c-work', work.length+'台'+(partN?('（部品待ち'+partN+'）'):''));
+  setTx('pcd-c-work', work.length+'台'+(workLabels.length?('（'+workLabels.join('・')+'）'):''));
   setTx('pcd-c-done', done.length+'台');
   setTx('pcd-date', bd_pcDateStr());
   var st=document.getElementById('pcd-store'); if(st) st.textContent=(state.store&&state.store.name)||'現場コントロール';
