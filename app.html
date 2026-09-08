@@ -395,6 +395,7 @@ input[type="time"]::-webkit-calendar-picker-indicator { filter: invert(1); opaci
   padding:11px 13px; margin-bottom:9px;
 }
 .car.drag-over{ border:2px dashed var(--accent); background:var(--accent-bg,rgba(74,158,204,.08)); }
+#ce-pdf-drop.drag-over{ border-color:var(--accent); background:var(--accent-bg,rgba(74,158,204,.08)); color:var(--accent); }
 .car .top{display:flex; align-items:flex-start; justify-content:space-between; gap:8px 10px; flex-wrap:wrap;}
 .car .top>div:first-child{min-width:0; flex:1 1 auto;}
 .car .top .row-actions{flex:0 0 auto; margin-left:auto;}
@@ -1969,7 +1970,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = 'app202609081915';
+const APP_VERSION = 'app202609081955';
 // LINEログイン(LIFF) — LINEコンソールで作成したLIFFアプリのIDを入れる
 const LIFF_ID = '2010638896-vJtjkUOr';
 // 公式アカウント「カーコン工賃通知」友だち追加URL（ここに飛ばすとLINEアプリの友だち追加画面が直接開く）
@@ -7047,12 +7048,30 @@ function openCustEst(id){
       <label>見積金額（任意・円）</label>
       <input id="ce-estimate" value="${c.estimateAmount?Number(c.estimateAmount).toLocaleString('en-US'):''}" placeholder="例）150000" inputmode="numeric" autocomplete="off" oninput="formatAmountInput(this)">
     </div>
+    <div id="ce-pdf-drop" ondragover="event.preventDefault();this.classList.add('drag-over');" ondragleave="this.classList.remove('drag-over');" ondrop="bd_ceDropPdf(event,'${id}')" onclick="bd_ceDropPdf(null,'${id}')" style="border:1.5px dashed var(--line2);border-radius:10px;padding:14px;text-align:center;color:var(--muted);font-size:12.5px;cursor:pointer;margin-bottom:16px;">
+      📄 見積書PDFをここにドラッグ、またはタップして選ぶ<br><span style="font-size:11px;opacity:.8;">読み取れれば金額・お客様名を自動入力します（板金見積書のみ対応）</span>
+    </div>
     <div class="sheet-actions">
       <button class="btn ghost" onclick="closeSheet()">キャンセル</button>
       <button class="btn" onclick="saveCustEst('${id}')">保存</button>
     </div>`;
   showSheet(html);
   setTimeout(()=>{ var el=document.getElementById('ce-customer'); if(el) el.focus(); },50);
+}
+/* お客様名・見積金額の編集画面から見積書PDFを直接ドロップ/選択→自動入力(2026-09-08) */
+function bd_ceDropPdf(ev, carId){
+  if(ev){
+    ev.preventDefault(); ev.stopPropagation();
+    var z=document.getElementById('ce-pdf-drop'); if(z) z.classList.remove('drag-over');
+    var files=Array.from((ev.dataTransfer && ev.dataTransfer.files) || []);
+    if(files.length) handlePickedFiles(carId, files, true);
+    return;
+  }
+  var inp=document.createElement('input');
+  inp.type='file'; inp.accept='application/pdf,image/*'; inp.style.display='none';
+  inp.addEventListener('change', function(e){ var files=Array.from(e.target.files||[]); if(files.length) handlePickedFiles(carId, files, true); });
+  document.body.appendChild(inp); inp.click();
+  setTimeout(function(){ inp.remove(); }, 3000);
 }
 function saveCustEst(id){
   const c=findCar(id); if(!c) return;
@@ -8514,12 +8533,100 @@ function handlePickedFiles(carId, files, isDoc){
           c.photos.push({id, stageIndex:ctx.idx, stageLabel:ctx.label, ts:rec.ts, isPdf});
           persist(c);
           autoUploadPhoto(c.id, id);   // 見積書・PDFも工程写真と同様にドライブへ自動送信(店舗の全員が見られるように)
+          if(isDoc && isPdf){ bd_tryAutoFillEstimateFromPdf(c, f); }
         });
       });
     }).catch(()=>{}).then(()=>{
       if(++done===files.length){ toast(files.length+'件を保存しました'); render(); if(document.getElementById('gallery-body')) refreshGallery(c.id); }
     });
   });
+}
+/* ===== 見積書PDFから御見積額・お客様名を自動で読み取る(2026-09-08) =====
+   別プロジェクト(見積PDF自動読み取り)で板金見積書フォーマットに対して実PDFで検算一致確認済みの
+   抽出ロジックを移植。整備・車検向けの別フォーマット("29行タイプ")は対象外で、その場合は
+   何も抽出できず静かに諦める(書類そのものの保存は上のhandlePickedFilesで既に完了済みなので
+   影響しない)。 */
+function bd_pdfToNum(s){ if(s==null) return null; const m=String(s).replace(/[,\s　]/g,'').match(/-?\d+(\.\d+)?/); return m?Number(m[0]):null; }
+function bd_pdfValueRightOf(items, label){
+  const lab=items.find(function(it){ return it.s.replace(/\s/g,'')===label || it.s.includes(label); });
+  if(!lab) return null;
+  const row=items.filter(function(it){ return Math.abs(it.y-lab.y)<5 && it.x>lab.x; }).sort(function(a,b){ return a.x-b.x; });
+  for(var i=0;i<row.length;i++){ var n=bd_pdfToNum(row[i].s); if(n!=null) return n; }
+  return null;
+}
+async function bd_readEstimatePdf(data){
+  const pdf = await pdfjsLib.getDocument({data:data}).promise;
+  let items=[], pageOff=0;
+  for(let p=1;p<=pdf.numPages;p++){
+    const page=await pdf.getPage(p);
+    const vp=page.getViewport({scale:1});
+    const tc=await page.getTextContent();
+    for(const it of tc.items){
+      const x=it.transform[4]; const y=pageOff+(vp.height-it.transform[5]);
+      const s=(it.str||'').trim();
+      if(s) items.push({s:s, x:x, y:y});
+    }
+    pageOff+=vp.height+20;
+  }
+  items.sort(function(a,b){ return (a.y-b.y) || (a.x-b.x); });
+  const lines=[]; let cur=null;
+  items.forEach(function(it){
+    if(!cur || Math.abs(it.y-cur.y)>4){ cur={y:it.y, parts:[it]}; lines.push(cur); }
+    else cur.parts.push(it);
+  });
+  const lineStrs = lines.map(function(l){ return l.parts.sort(function(a,b){ return a.x-b.x; }).map(function(p){ return p.s; }).join(' '); });
+  return {items:items, fullText:lineStrs.join('\n')};
+}
+function bd_parseEstimatePdf(doc){
+  const items=doc.items, fullText=doc.fullText;
+  const pick = function(re){ const m=fullText.match(re); return m ? m[1].trim() : null; };
+
+  const addr=/[都道府県区市町村丁目〒]|\d/;
+  let customer=null;
+  const yObj = items.find(function(it){ return it.s==='様' || it.s.endsWith('様'); });
+  if(yObj){
+    let row = items.filter(function(it){ return Math.abs(it.y-yObj.y)<5 && it.x<yObj.x+1; }).sort(function(a,b){ return a.x-b.x; });
+    let toks = row.map(function(it){ return it.s.replace(/様$/,'').trim(); }).filter(function(s){ return s && !addr.test(s); });
+    customer = toks.slice(-2).join(' ').trim() || null;
+  }
+  if(!customer) customer = pick(/([^\s　\d]+[\s　]+[^\s　\d]+?)\s*様/);
+
+  const sagyo   = bd_pdfValueRightOf(items,'作業計');
+  const toso    = bd_pdfValueRightOf(items,'塗装計');
+  const shohi   = bd_pdfValueRightOf(items,'諸費用計');
+  const zei     = bd_pdfValueRightOf(items,'消費税');
+  const buhin   = bd_pdfValueRightOf(items,'部品計');
+  const zairyo  = bd_pdfValueRightOf(items,'材料計');
+  const mitsuTotalMatch = bd_pdfToNum(pick(/御見積額[\s\S]{0,20}?[¥\\]\s*([\d,]+)/));
+  const mitsuTotal = mitsuTotalMatch!=null ? mitsuTotalMatch : bd_pdfToNum(pick(/[¥\\]\s*([\d,]{4,})/));
+
+  const parts=[sagyo,toso,shohi,buhin,zairyo,zei];
+  const sum = parts.every(function(x){ return x!=null; }) ? parts.reduce(function(a,b){ return a+b; },0) : null;
+
+  return {
+    customer: customer,
+    mitsuTotal: mitsuTotal,
+    ok: sum!=null && mitsuTotal!=null && Math.abs(sum-mitsuTotal)<=1
+  };
+}
+async function bd_tryAutoFillEstimateFromPdf(c, file){
+  try{
+    if(typeof pdfjsLib==='undefined') return;
+    const buf = await file.arrayBuffer();
+    const doc = await bd_readEstimatePdf(new Uint8Array(buf));
+    const r = bd_parseEstimatePdf(doc);
+    if(r.mitsuTotal==null) return;
+    c.estimateAmount = r.mitsuTotal;
+    if(r.customer && !c.customerName) c.customerName = r.customer;
+    c.updatedAt = Date.now();
+    persist(c);
+    render();
+    if(document.getElementById('gallery-body')) refreshGallery(c.id);
+    // お客様名・見積金額の編集画面を開いたまま読み込んだ場合は、その場で入力欄にも反映する
+    var estEl=document.getElementById('ce-estimate'); if(estEl) estEl.value=Number(r.mitsuTotal).toLocaleString('en-US');
+    var custEl=document.getElementById('ce-customer'); if(custEl && r.customer && !custEl.value.trim()) custEl.value=r.customer;
+    toast((r.ok?'✓ ':'⚠ ')+'見積書から ¥'+r.mitsuTotal.toLocaleString('ja-JP')+' を読み取りました'+(r.ok?'':'（内訳と一致せず、念のため確認してください）'));
+  }catch(e){ /* 対応外フォーマット・読み取り失敗は書類の保存自体には影響させず、静かに諦める */ }
 }
 /* PC(カメラ無し)からPDF等をカードにドラッグ&ドロップして見積書として添付する。
    カメラで撮る代わりの入力手段なので、写真ピッカーの「見積書」扱い(isDoc=true)と同じ経路に流す。 */
