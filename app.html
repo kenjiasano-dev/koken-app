@@ -1966,7 +1966,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = 'app202609081432';
+const APP_VERSION = 'app202609081442';
 // LINEログイン(LIFF) — LINEコンソールで作成したLIFFアプリのIDを入れる
 const LIFF_ID = '2010638896-vJtjkUOr';
 // 公式アカウント「カーコン工賃通知」友だち追加URL（ここに飛ばすとLINEアプリの友だち追加画面が直接開く）
@@ -5448,7 +5448,7 @@ function searchByNumber() {
       <div style="display:flex;gap:8px;align-items:center;">
         <div class="amount-input-wrap" style="flex:1;">
           <span class="yen">¥</span>
-          <input type="number" class="form-input" id="later-order-${d.idx}" placeholder="受注金額" inputmode="numeric" style="padding-left:32px;" value="${d.orderAmount||d.amount||''}">
+          <input type="text" class="form-input" id="later-order-${d.idx}" placeholder="受注金額" inputmode="numeric" style="padding-left:32px;" value="${(d.orderAmount||d.amount)?Number(d.orderAmount||d.amount).toLocaleString('en-US'):''}" oninput="formatAmountInput(this)">
         </div>
         <button onclick="convertToLater(${d.idx})" style="padding:10px 14px;background:var(--green);color:#fff;border-radius:10px;font-size:13px;font-weight:700;white-space:nowrap;">📅 後日受注</button>
       </div>
@@ -5457,7 +5457,7 @@ function searchByNumber() {
 }
 
 function convertToLater(idx) {
-  const orderAmount = parseFloat(document.getElementById('later-order-' + idx).value) || frontData[idx].amount || 0;
+  const orderAmount = parseAmount(document.getElementById('later-order-' + idx).value) || frontData[idx].amount || 0;
   frontData[idx].contractType = 'later';
   frontData[idx].contracted = true;
   frontData[idx].immediate = false;
@@ -6871,7 +6871,7 @@ function openAddCar(forceMode){
     </div>
     <div class="field">
       <label>見積金額（任意・円）</label>
-      <input id="c-estimate" placeholder="例）150000" inputmode="numeric" autocomplete="off" oninput="this.value=this.value.replace(/[^0-9]/g,'');">
+      <input id="c-estimate" placeholder="例）150000" inputmode="numeric" autocomplete="off" oninput="formatAmountInput(this)">
     </div>
     <div class="field">
       <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-weight:500;"><input type="checkbox" id="c-insurance" style="width:20px;height:20px;"> 🛡 保険作業（保険を使う案件）</label>
@@ -6905,7 +6905,7 @@ function saveCar(){
   const customerSei = (document.getElementById('c-customer-sei')||{}).value?.trim() || '';
   const customerMei = (document.getElementById('c-customer-mei')||{}).value?.trim() || '';
   const customerName = (customerSei + ' ' + customerMei).trim();
-  const estimateAmount = parseInt((document.getElementById('c-estimate')||{}).value||'',10) || 0;
+  const estimateAmount = parseAmount((document.getElementById('c-estimate')||{}).value||'');
   const deliv   = newCarDeliv || '';
   if(!cartype){ toast('車種名を入れてください'); return; }
   if(!deliv){ toast('納車予定日を入れてください（「納車未定」を無くすため必須にしています）'); return; }
@@ -7035,7 +7035,7 @@ function openCustEst(id){
     </div>
     <div class="field">
       <label>見積金額（任意・円）</label>
-      <input id="ce-estimate" value="${c.estimateAmount||''}" placeholder="例）150000" inputmode="numeric" autocomplete="off" oninput="this.value=this.value.replace(/[^0-9]/g,'');">
+      <input id="ce-estimate" value="${c.estimateAmount?Number(c.estimateAmount).toLocaleString('en-US'):''}" placeholder="例）150000" inputmode="numeric" autocomplete="off" oninput="formatAmountInput(this)">
     </div>
     <div class="sheet-actions">
       <button class="btn ghost" onclick="closeSheet()">キャンセル</button>
@@ -7048,7 +7048,7 @@ function saveCustEst(id){
   const c=findCar(id); if(!c) return;
   const nameEl=document.getElementById('ce-customer'), estEl=document.getElementById('ce-estimate');
   c.customerName = nameEl ? nameEl.value.trim() : c.customerName;
-  c.estimateAmount = parseInt((estEl&&estEl.value)||'',10) || 0;
+  c.estimateAmount = parseAmount((estEl&&estEl.value)||'');
   persist(c); closeSheet(); render();
   toast('保存しました');
 }
