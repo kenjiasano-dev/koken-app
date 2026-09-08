@@ -1959,7 +1959,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = 'app202609071618';
+const APP_VERSION = 'app202609081150';
 // LINEログイン(LIFF) — LINEコンソールで作成したLIFFアプリのIDを入れる
 const LIFF_ID = '2010638896-vJtjkUOr';
 // 公式アカウント「カーコン工賃通知」友だち追加URL（ここに飛ばすとLINEアプリの友だち追加画面が直接開く）
@@ -10164,7 +10164,7 @@ function bd_workCardHtml(c){
     ? '<button class="iconbtn" title="閉じる" onclick="bd_toggleCardExpand(\''+c.id+'\')">▲</button>'
     : '<button class="iconbtn" title="この車を大きく見る" onclick="bd_openWorkModal(\''+c.id+'\')">🔍</button>';
   var pinChecked = (_workModalCarId===c.id);
-  var pinBox = '<label title="チェックすると中央に大きく表示" style="display:flex;align-items:center;cursor:pointer;margin-right:2px;"><input type="checkbox" style="width:16px;height:16px;" '+(pinChecked?'checked':'')+' onchange="bd_pinCarModal(\''+c.id+'\',this.checked)"></label>';
+  var pinBox = '<label title="チェックすると中央に大きく表示" onclick="event.stopPropagation();" style="display:flex;align-items:center;cursor:pointer;margin-right:2px;"><input type="checkbox" style="width:16px;height:16px;" '+(pinChecked?'checked':'')+' onchange="bd_pinCarModal(\''+c.id+'\',this.checked)"></label>';
   var compactPart = `
     <div class="top">
       <div><div>${kindBadge(c)}${insBadge(c)}${bd_carNameNum(c)}</div><div style="margin-top:5px;">${assignChip(c)}</div></div>
@@ -10177,7 +10177,13 @@ function bd_workCardHtml(c){
     <div class="times">${timesLine(c)}</div>
     ${bd_stageSummaryLine(c)}`;
   if(!expanded){
-    return `<div class="${cardCls} ${kindClass(c)}"${bd_colorStyle(c)} ondragover="bd_cardDragOver(event)" ondragleave="bd_cardDragLeave(event)" ondrop="bd_cardDrop(event,'${c.id}')">${compactPart}</div>`;
+    // 虫眼鏡ボタンを押さなくても、枠内のどこを押しても拡大ポップアップが開くように(2026-09-08)。
+    // カード内の各項目(担当・お客様名・代車・メモ・チェックボックス等)は元々event.stopPropagation()
+    // 済みなので、それらをタップした時は今まで通りそれぞれの編集画面が開き、この拡大は発火しない。
+    // bd_colorStyle()がstyle属性を返すことがあるため、cursor:pointerはそこに連結する(style二重指定を避ける)。
+    var compactStyleAttr = bd_colorStyle(c);
+    compactStyleAttr = compactStyleAttr ? compactStyleAttr.replace(/"$/, ' cursor:pointer;"') : ' style="cursor:pointer;"';
+    return `<div class="${cardCls} ${kindClass(c)}"${compactStyleAttr} onclick="bd_openWorkModal('${c.id}')" ondragover="bd_cardDragOver(event)" ondragleave="bd_cardDragLeave(event)" ondrop="bd_cardDrop(event,'${c.id}')">${compactPart}</div>`;
   }
   var expandedPart = `
     <div class="row-actions" style="display:flex;gap:8px;margin-top:9px;flex-wrap:wrap;">
@@ -10445,10 +10451,14 @@ function bd_yoteiRow(c){
   var inb = bd_fmtPlan(c.nyukoPlan);
   var dlv = c.deliveryDate ? (bd_fmtDateMD(c.deliveryDate)+(c.deliveryTime?(' '+c.deliveryTime):'')) : '未定';
   var pinChecked = (_workModalCarId===c.id);
-  var pinBox = '<label title="チェックすると中央に大きく表示" style="display:flex;align-items:center;cursor:pointer;"><input type="checkbox" style="width:16px;height:16px;" '+(pinChecked?'checked':'')+' onchange="bd_pinCarModal(\''+c.id+'\',this.checked)"></label>';
-  return '<div class="car '+kindClass(c)+'"'+bd_colorStyle(c)+' ondragover="bd_cardDragOver(event)" ondragleave="bd_cardDragLeave(event)" ondrop="bd_cardDrop(event,\''+c.id+'\')">'
+  var pinBox = '<label title="チェックすると中央に大きく表示" onclick="event.stopPropagation();" style="display:flex;align-items:center;cursor:pointer;"><input type="checkbox" style="width:16px;height:16px;" '+(pinChecked?'checked':'')+' onchange="bd_pinCarModal(\''+c.id+'\',this.checked)"></label>';
+  // 枠内タップで拡大ポップアップを開けるように(2026-09-08)。削除・入庫するボタンは枠のクリックと
+  // 競合しないようstopPropagationを付ける(付けないと削除確認と詳細ポップアップが同時に開いてしまう)。
+  var yoteiStyleAttr = bd_colorStyle(c);
+  yoteiStyleAttr = yoteiStyleAttr ? yoteiStyleAttr.replace(/"$/, ' cursor:pointer;"') : ' style="cursor:pointer;"';
+  return '<div class="car '+kindClass(c)+'"'+yoteiStyleAttr+' onclick="bd_openCarModal(\''+c.id+'\')" ondragover="bd_cardDragOver(event)" ondragleave="bd_cardDragLeave(event)" ondrop="bd_cardDrop(event,\''+c.id+'\')">'
     + '<div class="top"><div>'+kindBadge(c)+insBadge(c)+bd_carNameNum(c)+'</div>'
-    +   '<div class="row-actions">'+pinBox+'<button class="iconbtn" title="削除" onclick="askDelete(\''+c.id+'\')">🗑</button><button class="pill green" onclick="bd_arriveCar(\''+c.id+'\')">入庫する →</button></div>'
+    +   '<div class="row-actions">'+pinBox+'<button class="iconbtn" title="削除" onclick="event.stopPropagation();askDelete(\''+c.id+'\')">🗑</button><button class="pill green" onclick="event.stopPropagation();bd_arriveCar(\''+c.id+'\')">入庫する →</button></div>'
     + '</div>'
     + bd_custEstLine(c)
     + bd_loanerLine(c)
@@ -10524,11 +10534,13 @@ function bd_nyukoCardCompactHtml(c){
   var d = daysBetween(c.nyukoAt, nowISO());
   var cardCls = c.onHold ? 'car bd-hold' : (d>=7? 'car waiting':'car');
   var pinChecked = (_workModalCarId===c.id);
-  var pinBox = '<label title="チェックすると中央に大きく表示" style="display:flex;align-items:center;cursor:pointer;"><input type="checkbox" style="width:16px;height:16px;" '+(pinChecked?'checked':'')+' onchange="bd_pinCarModal(\''+c.id+'\',this.checked)"></label>';
-  return '<div class="'+cardCls+' '+kindClass(c)+'"'+bd_colorStyle(c)+' ondragover="bd_cardDragOver(event)" ondragleave="bd_cardDragLeave(event)" ondrop="bd_cardDrop(event,\''+c.id+'\')">'
+  var pinBox = '<label title="チェックすると中央に大きく表示" onclick="event.stopPropagation();" style="display:flex;align-items:center;cursor:pointer;"><input type="checkbox" style="width:16px;height:16px;" '+(pinChecked?'checked':'')+' onchange="bd_pinCarModal(\''+c.id+'\',this.checked)"></label>';
+  var nyukoStyleAttr = bd_colorStyle(c);
+  nyukoStyleAttr = nyukoStyleAttr ? nyukoStyleAttr.replace(/"$/, ' cursor:pointer;"') : ' style="cursor:pointer;"';
+  return '<div class="'+cardCls+' '+kindClass(c)+'"'+nyukoStyleAttr+' onclick="bd_openCarModal(\''+c.id+'\')" ondragover="bd_cardDragOver(event)" ondragleave="bd_cardDragLeave(event)" ondrop="bd_cardDrop(event,\''+c.id+'\')">'
     + '<div class="top">'
     +   '<div><div>'+kindBadge(c)+insBadge(c)+bd_carNameNum(c)+'</div><div style="margin-top:5px;">'+assignChip(c)+'</div></div>'
-    +   '<div class="row-actions">'+pinBox+'<button class="pill" onclick="startCar(\''+c.id+'\')">作業開始 →</button></div>'
+    +   '<div class="row-actions">'+pinBox+'<button class="pill" onclick="event.stopPropagation();startCar(\''+c.id+'\')">作業開始 →</button></div>'
     + '</div>'
     + bd_custEstLine(c)
     + bd_loanerLine(c)
@@ -10544,8 +10556,10 @@ function bd_doneStatusLine(c){
 }
 function bd_doneCardCompactHtml(c){
   var pinChecked = (_workModalCarId===c.id);
-  var pinBox = '<label title="チェックすると中央に大きく表示" style="display:flex;align-items:center;cursor:pointer;"><input type="checkbox" style="width:16px;height:16px;" '+(pinChecked?'checked':'')+' onchange="bd_pinCarModal(\''+c.id+'\',this.checked)"></label>';
-  return '<div class="car done-card '+kindClass(c)+'"'+bd_colorStyle(c)+' ondragover="bd_cardDragOver(event)" ondragleave="bd_cardDragLeave(event)" ondrop="bd_cardDrop(event,\''+c.id+'\')">'
+  var pinBox = '<label title="チェックすると中央に大きく表示" onclick="event.stopPropagation();" style="display:flex;align-items:center;cursor:pointer;"><input type="checkbox" style="width:16px;height:16px;" '+(pinChecked?'checked':'')+' onchange="bd_pinCarModal(\''+c.id+'\',this.checked)"></label>';
+  var doneStyleAttr = bd_colorStyle(c);
+  doneStyleAttr = doneStyleAttr ? doneStyleAttr.replace(/"$/, ' cursor:pointer;"') : ' style="cursor:pointer;"';
+  return '<div class="car done-card '+kindClass(c)+'"'+doneStyleAttr+' onclick="bd_openCarModal(\''+c.id+'\')" ondragover="bd_cardDragOver(event)" ondragleave="bd_cardDragLeave(event)" ondrop="bd_cardDrop(event,\''+c.id+'\')">'
     + '<div class="top">'
     +   '<div><div>'+kindBadge(c)+insBadge(c)+bd_carNameNum(c)+'</div><div style="margin-top:5px;">'+assignChip(c)+'</div></div>'
     +   '<div class="row-actions">'+pinBox+'</div>'
