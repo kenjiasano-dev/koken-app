@@ -1959,7 +1959,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = 'app202609081150';
+const APP_VERSION = 'app202609081210';
 // LINEログイン(LIFF) — LINEコンソールで作成したLIFFアプリのIDを入れる
 const LIFF_ID = '2010638896-vJtjkUOr';
 // 公式アカウント「カーコン工賃通知」友だち追加URL（ここに飛ばすとLINEアプリの友だち追加画面が直接開く）
@@ -6973,7 +6973,9 @@ function saveCarTypeNumEdit(id){
 function isSeibi(c){ return c.kind==='整備'; }
 function kindClass(c){ return isSeibi(c) ? 'k-seibi' : 'k-bankin'; }
 /* 入庫予定表(Ganttチャート)で付けた色分け(ganttColor)を、スマホ側の各カードにも左端の帯として反映する */
-function bd_colorStyle(c){ return c.ganttColor ? (' style="border-left:4px solid '+c.ganttColor+';"') : ''; }
+/* 色を選んだ車は、入庫予定表の棒だけでなくカードの枠自体も色付けして見やすくする
+   (2026-09-08、以前は左端だけの細い帯だったが「枠全体を色にしたい」と要望)。 */
+function bd_colorStyle(c){ return c.ganttColor ? (' style="border:2px solid '+c.ganttColor+';"') : ''; }
 function kindBadge(c){
   if(isSeibi(c)){
     const label = c.category ? c.category : '整備';
@@ -9675,6 +9677,20 @@ function bd_openColorPopup(ev, onPick){
 function bd_yoteiColorPick(ev, carId){
   bd_openColorPopup(ev, function(color){ bd_setYoteiColor(carId, color); });
 }
+/* カード側(現場ボードの各カード)から直接、色を変える/戻すボタン(2026-09-08)。
+   bd_setYoteiColorは入庫予定表シートを開き直す前提のため、シートが開いていない
+   カード一覧上で使うと意図せず入庫予定表が開いてしまう→軽量な専用処理にする。 */
+function bd_cardColorPick(ev, carId){
+  bd_openColorPopup(ev, function(color){
+    var c=findCar(carId); if(!c) return;
+    c.ganttColor=color; persist(c); render();
+    toast(color?'色を変更しました':'色をリセットしました');
+  });
+}
+function bd_colorBtn(c){
+  var col = c.ganttColor || '';
+  return '<button title="色を変える" onclick="event.stopPropagation();bd_cardColorPick(event,\''+c.id+'\')" style="width:22px;height:22px;padding:0;border-radius:50%;background:'+(col||'transparent')+';border:2px solid '+(col||'var(--line2,#444)')+';cursor:pointer;flex:0 0 auto;"></button>';
+}
 function bd_holdColorPick(ev, holdId){
   bd_openColorPopup(ev, function(color){ bd_setHoldColor(holdId, color); });
 }
@@ -10168,7 +10184,7 @@ function bd_workCardHtml(c){
   var compactPart = `
     <div class="top">
       <div><div>${kindBadge(c)}${insBadge(c)}${bd_carNameNum(c)}</div><div style="margin-top:5px;">${assignChip(c)}</div></div>
-      <div class="row-actions">${pinBox}${toggleBtn}</div>
+      <div class="row-actions">${pinBox}${bd_colorBtn(c)}${toggleBtn}</div>
     </div>
     ${bd_custEstLine(c)}
     ${bd_loanerLine(c)}
@@ -10458,7 +10474,7 @@ function bd_yoteiRow(c){
   yoteiStyleAttr = yoteiStyleAttr ? yoteiStyleAttr.replace(/"$/, ' cursor:pointer;"') : ' style="cursor:pointer;"';
   return '<div class="car '+kindClass(c)+'"'+yoteiStyleAttr+' onclick="bd_openCarModal(\''+c.id+'\')" ondragover="bd_cardDragOver(event)" ondragleave="bd_cardDragLeave(event)" ondrop="bd_cardDrop(event,\''+c.id+'\')">'
     + '<div class="top"><div>'+kindBadge(c)+insBadge(c)+bd_carNameNum(c)+'</div>'
-    +   '<div class="row-actions">'+pinBox+'<button class="iconbtn" title="削除" onclick="event.stopPropagation();askDelete(\''+c.id+'\')">🗑</button><button class="pill green" onclick="event.stopPropagation();bd_arriveCar(\''+c.id+'\')">入庫する →</button></div>'
+    +   '<div class="row-actions">'+pinBox+bd_colorBtn(c)+'<button class="iconbtn" title="削除" onclick="event.stopPropagation();askDelete(\''+c.id+'\')">🗑</button><button class="pill green" onclick="event.stopPropagation();bd_arriveCar(\''+c.id+'\')">入庫する →</button></div>'
     + '</div>'
     + bd_custEstLine(c)
     + bd_loanerLine(c)
@@ -10540,7 +10556,7 @@ function bd_nyukoCardCompactHtml(c){
   return '<div class="'+cardCls+' '+kindClass(c)+'"'+nyukoStyleAttr+' onclick="bd_openCarModal(\''+c.id+'\')" ondragover="bd_cardDragOver(event)" ondragleave="bd_cardDragLeave(event)" ondrop="bd_cardDrop(event,\''+c.id+'\')">'
     + '<div class="top">'
     +   '<div><div>'+kindBadge(c)+insBadge(c)+bd_carNameNum(c)+'</div><div style="margin-top:5px;">'+assignChip(c)+'</div></div>'
-    +   '<div class="row-actions">'+pinBox+'<button class="pill" onclick="event.stopPropagation();startCar(\''+c.id+'\')">作業開始 →</button></div>'
+    +   '<div class="row-actions">'+pinBox+bd_colorBtn(c)+'<button class="pill" onclick="event.stopPropagation();startCar(\''+c.id+'\')">作業開始 →</button></div>'
     + '</div>'
     + bd_custEstLine(c)
     + bd_loanerLine(c)
@@ -10562,7 +10578,7 @@ function bd_doneCardCompactHtml(c){
   return '<div class="car done-card '+kindClass(c)+'"'+doneStyleAttr+' onclick="bd_openCarModal(\''+c.id+'\')" ondragover="bd_cardDragOver(event)" ondragleave="bd_cardDragLeave(event)" ondrop="bd_cardDrop(event,\''+c.id+'\')">'
     + '<div class="top">'
     +   '<div><div>'+kindBadge(c)+insBadge(c)+bd_carNameNum(c)+'</div><div style="margin-top:5px;">'+assignChip(c)+'</div></div>'
-    +   '<div class="row-actions">'+pinBox+'</div>'
+    +   '<div class="row-actions">'+pinBox+bd_colorBtn(c)+'</div>'
     + '</div>'
     + bd_custEstLine(c)
     + bd_loanerLine(c)
