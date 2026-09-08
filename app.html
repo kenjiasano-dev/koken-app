@@ -1959,7 +1959,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = 'app202609081342';
+const APP_VERSION = 'app202609081357';
 // LINEログイン(LIFF) — LINEコンソールで作成したLIFFアプリのIDを入れる
 const LIFF_ID = '2010638896-vJtjkUOr';
 // 公式アカウント「カーコン工賃通知」友だち追加URL（ここに飛ばすとLINEアプリの友だち追加画面が直接開く）
@@ -5335,6 +5335,8 @@ function submitEstimate() {
   const deliveryTime = (document.getElementById('front-deliv-time')||{}).value || '';
   // 成約＋車種ありは現場ボードに自動反映される(syncEstimateToBoard)ため、
   // 「納車未定」のまま現場ボードに出てしまわないよう納車予定日を必須にする(2026-08-28)。
+  // 未成約は現場ボードに出さない(2026-09-08、一時的に未成約も出すよう変更したが
+  // 「未成約の車は乗せないで」と差し戻しの要望があり元に戻した)。
   const willAddToBoard = (contractedState === 'immediate' || contractedState === 'later') && !!cartype;
   if (willAddToBoard && !deliveryDate) { showToast('納車予定日を入力してください（現場ボードに追加されるため必須です）'); return; }
 
@@ -5354,6 +5356,7 @@ function submitEstimate() {
 
   if (!userData.ninjaMode) postToGAS({ action: 'addEstimate', ...entry });
   const addedToBoard = syncEstimateToBoard(entry);
+  if (addedToBoard) saveLocal(); // entry.carIdが付いたので保存し直す
 
   // リセット
   document.getElementById('front-amount').value = '';
@@ -5380,6 +5383,7 @@ function submitEstimate() {
 }
 /* 受付で成約した見積りを、現場ボードの入庫予定へ自動反映する(2026-08-28)。
    車種が空だとボードに出しても使い物にならないため、車種入力がある成約時だけ作成する。
+   未成約は現場ボードに出さない(2026-09-08、一時的に出すよう変更→差し戻し済み)。
    入庫予定日は分からないので未定のまま追加し、実際の予定はボード側で後から入れてもらう。 */
 function syncEstimateToBoard(entry) {
   if (!entry.contracted || !entry.cartype) return false;
@@ -5399,6 +5403,9 @@ function syncEstimateToBoard(entry) {
   state.cars.push(newCar);
   if (typeof syncProjectCreate === 'function') syncProjectCreate(newCar);
   if (typeof persist === 'function') persist(newCar);
+  // 未成約でも作成されるようになったため、後日受注に変更(convertToLater)された時に
+  // 同じ車を見つけて更新できるよう、見積側にもcarIdを控えておく(2026-09-08)。
+  entry.carId = newCar.id;
   return true;
 }
 
@@ -5449,6 +5456,12 @@ function convertToLater(idx) {
   frontData[idx].immediate = false;
   frontData[idx].later = true;
   frontData[idx].orderAmount = orderAmount;
+  // 未成約の時点で既に現場ボードへ車が作成されている(2026-09-08〜)ため、新規作成はせず
+  // carIdで紐づく既存の車の見積金額だけ更新する(それより前の見積で紐づけが無い場合は何もしない)。
+  if (frontData[idx].carId && typeof findCar === 'function') {
+    var linkedCar = findCar(frontData[idx].carId);
+    if (linkedCar) { linkedCar.estimateAmount = orderAmount; if (typeof persist === 'function') persist(linkedCar); }
+  }
   saveLocal();
 
   // GASに成約状態を同期
