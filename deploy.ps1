@@ -85,7 +85,7 @@ if ($LASTEXITCODE -ne 0) {
 # 3. 構文チェック＋重複関数定義チェック
 #    対象はHTML全ファイル。以前はindex.htmlしか見ておらず、app.htmlに死んだ二重定義が
 #    700行たまっていたのを2026/8/5に発見・削除した。同じ穴を二度と開けないため全ファイルを回す。
-$targets = @('index.html', 'board.html') | Where-Object { Test-Path "$repoPath\$_" }
+$targets = @('index.html', 'app.html', 'board.html') | Where-Object { Test-Path "$repoPath\$_" }
 
 foreach ($target in $targets) {
     Write-Host "== 構文チェック: $target ==" -ForegroundColor Cyan
@@ -121,12 +121,14 @@ foreach ($target in $targets) {
 }
 
 # 4. commit & push
-#    app.htmlは2026/8/7に削除済み。存在しないパスをgit addに残すと"fatal: pathspec"で
-#    add全体が失敗し、以降のcommit/pushが「Everything up-to-date」のまま何も反映されずに
-#    成功扱いで通り抜けてしまう(2026/8/7〜8/21の間、この状態で気づかれていなかった)。
-#    実在するファイルだけを対象にする。
+#    app.htmlは2026/8/7に一度削除されたが8/21に復元・以後は現役(むしろ現在の主力アプリ)。
+#    このapp.html除外設定がその後も残っていたため、2026/9/8にapp.htmlの変更が一度も
+#    コミットされず「デプロイ完了」だけ表示される事故が発生(index.htmlのバージョンだけが
+#    誤って更新された)。存在しないパスをgit addに残すと"fatal: pathspec"でadd全体が
+#    失敗するため、実在するファイルだけを対象にする仕組み自体は維持しつつ、対象一覧に
+#    app.htmlを戻した。
 Write-Host "== コミット & プッシュ ==" -ForegroundColor Cyan
-$addTargets = @('index.html', 'board.html', 'sw.js', 'tests/', 'deploy.ps1') | Where-Object { Test-Path "$repoPath\$_" }
+$addTargets = @('index.html', 'app.html', 'board.html', 'sw.js', 'tests/', 'deploy.ps1') | Where-Object { Test-Path "$repoPath\$_" }
 git add $addTargets
 git commit -m $Message
 if ($LASTEXITCODE -ne 0) {
