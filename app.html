@@ -9759,31 +9759,43 @@ function daishaGridHTML(){
     colSeps += '<div class="ywcolsep" style="grid-column:'+(d+1)+'/'+(d+2)+';grid-row:1/-1;"></div>';
   }
   var rowsHtml='';
-  loaners.forEach(function(loaner, idx){
-    var rowIdx=idx+2;
+  var rowCursor=2; // 1行目は日付ヘッダ
+  loaners.forEach(function(loaner){
     var key=loanerKey(loaner);
-    // 車種を上段・ナンバーを下段にして分かりやすく、行の下に区切り線を1本通す(2026-08-28)
-    rowsHtml += '<div class="ywlabel ywlabel2" style="grid-column:1/2;grid-row:'+rowIdx+';cursor:pointer;" title="タップして貸出先の車を選ぶ：'+esc(loanerLabel(loaner))+'" onclick="openLoanerRowAssign(\''+esc(loaner.cartype)+'\',\''+esc(loaner.number)+'\')">'
-      + '<span class="ywlabel-type">🚙 '+esc(loaner.cartype||'（未設定）')+'</span>'
-      + (loaner.number?('<span class="ywlabel-num">'+esc(loaner.number)+'</span>'):'')
-      + '</div>';
-    rowsHtml += '<div class="ywrowsep" style="grid-column:1/-1;grid-row:'+rowIdx+';"></div>';
-    // 実際の車(state.cars)＋まだ車が決まっていない仮抑え(loanerHolds)の両方を同じ行に並べる。
-    // 仮抑えは作業ボード・入庫予定表には出ないダミー予約なので、見た目でも点線+📌で区別する。
-    loanerOccupants(key, null).forEach(function(occ){
+    // 実際の車(state.cars)＋まだ車が決まっていない仮抑え(loanerHolds)の両方を対象に、
+    // まず月内の表示範囲(start/end=日)を計算する。仮抑えは作業ボード・入庫予定表には
+    // 出ないダミー予約なので、見た目でも点線+📌で区別する。
+    var occItems = loanerOccupants(key, null).map(function(occ){
       var s=occ.s, e=occ.e;
-      if(!s) return;
+      if(!s) return null;
       var sm=s.slice(0,7), sd=parseInt(s.slice(8,10),10);
       var em=e?e.slice(0,7):sm, ed=e?parseInt(e.slice(8,10),10):sd;
       var start, end;
-      if(sm===ym) start=sd; else if(sm<ym) start=1; else return;
+      if(sm===ym) start=sd; else if(sm<ym) start=1; else return null;
       if(em===ym) end=ed; else if(em>ym) end=days; else end=start;
       if(end<start) end=start;
-      var periodTxt = bd_fmtDateMD(s)+'〜'+(e?bd_fmtDateMD(e):'未定');
+      return {occ:occ, start:start, end:end};
+    }).filter(Boolean).sort(function(a,b){ return a.start-b.start || a.end-b.end; });
+    // 同じ代車を貸出期間が重なったまま二重に登録してしまっても、バーが重なって読めなく
+    // ならないよう、入庫予定表と同じレーン振り分け(bd_yoteiAssignLanes)で上下に分けて
+    // 描画する(2026-09-09、フィット等で重なって文字が潰れる不具合の修正)。
+    var lanes=Math.max(bd_yoteiAssignLanes(occItems),1);
+    var rowIdx=rowCursor;
+    // 車種を上段・ナンバーを下段にして分かりやすく、行の下に区切り線を1本通す(2026-08-28)
+    rowsHtml += '<div class="ywlabel ywlabel2" style="grid-column:1/2;grid-row:'+rowIdx+'/'+(rowIdx+lanes)+';cursor:pointer;" title="タップして貸出先の車を選ぶ：'+esc(loanerLabel(loaner))+'" onclick="openLoanerRowAssign(\''+esc(loaner.cartype)+'\',\''+esc(loaner.number)+'\')">'
+      + '<span class="ywlabel-type">🚙 '+esc(loaner.cartype||'（未設定）')+'</span>'
+      + (loaner.number?('<span class="ywlabel-num">'+esc(loaner.number)+'</span>'):'')
+      + '</div>';
+    for(var li=0; li<lanes; li++){
+      rowsHtml += '<div class="ywrowsep" style="grid-column:1/-1;grid-row:'+(rowIdx+li)+';"></div>';
+    }
+    occItems.forEach(function(it){
+      var occ=it.occ, start=it.start, end=it.end;
+      var periodTxt = bd_fmtDateMD(occ.s)+'〜'+(occ.e?bd_fmtDateMD(occ.e):'未定');
       var isHold = occ.kind==='hold';
       var title=esc(loanerLabel(loaner))+'・'+esc(occ.label)+(occ.sub?('・'+esc(occ.sub)):'')+(isHold?'（仮抑え）':'')+'・'+periodTxt;
       var onclick = isHold ? ('openLoanerHold(\''+occ.id+'\')') : ('bd_openCarFromYoteiGrid(\''+occ.id+'\')');
-      var barStyle = 'grid-column:'+(start+1)+'/'+(end+2)+';grid-row:'+rowIdx+';'+(occ.color?('border-left-color:'+occ.color+';'+(occ.fill?('background:'+occ.color+'40;'):'')):'');
+      var barStyle = 'grid-column:'+(start+1)+'/'+(end+2)+';grid-row:'+(rowIdx+it.lane)+';'+(occ.color?('border-left-color:'+occ.color+';'+(occ.fill?('background:'+occ.color+'40;'):'')):'');
       var dotStyle = occ.color ? ('background:'+occ.color+';') : '';
       // 実車は既存のganttColor(入庫予定表と共有)、仮抑えはloanerHolds側のcolorで色分け(2026-08-28)
       var dotClick = isHold ? ('bd_holdColorPick(event,\''+occ.id+'\')') : ('bd_yoteiColorPick(event,\''+occ.id+'\')');
@@ -9794,8 +9806,10 @@ function daishaGridHTML(){
         + '<span class="ywbnum">'+esc(periodTxt)+'</span>'
         + '</div>';
     });
+    rowCursor += lanes;
   });
-  var gridStyle='grid-template-columns:'+YOTEI_LABEL_W+'px repeat('+days+','+YOTEI_DAY_W+'px);grid-template-rows:32px repeat('+loaners.length+',36px);';
+  var totalRows=Math.max(rowCursor-2, 1);
+  var gridStyle='grid-template-columns:'+YOTEI_LABEL_W+'px repeat('+days+','+YOTEI_DAY_W+'px);grid-template-rows:32px repeat('+totalRows+',36px);';
   return '<h3 style="font-size:14px;margin:0 0 8px;display:flex;align-items:center;gap:8px;">🚙 代車管理'+editBtn+'</h3>'
     + '<div class="ywgantt-wrap"><div class="ywgantt" style="'+gridStyle+'">'+headCells+colSeps+rowsHtml+'</div></div>';
 }
