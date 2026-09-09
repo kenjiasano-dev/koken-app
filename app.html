@@ -1970,7 +1970,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = 'app202609081955';
+const APP_VERSION = 'app202609091033';
 // LINEログイン(LIFF) — LINEコンソールで作成したLIFFアプリのIDを入れる
 const LIFF_ID = '2010638896-vJtjkUOr';
 // 公式アカウント「カーコン工賃通知」友だち追加URL（ここに飛ばすとLINEアプリの友だち追加画面が直接開く）
@@ -4286,7 +4286,7 @@ function saveProfile() {
   // Update GAS
   if (userData.ninjaMode) {
     // 監視役：サーバーに登録せず、メンバー一覧から自分を外す
-    postToGAS({ action: 'removeMemberFromGroups', name: name, uuid: userData.uuid || '' });
+    postToGAS({ action: 'removeMemberFromGroups', name: name, uuid: userData.uuid || '', groupCode: userData.activeGroupCode || userData.groupCode || '' });
   } else {
     postToGAS({ action: 'updateProfile', name, pref, store, goal, role, expYears: userData.expYears || {}, fiscalStart: userData.fiscalStart || 1, groupCode: userData.activeGroupCode || userData.groupCode || '' });
   }
@@ -4557,7 +4557,7 @@ function toggleNinjaMode(on) {
     showToast('🥷 監視役モード ON — フォロー中の店舗を閲覧。あなたはランキング・メンバーに出ません');
     if (warn) warn.style.display = '';
     // サーバーのメンバー一覧から自分を外す
-    if (userData.name || userData.uuid) postToGAS({ action: 'removeMemberFromGroups', name: userData.name || '', uuid: userData.uuid || '' });
+    if (userData.name || userData.uuid) postToGAS({ action: 'removeMemberFromGroups', name: userData.name || '', uuid: userData.uuid || '', groupCode: userData.activeGroupCode || userData.groupCode || '' });
   } else {
     showToast('🥷 監視役モード OFF — データがサーバーに同期されます');
     if (warn) warn.style.display = 'none';
@@ -7049,7 +7049,7 @@ function openCustEst(id){
       <input id="ce-estimate" value="${c.estimateAmount?Number(c.estimateAmount).toLocaleString('en-US'):''}" placeholder="例）150000" inputmode="numeric" autocomplete="off" oninput="formatAmountInput(this)">
     </div>
     <div id="ce-pdf-drop" ondragover="event.preventDefault();this.classList.add('drag-over');" ondragleave="this.classList.remove('drag-over');" ondrop="bd_ceDropPdf(event,'${id}')" onclick="bd_ceDropPdf(null,'${id}')" style="border:1.5px dashed var(--line2);border-radius:10px;padding:14px;text-align:center;color:var(--muted);font-size:12.5px;cursor:pointer;margin-bottom:16px;">
-      📄 見積書PDFをここにドラッグ、またはタップして選ぶ<br><span style="font-size:11px;opacity:.8;">読み取れれば金額・お客様名を自動入力します（板金見積書のみ対応）</span>
+      📄 見積書PDFをここにドラッグ、またはタップして選ぶ<br><span style="font-size:11px;opacity:.8;">読み取れれば金額・お客様名を自動入力します（板金・整備/車検の見積書に対応）</span>
     </div>
     <div class="sheet-actions">
       <button class="btn ghost" onclick="closeSheet()">キャンセル</button>
@@ -8541,11 +8541,14 @@ function handlePickedFiles(carId, files, isDoc){
     });
   });
 }
-/* ===== 見積書PDFから御見積額・お客様名を自動で読み取る(2026-09-08) =====
+/* ===== 見積書PDFから御見積額・お客様名を自動で読み取る(2026-09-08、整備・車検フォーマット対応を追加) =====
    別プロジェクト(見積PDF自動読み取り)で板金見積書フォーマットに対して実PDFで検算一致確認済みの
-   抽出ロジックを移植。整備・車検向けの別フォーマット("29行タイプ")は対象外で、その場合は
-   何も抽出できず静かに諦める(書類そのものの保存は上のhandlePickedFilesで既に完了済みなので
-   影響しない)。 */
+   抽出ロジックを移植。板金(作業計+塗装計+部品計+材料計+諸費用計+消費税=御見積額)と
+   整備・車検向け("29行タイプ"、整備小計+代行料+一般消費税=整備料合計=御見積額)の
+   2フォーマットの内訳から検算し、どちらか一致すれば「✓読み取り成功」、どちらとも
+   一致しない未知フォーマットでも御見積額・お客様名の行自体は見つかれば「⚠要確認」として
+   反映する(全く見つからない場合のみ何もせず諦める。書類そのものの保存は上の
+   handlePickedFilesで既に完了済みなので影響しない)。 */
 function bd_pdfToNum(s){ if(s==null) return null; const m=String(s).replace(/[,\s　]/g,'').match(/-?\d+(\.\d+)?/); return m?Number(m[0]):null; }
 function bd_pdfValueRightOf(items, label){
   const lab=items.find(function(it){ return it.s.replace(/\s/g,'')===label || it.s.includes(label); });
@@ -8575,7 +8578,7 @@ async function bd_readEstimatePdf(data){
     else cur.parts.push(it);
   });
   const lineStrs = lines.map(function(l){ return l.parts.sort(function(a,b){ return a.x-b.x; }).map(function(p){ return p.s; }).join(' '); });
-  return {items:items, fullText:lineStrs.join('\n')};
+  return {items:items, fullText:lineStrs.join('\n'), lineStrs:lineStrs};
 }
 function bd_parseEstimatePdf(doc){
   const items=doc.items, fullText=doc.fullText;
@@ -8591,6 +8594,17 @@ function bd_parseEstimatePdf(doc){
   }
   if(!customer) customer = pick(/([^\s　\d]+[\s　]+[^\s　\d]+?)\s*様/);
 
+  // 車種：メーカー名〜「型式」の手前まで(別プロジェクトの見積PDF自動読み取りツールで
+  // 実PDF5件で検算・実証済みのロジックを移植。ドロップ先の車と食い違っていないか確認するために使う)
+  const makers=['トヨタ','ホンダ','ニッサン','日産','マツダ','スズキ','ダイハツ','スバル','三菱','レクサス','いすゞ'];
+  let car=null;
+  const carLine = (doc.lineStrs||[]).find(function(l){ return makers.some(function(m){ return l.includes(m); }); });
+  if(carLine){
+    const mk=makers.find(function(m){ return carLine.includes(m); });
+    car = carLine.slice(carLine.indexOf(mk)).split(/型\s*式/)[0].trim();
+  }
+
+  // 板金見積書フォーマット: 作業計+塗装計+部品計+材料計+諸費用計+消費税=御見積額
   const sagyo   = bd_pdfValueRightOf(items,'作業計');
   const toso    = bd_pdfValueRightOf(items,'塗装計');
   const shohi   = bd_pdfValueRightOf(items,'諸費用計');
@@ -8602,11 +8616,22 @@ function bd_parseEstimatePdf(doc){
 
   const parts=[sagyo,toso,shohi,buhin,zairyo,zei];
   const sum = parts.every(function(x){ return x!=null; }) ? parts.reduce(function(a,b){ return a+b; },0) : null;
+  const ok1 = sum!=null && mitsuTotal!=null && Math.abs(sum-mitsuTotal)<=1;
+
+  // 整備・車検見積書フォーマット(いわゆる29行タイプ): 整備小計+代行料+一般消費税=整備料合計=御見積額
+  // (整備小計自体が技術料合計+部品合計の小計なので、そこから先だけ足せば十分)
+  const seibiSyokei = bd_pdfValueRightOf(items,'整備小計');
+  const daikou      = bd_pdfValueRightOf(items,'代行料');
+  const ippanZei    = bd_pdfValueRightOf(items,'一般消費税');
+  const parts2 = [seibiSyokei, daikou, ippanZei];
+  const sum2 = parts2.every(function(x){ return x!=null; }) ? parts2.reduce(function(a,b){ return a+b; },0) : null;
+  const ok2 = sum2!=null && mitsuTotal!=null && Math.abs(sum2-mitsuTotal)<=1;
 
   return {
     customer: customer,
     mitsuTotal: mitsuTotal,
-    ok: sum!=null && mitsuTotal!=null && Math.abs(sum-mitsuTotal)<=1
+    car: car,
+    ok: ok1 || ok2
   };
 }
 async function bd_tryAutoFillEstimateFromPdf(c, file){
@@ -8615,7 +8640,16 @@ async function bd_tryAutoFillEstimateFromPdf(c, file){
     const buf = await file.arrayBuffer();
     const doc = await bd_readEstimatePdf(new Uint8Array(buf));
     const r = bd_parseEstimatePdf(doc);
-    if(r.mitsuTotal==null) return;
+    // 車種の食い違いチェック：カードを間違えてドロップした事故に気づけるように
+    // (空白除去・小文字化した上で、どちらかがどちらかを含んでいれば一致とみなす。
+    //  「トヨタ アクア」と「アクア」のような表記ゆれを許容するため)
+    const normCar = function(s){ return String(s||'').replace(/[\s　]/g,'').toLowerCase(); };
+    const cardType = normCar(c.cartype), pdfCar = normCar(r.car);
+    const carMismatch = !!(r.car && cardType && pdfCar && !pdfCar.includes(cardType) && !cardType.includes(pdfCar));
+    if(r.mitsuTotal==null){
+      if(carMismatch) toast('⚠ 車種が違うかも: この見積書は「'+r.car+'」のようですが、ドロップ先は「'+c.cartype+'」です');
+      return;
+    }
     c.estimateAmount = r.mitsuTotal;
     if(r.customer && !c.customerName) c.customerName = r.customer;
     c.updatedAt = Date.now();
@@ -8625,7 +8659,11 @@ async function bd_tryAutoFillEstimateFromPdf(c, file){
     // お客様名・見積金額の編集画面を開いたまま読み込んだ場合は、その場で入力欄にも反映する
     var estEl=document.getElementById('ce-estimate'); if(estEl) estEl.value=Number(r.mitsuTotal).toLocaleString('en-US');
     var custEl=document.getElementById('ce-customer'); if(custEl && r.customer && !custEl.value.trim()) custEl.value=r.customer;
-    toast((r.ok?'✓ ':'⚠ ')+'見積書から ¥'+r.mitsuTotal.toLocaleString('ja-JP')+' を読み取りました'+(r.ok?'':'（内訳と一致せず、念のため確認してください）'));
+    if(carMismatch){
+      toast('⚠ 車種が違うかも: PDFは「'+r.car+'」、カードは「'+c.cartype+'」です（金額 ¥'+r.mitsuTotal.toLocaleString('ja-JP')+' は保存済み）');
+    } else {
+      toast((r.ok?'✓ ':'⚠ ')+'見積書から ¥'+r.mitsuTotal.toLocaleString('ja-JP')+' を読み取りました'+(r.ok?'':'（内訳と一致せず、念のため確認してください）'));
+    }
   }catch(e){ /* 対応外フォーマット・読み取り失敗は書類の保存自体には影響させず、静かに諦める */ }
 }
 /* PC(カメラ無し)からPDF等をカードにドラッグ&ドロップして見積書として添付する。

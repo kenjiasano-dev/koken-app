@@ -155,7 +155,7 @@ function regressionSuite() {
   section('【退行防止】直したバグが戻っていないこと');
 
   test('送信に no-cors を使っていない（応答を必ず確認する）', () => {
-    for (const f of ['index.html', 'board.html']) {
+    for (const f of ['index.html', 'app.html', 'board.html']) {
       const html = readFile(f);
       const live = html.match(/fetch\([^)]*no-cors/g) || [];
       assert.strictEqual(live.length, 0, f + ' で応答を見ない送信が復活している');
@@ -201,6 +201,20 @@ function regressionSuite() {
   // test('代理入力の名前選択欄は、普段の作業者には出さない（PC画面のみ）', () => {...});
   // test('使う機能（作業ボード・受付・工賃）を店舗ごとにON/OFFできる', () => {...});
 
+  test('写真アップロードのファイル名が写真ごとに一意（同じ工程で連写しても衝突しない）', () => {
+    // 2026-09-08: ファイル名が工程名+分単位の時刻までしか含んでおらず、同じ工程で1分以内に
+    // 複数枚撮ると同名になっていた。アップロード時の重複防止チェック（同名ファイルが既にあれば
+    // 「他端末が送信済み」とみなす）が誤爆し、2枚目以降は実際には送られないまま1枚目のgdriveIdを
+    // 間借りして「成功」扱いになっていた（パジェロ2121で2枚中1枚等、ユーザー報告で発覚。a92e377で修正）。
+    const html = readFile('app.html');
+    const fn = extractFunction(html, 'uploadOnePhoto');
+    assert.ok(fn, 'uploadOnePhotoが見つからない');
+    const m = fn.match(/const\s+fileName\s*=\s*([^;]+);/);
+    assert.ok(m, 'ファイル名の生成箇所が見つからない');
+    assert.ok(/p\.id/.test(m[1]),
+      'ファイル名に写真ごとの一意なID(p.id)が含まれていない（同じ分に連写すると同名になり、後の写真が実際には送られなくなる）');
+  });
+
   test('GASのグループ設定に作業ボード・工賃のON/OFF列がある', () => {
     const gas = readFile('../koken-gas-clone/code.js');
     assert.ok(/作業ボード利用/.test(gas), 'GROUP_SETTINGS_COLSに作業ボード利用列が無い');
@@ -230,7 +244,7 @@ function regressionSuite() {
     // 2026/8/5: app.htmlに「末尾追記」時代の死んだ二重定義が700行たまっていた。
     // JavaScriptは同名関数の最後の1つだけが効くため、手前のコピーを直すと無反応になる。
     // 桁0の定義だけを数える（字下げされた関数は別関数の中のローカル関数で、同名でも衝突しない）。
-    for (const f of ['index.html', 'board.html']) {
+    for (const f of ['index.html', 'app.html', 'board.html']) {
       const js = extractInlineScripts(readFile(f));
       const counts = {};
       for (const line of js.split(/\r?\n/)) {
@@ -452,7 +466,7 @@ function gasSuite() {
 (async () => {
   console.log('カーコン工賃管理 自動テスト');
   await queueSuite('index.html');
-  // app.html は削除されたため省略
+  await queueSuite('app.html');
   regressionSuite();
   // paritySuite(); // app.html削除に伴い、index.htmlとboard.htmlのパリティテストは不要
   themeSuite();
