@@ -1333,6 +1333,10 @@ input[type="time"]::-webkit-calendar-picker-indicator { filter: invert(1); opaci
             <option value="12">12月始まり</option>
           </select>
         </div>
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text-sub);margin-bottom:12px;cursor:pointer;">
+          <input type="checkbox" id="set-remember-start" checked style="width:16px;height:16px;flex:none;">
+          この情報を保存する（次回からアプリを開くと現場ボードを直接開きます）
+        </label>
         <button class="submit-btn" onclick="saveProfile()">💾 保存する</button>
         <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border);">
           <div style="font-size:12px;color:var(--text-sub);margin-bottom:6px;">📱 端末ID（機種変更時にメモしてください）</div>
@@ -1970,7 +1974,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = 'app202609091033';
+const APP_VERSION = 'app202609151655';
 // LINEログイン(LIFF) — LINEコンソールで作成したLIFFアプリのIDを入れる
 const LIFF_ID = '2010638896-vJtjkUOr';
 // 公式アカウント「カーコン工賃通知」友だち追加URL（ここに飛ばすとLINEアプリの友だち追加画面が直接開く）
@@ -4116,6 +4120,8 @@ function initSettings() {
   document.getElementById('set-store').value = userData.store || '';
   if (document.getElementById('set-fiscal-start')) document.getElementById('set-fiscal-start').value = userData.fiscalStart || 1;
   document.getElementById('set-group').value = '';
+  var _rt = document.getElementById('set-remember-start');
+  if (_rt) { try { _rt.checked = localStorage.getItem('koken_start_tab') === 'genba'; } catch(e) { _rt.checked = true; } }
   document.querySelectorAll('#role-btns .role-btn').forEach(function(b){ b.classList.remove('active'); });
   var savedRoles = userData.role ? String(userData.role).split(',').filter(Boolean) : [];
   var ri = document.getElementById('set-role'); if(ri) ri.value = savedRoles.join(',');
@@ -4280,6 +4286,11 @@ function saveProfile() {
   });
   userData.expYears = expObj;
   saveLocal();
+  var rememberEl = document.getElementById('set-remember-start');
+  try {
+    if (rememberEl && rememberEl.checked) localStorage.setItem('koken_start_tab', 'genba');
+    else localStorage.removeItem('koken_start_tab');
+  } catch(e) {}
   showToast('💾 プロフィールを保存しました');
   renderGoalRing();
 
@@ -5222,6 +5233,17 @@ function init() {
         showToast('⚙️ 設定からお名前を登録してください', 4000);
       }, 1000);
     }
+  } else {
+    // 「この情報を保存する」チェックON済みの復帰ユーザーは、招待リンクの合流でなければ
+    // 初期タブ(工賃入力)を経由せず現場ボードを直接開く(設定タブで保存したkoken_start_tabを参照)。
+    // bd_boot()の定義待ちが必要なため、実際の切り替えは末尾のbd_waitAndBootポーリングに委ねる(window._pendingStartGenbaで指示)。
+    var _hasInviteReturn = false;
+    try { _hasInviteReturn = !!(new URLSearchParams(location.search).get('invite')); } catch(e) {}
+    var _startTab = '';
+    try { _startTab = localStorage.getItem('koken_start_tab') || ''; } catch(e) {}
+    if (!_hasInviteReturn && _startTab === 'genba') {
+      window._pendingStartGenba = true;
+    }
   }
 
   // Initial rank baseline
@@ -5261,6 +5283,11 @@ function init() {
       if (window.innerWidth >= 1100) {
         if (!window._bdBooted) { bd_boot(); window._bdBooted = true; }
         else if (typeof updatePcDash === 'function') { updatePcDash(); }
+      }
+      // 「この情報を保存する」で予約された復帰ユーザーは、bd_boot定義後に現場タブへ切り替える
+      if (window._pendingStartGenba) {
+        window._pendingStartGenba = false;
+        switchTab('genba');
       }
     } else if (tries < 50) {
       setTimeout(function(){ bd_waitAndBoot(tries+1); }, 100);
@@ -5399,13 +5426,28 @@ function submitEstimate() {
 function syncEstimateToBoard(entry) {
   if (!entry.contracted || !entry.cartype) return false;
   if (typeof state === 'undefined' || !state.cars) return false;
+  // 代車は、入庫予定日・納車予定日の両方が分かっていて、かつ貸出期間が重なる予約が
+  // 既にある場合だけ割り当てない(二重貸出の防止、2026-09-09)。受付段階では日付未定の
+  // ことが多く、その場合は従来通りそのまま割り当てる(あとで日付を入れた時点の
+  // checkLoanerConflictAfterDateChangeで改めてチェックされる)。
+  var loanerKeyForNewCar = frontLoanerKey || '';
+  if (loanerKeyForNewCar) {
+    var _perS = (entry.nyukoPlan || '').slice(0, 10);
+    if (_perS) {
+      var _conflicts = loanerConflictsFor(loanerKeyForNewCar, _perS, entry.deliveryDate || '', null);
+      if (_conflicts.length) {
+        alert('⚠️ 代車「' + loanerKeyForNewCar.replace(/・$/, '') + '」はその期間、他の予約と重なっているため割り当てられませんでした。\n\n' + loanerConflictLines(_conflicts) + '\n\n車は代車なしで現場ボードに追加します。空いている代車を、あとでカードの🚙代車から選んでください。');
+        loanerKeyForNewCar = '';
+      }
+    }
+  }
   var newCar = {
     id: uuid(), cartype: entry.cartype, number: entry.number || '',
     plateRegion: entry.plateRegion || '', plateClass: entry.plateClass || '', plateKana: entry.plateKana || '',
     customerName: entry.customerName || '', estimateAmount: entry.orderAmount || entry.amount || 0,
     kind: frontCarKind || '板金', category: frontCarCategory || '',
     deliveryDate: entry.deliveryDate || '', deliveryTime: entry.deliveryTime || '', isInsurance: false,
-    loanerCar: frontLoanerKey || '', loanerStart: '', loanerEnd: '', note: '',
+    loanerCar: loanerKeyForNewCar, loanerStart: '', loanerEnd: '', note: '',
     status: 'yotei', stage: 0, stageDur: [], stageBy: [], assignee: '',
     waitingParts: false, partSince: null, onHold: false, holdReason: '',
     photos: [], wageLogged: [], stageStart: null,
@@ -6925,6 +6967,16 @@ function saveCar(){
       if(!confirm('同じ車「'+cartype+'・'+number+'」が既に登録されています（'+_st+'）。\nそれでも追加しますか？')){ return; }
     }
   }
+  // 代車は貸出期間が重なる予約が既にあれば割り当てない(二重貸出の防止、2026-09-09)。
+  // 車自体の登録は妨げず、代車なしのまま登録して知らせるだけに留める。
+  if(newCarLoanerKey){
+    var _perS = newCarMode==='yotei' ? (newCarNyukoDate||'') : nowISO().slice(0,10);
+    var _conflicts = loanerConflictsFor(newCarLoanerKey, _perS, deliv, null);
+    if(_conflicts.length){
+      alert('⚠️ 代車「'+newCarLoanerKey.replace(/・$/,'')+'」はその期間、他の予約と重なっているため割り当てられませんでした。\n\n'+loanerConflictLines(_conflicts)+'\n\n車は代車なしで登録します。空いている代車を、あとでこの車のカードの🚙代車から選んでください。');
+      newCarLoanerKey='';
+    }
+  }
   state.cars.push({
     id: uuid(),
     cartype, number,
@@ -8083,6 +8135,18 @@ function periodsOverlap(aStart, aEnd, bStart, bEnd){
 function getLoanerHolds(){ return (state.store && Array.isArray(state.store.loanerHolds)) ? state.store.loanerHolds : []; }
 /* 指定の代車(key)を今占有しているもの一覧。実際の車(state.cars)＋仮抑え(loanerHolds)の両方を対象にする。
    excludeCarIdは「自分自身」を除外するため(期間変更中の車が自分と衝突判定されないように)。 */
+/* 指定の代車(key)・期間(start〜end)と重なる予約(実車＋仮抑え)の一覧。車を新規登録・
+   代車を割り当てる全ての入口(入庫追加/受付成約/日付変更)で共通して使い、二重貸出を
+   その場で防ぐ(2026-09-09)。 */
+function loanerConflictsFor(key, start, end, excludeCarId){
+  if(!key || !start) return [];
+  return loanerOccupants(key, excludeCarId).filter(function(x){ return periodsOverlap(start, end, x.s, x.e); });
+}
+function loanerConflictLines(conflicts){
+  return conflicts.map(function(x){
+    return '・'+(x.label||'')+(x.sub?('（'+x.sub+'）'):'')+'：'+(x.s?bd_fmtDateMD(x.s):'?')+'〜'+(x.e?bd_fmtDateMD(x.e):'未定');
+  }).join('\n');
+}
 function loanerOccupants(key, excludeCarId){
   var carItems = state.cars.filter(function(c){
     return c.id!==excludeCarId && c.loanerCar===key && (c.status==='yotei'||c.status==='nyuko'||c.status==='work');
@@ -8093,21 +8157,22 @@ function loanerOccupants(key, excludeCarId){
 }
 /* 納車予定日・入庫日を変えた時、その車に付いている代車の貸出期間(loanerStart/loanerEnd
    を個別指定していなければ入庫〜納車予定に自動追従する=loanerPeriodOf)が、他の予約と
-   重なっていないかチェックする。自動での付け替えはせず、気づかせるだけに留める
-   (別のお客様の代車が知らない間に入れ替わる事故を避けるため、2026-09-07)。 */
+   重なっていないかチェックする。二重貸出のまま残さないよう、重なった場合はこの車の
+   代車割り当てを自動的に解除する(他の予約側は触らない)。以前は警告だけで重複した
+   状態がそのまま残ってしまっていた(2026-09-09、ユーザー報告で修正)。 */
 function checkLoanerConflictAfterDateChange(c){
   if(!c || !c.loanerCar) return;
   if(c.loanerStart || c.loanerEnd) return; // 個別に期間指定済みなら、この車自身の日付変更では動かない
   var p = loanerPeriodOf(c);
   if(!p.s) return;
-  var conflicts = loanerOccupants(c.loanerCar, c.id).filter(function(x){ return periodsOverlap(p.s, p.e, x.s, x.e); });
+  var conflicts = loanerConflictsFor(c.loanerCar, p.s, p.e, c.id);
   if(!conflicts.length) return;
   var label = c.loanerCar.replace(/・$/,'');
-  var lines = conflicts.map(function(x){
-    return '・'+(x.label||'')+(x.sub?('（'+x.sub+'）'):'')+'：'+(x.s?bd_fmtDateMD(x.s):'?')+'〜'+(x.e?bd_fmtDateMD(x.e):'未定');
-  }).join('\n');
+  var lines = loanerConflictLines(conflicts);
+  c.loanerCar = '';
+  persist(c); render();
   setTimeout(function(){
-    alert('⚠️ 代車「'+label+'」の貸出期間（'+bd_fmtDateMD(p.s)+'〜'+(p.e?bd_fmtDateMD(p.e):'未定')+'）が、他の予約と重なっています。\n\n'+lines+'\n\n今の貸出はそのままにしています。別の代車への付け替えは、この車のカードの🚙代車から手動で調整してください。');
+    alert('⚠️ 代車「'+label+'」の貸出期間（'+bd_fmtDateMD(p.s)+'〜'+(p.e?bd_fmtDateMD(p.e):'未定')+'）が、他の予約と重なったため、この車の代車割り当てを解除しました。\n\n'+lines+'\n\n空いている代車を、この車のカードの🚙代車からあらためて選んでください。');
   }, 50);
 }
 let _loanerAssignCarId = null;
@@ -8226,6 +8291,16 @@ function pickLoanerCar(name){
 }
 function saveLoanerAssign(){
   var c = findCar(_loanerAssignCarId); if(!c) return;
+  // 一覧では重なる候補を選べないようにしてあるが、代車管理の行から車を選ぶ入口
+  // (assignLoanerRowToCar)は候補選択時に既にc.loanerCarをセットしてしまうため、
+  // 保存の最終防衛ラインとしてもう一度だけ確認する(二重貸出の防止、2026-09-09)。
+  if(c.loanerCar){
+    var _conflicts = loanerConflictsFor(c.loanerCar, _loanerCandStart||'', _loanerCandEnd||'', c.id);
+    if(_conflicts.length){
+      alert('⚠️ 代車「'+c.loanerCar.replace(/・$/,'')+'」はこの期間、他の予約と重なっているため保存できません。\n\n'+loanerConflictLines(_conflicts)+'\n\n一覧から空いている代車を選び直してください。');
+      return;
+    }
+  }
   c.loanerStart = _loanerCandStart || '';
   c.loanerEnd = _loanerCandEnd || '';
   persist(c); closeSheet(); render();
