@@ -303,7 +303,21 @@ input[type="date"].form-input::-webkit-calendar-picker-indicator { filter: inver
 .rate-big { font-size: 34px; font-weight: 900; color: var(--green); }
 .front-history-item { display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
 </style>
-<script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+<script src="https://static.line-scdn.net/liff/edge/2/sdk.js">
+// ===== localStorage 永続保存 =====
+function saveAppState() {
+  const state = {
+    userData,
+    wageData,
+    frontData,
+    frontGoal,
+    adminGoals,
+    settings
+  };
+  localStorage.setItem('appState', JSON.stringify(state));
+  console.log('✅ Data saved to localStorage');
+}
+</script>
 </head>
 <body>
 <div id="app">
