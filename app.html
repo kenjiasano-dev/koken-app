@@ -1974,7 +1974,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = 'app202609151655';
+const APP_VERSION = 'app202609151732';
 // LINEログイン(LIFF) — LINEコンソールで作成したLIFFアプリのIDを入れる
 const LIFF_ID = '2010638896-vJtjkUOr';
 // 公式アカウント「カーコン工賃通知」友だち追加URL（ここに飛ばすとLINEアプリの友だち追加画面が直接開く）
@@ -10448,7 +10448,7 @@ function bd_workCardHtml(c){
   const stopped = c.waitingParts || c.onStandby;
   const stopLabel = c.waitingParts ? '部品待ち' : '待機';
   const stopSince = c.waitingParts ? c.partSince : c.standbySince;
-  const stopHint = c.waitingParts ? '部品が来たら🚩を押して再開' : '再開できるようになったら⏸を押して再開';
+  const stopHint = c.waitingParts ? '部品が来たら🚩を押して再開' : '再開できるようになったら▶️を押して再開';
   const stopCardCls = c.waitingParts ? 'car waiting' : 'car standby';
   const stopNowlineCls = c.waitingParts ? 'nowline waiting' : 'nowline standby';
   const stopSubCls = c.waitingParts ? 'sub danger' : 'sub warn';
@@ -10546,7 +10546,7 @@ function bd_workCardHtml(c){
     <div class="row-actions" style="display:flex;gap:8px;margin-top:9px;flex-wrap:wrap;">
       ${wageBtn(c)} ${insBtn(c)} ${photoBtn(c)} ${estBtn(c)} ${loanerBtn(c)}
       <button class="flagbtn ${c.waitingParts?'on':''}" title="部品待ち" onclick="toggleParts('${c.id}')">${c.waitingParts?'🚩':'⚑'}</button>
-      <button class="flagbtn ${c.onStandby?'on':''}" title="待機（部品以外の理由でこの工程が止まっている時）" onclick="toggleStandby('${c.id}')">${c.onStandby?'⏸':'⏳'}</button>
+      <button class="flagbtn ${c.onStandby?'on':''}" title="待機（部品以外の理由でこの工程が止まっている時）" onclick="toggleStandby('${c.id}')">${c.onStandby?'▶️':'⏸'}</button>
     </div>
     ${body}
     ${action}
