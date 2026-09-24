@@ -785,7 +785,10 @@ function saveAppState() {
         <div class="card-title">プロフィール</div>
         <div class="form-group">
           <label class="form-label">お名前</label>
-          <input type="text" class="form-input" id="set-name" placeholder="山田 太郎">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+            <input type="text" class="form-input" id="set-name-sei" placeholder="姓（例: 山田）">
+            <input type="text" class="form-input" id="set-name-mei" placeholder="名（例: 太郎）">
+          </div>
         </div>
         <div class="form-group">
           <label class="form-label">店舗名</label>
@@ -1374,7 +1377,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = '20260924d';
+const APP_VERSION = '20260924e';
 // LINEログイン(LIFF) — LINEコンソールで作成したLIFFアプリのIDを入れる
 const LIFF_ID = '2010638896-vJtjkUOr';
 // 公式アカウント「カーコン工賃通知」友だち追加URL（ここに飛ばすとLINEアプリの友だち追加画面が直接開く）
@@ -3507,6 +3510,14 @@ function renderFailedLogCard() {
   }).join('');
 }
 
+// 「姓 名」の文字列を空白（半角/全角）で姓・名に分割する（保存済みデータは結合済みの名前1本のため）
+function splitFullName(fullName) {
+  var s = String(fullName || '').trim();
+  if (!s) return { sei: '', mei: '' };
+  var idx = s.search(/[\s　]/);
+  if (idx === -1) return { sei: s, mei: '' };
+  return { sei: s.slice(0, idx).trim(), mei: s.slice(idx + 1).trim() };
+}
 function initSettings() {
   renderThemePicker();
   renderFailedLogCard();
@@ -3517,8 +3528,10 @@ function initSettings() {
   const prefFilter = document.getElementById('pref-filter');
   prefFilter.innerHTML = '<option value="">都道府県を選択</option>' + PREFS.map(p => `<option value="${p}">${p}</option>`).join('');
 
-  // Load saved
-  document.getElementById('set-name').value = userData.name || '';
+  // Load saved（保存済みの名前は「姓 名」を空白で分割して2つの欄に反映。空白が無い名前はそのまま姓欄へ）
+  var _nameParts = splitFullName(userData.name || '');
+  document.getElementById('set-name-sei').value = _nameParts.sei;
+  document.getElementById('set-name-mei').value = _nameParts.mei;
   document.getElementById('set-pref').value = userData.pref || '';
   document.getElementById('set-store').value = userData.store || '';
   if (document.getElementById('set-fiscal-start')) document.getElementById('set-fiscal-start').value = userData.fiscalStart || 1;
@@ -3657,7 +3670,9 @@ function getRoleBadge(role) {
 }
 
 function saveProfile() {
-  const name = document.getElementById('set-name').value.trim();
+  const nameSei = document.getElementById('set-name-sei').value.trim();
+  const nameMei = document.getElementById('set-name-mei').value.trim();
+  const name = (nameSei + (nameSei && nameMei ? ' ' : '') + nameMei).trim();
   const pref = document.getElementById('set-pref').value;
   const store = document.getElementById('set-store').value.trim();
   const goal = userData.goal || 100; // 個人工賃目標は🎯目標設定カードで設定

@@ -336,8 +336,8 @@ function regressionSuite() {
     const advancedStart = html.indexOf('id="advanced-settings-block"');
     assert.ok(profileStart > 0 && advancedStart > profileStart, 'プロフィールカード／詳細設定の位置が想定と違う');
     const profileCard = html.slice(profileStart, advancedStart);
-    assert.ok(profileCard.includes('id="set-name"') && profileCard.includes('id="set-store"'),
-      '最初のプロフィールカードに名前・店舗名が無い');
+    assert.ok(profileCard.includes('id="set-name-sei"') && profileCard.includes('id="set-name-mei"') && profileCard.includes('id="set-store"'),
+      '最初のプロフィールカードに名前（姓・名）・店舗名が無い');
     assert.ok(!profileCard.includes('id="set-pref"') && !profileCard.includes('id="set-fiscal-start"'),
       '都道府県・年度開始月などの任意項目が、最初のプロフィールカードに残ったまま（詳細設定に退避できていない）');
     const advancedBlock = html.slice(advancedStart);
