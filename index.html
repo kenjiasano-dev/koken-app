@@ -1374,7 +1374,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = '20260924a';
+const APP_VERSION = '20260924b';
 // LINEログイン(LIFF) — LINEコンソールで作成したLIFFアプリのIDを入れる
 const LIFF_ID = '2010638896-vJtjkUOr';
 // 公式アカウント「カーコン工賃通知」友だち追加URL（ここに飛ばすとLINEアプリの友だち追加画面が直接開く）
@@ -1781,8 +1781,33 @@ function showMemberStatus(nameEnc) {
     var estCount = Number(e.count) || 0;
     var estRate = Number(e.rate) || 0;
     var estOrder = Number(e.orderAmount) || 0;
+    var lastDate = w.lastInputDate || null;
+    var daysSince = (w.daysSinceLastInput === 0 || w.daysSinceLastInput > 0) ? w.daysSinceLastInput : null;
+    var inputDates = w.inputDates || [];
+    var histColor = daysSince === null ? 'var(--text-sub)' : daysSince <= 3 ? 'var(--green)' : daysSince <= 6 ? '#e67e22' : '#e74c3c';
+    var histLine;
+    if (lastDate === null) {
+      histLine = '<div style="text-align:center;padding:8px 0;color:var(--text-sub);font-size:13px;">まだ入力記録がありません</div>';
+    } else {
+      var md = lastDate.slice(5).replace('-', '/');
+      histLine = '<div style="text-align:center;padding:6px 0;">' +
+        '<div style="font-size:12px;color:var(--text-sub);margin-bottom:2px;">最終入力日</div>' +
+        '<div style="font-size:20px;font-weight:700;">' + md + '</div>' +
+        '<div style="font-size:14px;font-weight:700;color:' + histColor + ';margin-top:2px;">' +
+          (daysSince === 0 ? '本日入力あり' : daysSince + '日前' + (daysSince >= 7 ? ' ⚠️ 止まっています' : '')) +
+        '</div>' +
+      '</div>';
+    }
+    var datesChips = inputDates.length ?
+      ('<div style="display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin-top:8px;border-top:1px solid var(--border);padding-top:8px;">' +
+        inputDates.map(function(ds){ return '<span style="background:var(--border);border-radius:8px;padding:3px 8px;font-size:12px;">' + Number(ds.slice(8,10)) + '日</span>'; }).join('') +
+      '</div>') : '';
     bodyEl.innerHTML =
       '<div class="card">' +
+        '<div class="card-title">📅 入力履歴</div>' +
+        histLine + datesChips +
+      '</div>' +
+      '<div class="card" style="margin-top:8px;">' +
         '<div class="card-title">💰 今月の工賃</div>' +
         '<div style="text-align:center;padding:8px 0;">' +
           '<div style="font-size:28px;font-weight:700;color:var(--green);">¥' + amt.toLocaleString() + '</div>' +
@@ -1851,11 +1876,18 @@ async function renderMemberList() {
         var disp = blank ? '<span style="color:var(--text-sub);">（名前未設定）</span>' : (m.name + (isMe ? ' <span style="font-size:11px;color:var(--green);">（あなた）</span>' : ''));
         var delBtn = (isOwner && !isMe && !blank) ? '<button onclick="removeMemberUI(\'' + encodeURIComponent(m.name) + '\')" style="flex:0 0 auto;padding:6px 10px;background:transparent;border:1px solid #c0392b;color:#e74c3c;border-radius:8px;font-size:12px;cursor:pointer;">外す</button>' : '';
         var rowClick = blank ? '' : ' onclick="showMemberStatus(\'' + encodeURIComponent(m.name) + '\')"';
-        return '<div' + rowClick + ' style="display:flex;align-items:center;gap:10px;padding:12px;background:var(--card);border-radius:12px;margin-bottom:8px;' + (isMe ? 'border:2px solid var(--green);' : 'border:1px solid var(--border);') + (blank?'':'cursor:pointer;') + '">' +
+        var daysSince = (m.daysSinceLastInput === 0 || m.daysSinceLastInput > 0) ? m.daysSinceLastInput : null;
+        var subLine;
+        if (blank) subLine = '';
+        else if (daysSince === null) subLine = '<div style="font-size:11px;color:var(--text-sub);">入力記録なし</div>';
+        else if (daysSince === 0) subLine = '<div style="font-size:11px;color:var(--green);">✅ 本日入力あり</div>';
+        else if (daysSince <= 6) subLine = '<div style="font-size:11px;color:var(--text-sub);">最終入力 ' + daysSince + '日前</div>';
+        else subLine = '<div style="font-size:11px;color:#e74c3c;font-weight:700;">⚠️ 最終入力 ' + daysSince + '日前・止まっています</div>';
+        return '<div' + rowClick + ' style="display:flex;align-items:center;gap:10px;padding:12px;background:var(--card);border-radius:12px;margin-bottom:8px;' + (isMe ? 'border:2px solid var(--green);' : (daysSince!==null && daysSince>=7) ? 'border:1px solid #e74c3c;' : 'border:1px solid var(--border);') + (blank?'':'cursor:pointer;') + '">' +
           '<div style="width:36px;height:36px;border-radius:50%;background:' + (isMe ? 'var(--green)' : 'var(--border)') + '33;display:flex;align-items:center;justify-content:center;font-size:18px;">👤</div>' +
           '<div style="flex:1;min-width:0;">' +
             '<div style="font-size:14px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + disp + '</div>' +
-            (blank ? '' : '<div style="font-size:11px;color:var(--text-sub);">タップで状況を見る</div>') +
+            subLine +
           '</div>' + delBtn +
         '</div>';
       }).join('');
