@@ -1317,6 +1317,16 @@ function saveAppState() {
   </div>
 </div>
 
+<div class="modal-overlay" id="member-status-modal-overlay" onclick="closeMemberStatusModal(event)">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title" id="member-status-modal-title"></span>
+      <button class="modal-close" onclick="closeMemberStatusModal()">✕</button>
+    </div>
+    <div id="member-status-modal-body" style="padding:4px 2px;"></div>
+  </div>
+</div>
+
 <!-- TOAST -->
 <div class="toast" id="toast" onclick="hideToast()"><span id="toast-msg"></span><span class="toast-x">✕</span></div>
 
@@ -1364,7 +1374,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = '20260909b';
+const APP_VERSION = '20260924a';
 // LINEログイン(LIFF) — LINEコンソールで作成したLIFFアプリのIDを入れる
 const LIFF_ID = '2010638896-vJtjkUOr';
 // 公式アカウント「カーコン工賃通知」友だち追加URL（ここに飛ばすとLINEアプリの友だち追加画面が直接開く）
@@ -1752,6 +1762,56 @@ async function renderCategoryBudget() {
   html += '</div>';
   el.innerHTML = html;
 }
+var _memberStatusCache = {};
+function showMemberStatus(nameEnc) {
+  var name = decodeURIComponent(nameEnc);
+  var s = _memberStatusCache[name];
+  var titleEl = document.getElementById('member-status-modal-title');
+  var bodyEl = document.getElementById('member-status-modal-body');
+  if (!titleEl || !bodyEl) return;
+  titleEl.textContent = '👤 ' + name + ' さんの状況';
+  if (!s) { bodyEl.innerHTML = '<div style="text-align:center;padding:24px;color:var(--text-sub);font-size:13px;">データがありません</div>'; }
+  else {
+    var w = s.wage || {};
+    var amt = Number(w.amount) || 0;
+    var g = (Number(w.goal) || 0) * 10000;
+    var rate = g > 0 ? Math.min(Math.round(amt / g * 100), 100) : 0;
+    var cnt = Number(w.count) || 0;
+    var e = s.est || {};
+    var estCount = Number(e.count) || 0;
+    var estRate = Number(e.rate) || 0;
+    var estOrder = Number(e.orderAmount) || 0;
+    bodyEl.innerHTML =
+      '<div class="card">' +
+        '<div class="card-title">💰 今月の工賃</div>' +
+        '<div style="text-align:center;padding:8px 0;">' +
+          '<div style="font-size:28px;font-weight:700;color:var(--green);">¥' + amt.toLocaleString() + '</div>' +
+          (g>0?'<div style="font-size:12px;color:var(--text-sub);margin-top:4px;">目標 ¥' + g.toLocaleString() + ' (' + rate + '%)</div>':'') +
+        '</div>' +
+        (g>0?'<div style="height:10px;background:var(--border);border-radius:5px;overflow:hidden;margin-top:8px;"><div style="height:100%;width:' + rate + '%;background:var(--green);border-radius:5px;"></div></div>':'') +
+        '<div style="text-align:center;margin-top:12px;background:var(--green-light);border-radius:8px;padding:10px;">' +
+          '<div style="font-size:10px;color:var(--text-sub);margin-bottom:2px;">今月の修理台数</div>' +
+          '<div style="font-size:22px;font-weight:700;color:var(--green);">' + cnt + '<span style="font-size:12px;font-weight:400;">台</span></div>' +
+        '</div>' +
+      '</div>' +
+      '<div class="card" style="margin-top:8px;">' +
+        '<div class="card-title">📋 今月の受付</div>' +
+        (estCount>0 ?
+          ('<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;text-align:center;">' +
+            '<div><div style="font-size:10px;color:var(--text-sub);">見積り</div><div style="font-size:20px;font-weight:700;">' + estCount + '<span style="font-size:11px;">件</span></div></div>' +
+            '<div><div style="font-size:10px;color:var(--text-sub);">受注率</div><div style="font-size:20px;font-weight:700;color:var(--green);">' + estRate + '<span style="font-size:11px;">%</span></div></div>' +
+            '<div><div style="font-size:10px;color:var(--text-sub);">受注金額</div><div style="font-size:16px;font-weight:700;color:var(--green);">' + (estOrder/10000).toFixed(1) + '<span style="font-size:10px;">万</span></div></div>' +
+          '</div>')
+          : '<div style="text-align:center;padding:8px 0;color:var(--text-sub);font-size:12px;">受付データなし</div>') +
+      '</div>' +
+      '<div style="text-align:center;padding:10px 4px 2px;font-size:11px;color:var(--text-sub);">※ 先月比・連続達成などの詳細はご本人のマイページでご確認ください</div>';
+  }
+  document.getElementById('member-status-modal-overlay').classList.add('show');
+}
+function closeMemberStatusModal(e) {
+  if (e && e.target !== document.getElementById('member-status-modal-overlay')) return;
+  document.getElementById('member-status-modal-overlay').classList.remove('show');
+}
 async function renderMemberList() {
   var el = document.getElementById('member-list-content');
   if (!el) return;
@@ -1766,6 +1826,13 @@ async function renderMemberList() {
     var month = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0');
     var data = await fetchFromGAS('getStoreRanking', { groupCode: code, month: month });
     var members = (data && data.data) ? data.data : [];
+    var estMap = {};
+    try {
+      var est = await fetchFromGAS('getEstimateRanking', { groupCode: code, month: month });
+      if (est && est.data) est.data.forEach(function(m){ if (m.name) estMap[m.name] = m; });
+    } catch(e) {}
+    _memberStatusCache = {};
+    members.forEach(function(m){ if (m.name) _memberStatusCache[m.name] = { wage: m, est: estMap[m.name] || null }; });
     var isOwner = !!userData.groupCode && String(userData.groupCode) === String(code);
     var blankCount = members.filter(function(m){ return !m.name || String(m.name).trim() === ''; }).length;
     var html = '';
@@ -1783,10 +1850,12 @@ async function renderMemberList() {
         var blank = !m.name || String(m.name).trim() === '';
         var disp = blank ? '<span style="color:var(--text-sub);">（名前未設定）</span>' : (m.name + (isMe ? ' <span style="font-size:11px;color:var(--green);">（あなた）</span>' : ''));
         var delBtn = (isOwner && !isMe && !blank) ? '<button onclick="removeMemberUI(\'' + encodeURIComponent(m.name) + '\')" style="flex:0 0 auto;padding:6px 10px;background:transparent;border:1px solid #c0392b;color:#e74c3c;border-radius:8px;font-size:12px;cursor:pointer;">外す</button>' : '';
-        return '<div style="display:flex;align-items:center;gap:10px;padding:12px;background:var(--card);border-radius:12px;margin-bottom:8px;' + (isMe ? 'border:2px solid var(--green);' : 'border:1px solid var(--border);') + '">' +
+        var rowClick = blank ? '' : ' onclick="showMemberStatus(\'' + encodeURIComponent(m.name) + '\')"';
+        return '<div' + rowClick + ' style="display:flex;align-items:center;gap:10px;padding:12px;background:var(--card);border-radius:12px;margin-bottom:8px;' + (isMe ? 'border:2px solid var(--green);' : 'border:1px solid var(--border);') + (blank?'':'cursor:pointer;') + '">' +
           '<div style="width:36px;height:36px;border-radius:50%;background:' + (isMe ? 'var(--green)' : 'var(--border)') + '33;display:flex;align-items:center;justify-content:center;font-size:18px;">👤</div>' +
           '<div style="flex:1;min-width:0;">' +
             '<div style="font-size:14px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + disp + '</div>' +
+            (blank ? '' : '<div style="font-size:11px;color:var(--text-sub);">タップで状況を見る</div>') +
           '</div>' + delBtn +
         '</div>';
       }).join('');
