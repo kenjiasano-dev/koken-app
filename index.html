@@ -1377,7 +1377,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = '20260925b';
+const APP_VERSION = '20260925c';
 // LINEログイン(LIFF) — LINEコンソールで作成したLIFFアプリのIDを入れる
 const LIFF_ID = '2010638896-vJtjkUOr';
 // 公式アカウント「カーコン工賃通知」友だち追加URL（ここに飛ばすとLINEアプリの友だち追加画面が直接開く）
@@ -1770,6 +1770,7 @@ var _memberHistoryName = null;
 var _memberHistoryMonth = null;
 var _memberHistoryGroupCode = null;
 var _memberHistoryGoal = 0;
+var _memberHistoryReqId = 0;
 function showMemberStatus(nameEnc) {
   var name = decodeURIComponent(nameEnc);
   var s = _memberStatusCache[name];
@@ -1825,6 +1826,9 @@ async function renderMemberHistoryList() {
   var receiptTitleEl = document.getElementById('member-receipt-title');
   var receiptBodyEl = document.getElementById('member-receipt-body');
   if (!labelEl || !listEl || !_memberHistoryName || !_memberHistoryMonth) return;
+  // 月送りを連続で押すと複数のfetchが並行して走り、後から届いた方が勝つ(表示中の月とズレる)
+  // 事故があったため、呼び出しごとにIDを振り、自分より新しい呼び出しが走っていたら描画を捨てる。
+  var reqId = ++_memberHistoryReqId;
   var ym = _memberHistoryMonth;
   var monthLabel = ym.slice(0,4) + '年' + Number(ym.slice(5,7)) + '月';
   labelEl.textContent = '📅 ' + monthLabel;
@@ -1840,6 +1844,7 @@ async function renderMemberHistoryList() {
     var wagePromise = fetchFromGAS('getMyData', { name: _memberHistoryName, month: ym, uuid: '' });
     var estPromise = _memberHistoryGroupCode ? fetchFromGAS('getEstimateRanking', { groupCode: _memberHistoryGroupCode, month: ym }) : Promise.resolve(null);
     var results = await Promise.all([wagePromise, estPromise]);
+    if (reqId !== _memberHistoryReqId) return; // 月送りで追い越された古い応答は描画しない
     var res = results[0], est = results[1];
     var entries = (res && res.entries) ? res.entries.slice() : [];
     entries.sort(function(a,b){ return (a.date||'') < (b.date||'') ? -1 : ((a.date||'') > (b.date||'') ? 1 : 0); });
