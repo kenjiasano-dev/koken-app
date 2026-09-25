@@ -1377,7 +1377,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = '20260924e';
+const APP_VERSION = '20260925a';
 // LINEログイン(LIFF) — LINEコンソールで作成したLIFFアプリのIDを入れる
 const LIFF_ID = '2010638896-vJtjkUOr';
 // 公式アカウント「カーコン工賃通知」友だち追加URL（ここに飛ばすとLINEアプリの友だち追加画面が直接開く）
@@ -1841,30 +1841,45 @@ async function renderMemberHistoryList() {
     var entries = (res && res.entries) ? res.entries.slice() : [];
     entries.sort(function(a,b){ return (a.date||'') < (b.date||'') ? -1 : ((a.date||'') > (b.date||'') ? 1 : 0); });
 
-    // 入力履歴（縦一覧）
-    if (!entries.length) {
-      listEl.innerHTML = '<div style="text-align:center;padding:16px;color:var(--text-sub);font-size:12px;">この月の入力はありません</div>';
-    } else {
+    // 入力履歴（1日〜末日まで縦一覧、未入力日も表示して空白日が一目でわかるように）
+    {
       var wd = ['日','月','火','水','木','金','土'];
-      var total = 0;
-      var rows = entries.map(function(en){
+      var y = Number(ym.slice(0,4)), mo = Number(ym.slice(5,7));
+      var daysInMonth = new Date(y, mo, 0).getDate();
+      var amountByDay = {}, countByDay = {};
+      entries.forEach(function(en){
         var ds = en.date || '';
-        var dObj = ds ? new Date(ds + 'T00:00:00') : null;
-        var label = ds ? (Number(ds.slice(5,7)) + '/' + Number(ds.slice(8,10)) + (dObj && !isNaN(dObj) ? '（' + wd[dObj.getDay()] + '）' : '')) : '-';
-        var amt = Number(en.amount) || 0;
-        total += amt;
-        return '<div style="display:flex;padding:8px 6px;border-bottom:1px solid var(--border);font-size:13px;">' +
-          '<div style="flex:1;">' + label + '</div>' +
-          '<div style="width:90px;text-align:right;font-weight:700;">¥' + amt.toLocaleString() + '</div>' +
+        if (!ds) return;
+        var day = Number(ds.slice(8,10));
+        amountByDay[day] = (amountByDay[day] || 0) + (Number(en.amount) || 0);
+        countByDay[day] = (countByDay[day] || 0) + 1;
+      });
+      var total = entries.reduce(function(s,en){ return s + (Number(en.amount)||0); }, 0);
+      var entryDays = Object.keys(amountByDay).length;
+      var now2 = new Date();
+      var isCurMonth = (now2.getFullYear() + '-' + String(now2.getMonth()+1).padStart(2,'0')) === ym;
+      var rows = '';
+      for (var day = 1; day <= daysInMonth; day++) {
+        var dow = new Date(y, mo - 1, day).getDay();
+        var dowColor = dow === 0 ? '#e74c3c' : (dow === 6 ? '#3498db' : '');
+        var amt = amountByDay[day] || 0;
+        var cnt = countByDay[day] || 0;
+        var isToday = isCurMonth && day === now2.getDate();
+        var amtHtml = amt > 0
+          ? ('¥' + amt.toLocaleString() + (cnt > 1 ? '<span style="font-size:10px;color:var(--text-sub);font-weight:400;"> (' + cnt + '件)</span>' : ''))
+          : '<span style="color:var(--text-sub);font-weight:400;">-</span>';
+        rows += '<div style="display:flex;align-items:center;padding:6px 6px;border-bottom:1px solid var(--border);font-size:13px;' + (isToday ? 'background:var(--green-light);border-radius:6px;' : '') + '">' +
+          '<div style="flex:1;' + (dowColor ? 'color:' + dowColor + ';' : '') + '">' + mo + '/' + day + '（' + wd[dow] + '）' + '</div>' +
+          '<div style="width:110px;text-align:right;font-weight:700;">' + amtHtml + '</div>' +
         '</div>';
-      }).join('');
+      }
       listEl.innerHTML =
         '<div style="display:flex;font-size:11px;color:var(--text-sub);padding:2px 6px 6px;border-bottom:1px solid var(--border);">' +
-          '<div style="flex:1;">日付</div><div style="width:90px;text-align:right;">工賃</div>' +
+          '<div style="flex:1;">日付</div><div style="width:110px;text-align:right;">工賃</div>' +
         '</div>' + rows +
         '<div style="display:flex;padding:8px 6px 2px;font-size:13px;font-weight:700;">' +
-          '<div style="flex:1;">合計（' + entries.length + '件）</div>' +
-          '<div style="width:90px;text-align:right;color:var(--green);">¥' + total.toLocaleString() + '</div>' +
+          '<div style="flex:1;">合計（' + entryDays + '日 / ' + entries.length + '件）</div>' +
+          '<div style="width:110px;text-align:right;color:var(--green);">¥' + total.toLocaleString() + '</div>' +
         '</div>';
     }
 
