@@ -1988,7 +1988,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = 'app202609301600';
+const APP_VERSION = 'app202609301700';
 // LINEログイン(LIFF) — LINEコンソールで作成したLIFFアプリのIDを入れる
 const LIFF_ID = '2010638896-vJtjkUOr';
 // 公式アカウント「カーコン工賃通知」友だち追加URL（ここに飛ばすとLINEアプリの友だち追加画面が直接開く）
@@ -2540,11 +2540,12 @@ function _chatSetSeenId(code, id) {
 function _chatSetUnreadDot(count) {
   var dot = document.getElementById('store-status-unread-dot');
   if (dot) dot.style.display = count > 0 ? '' : 'none';
-  var badge = document.getElementById('chat-unread-dot');
-  if (badge) {
-    if (count > 0) { badge.textContent = count > 99 ? '99+' : String(count); badge.style.display = 'block'; }
+  ['chat-unread-dot', 'pcd-chat-unread-dot'].forEach(function(id) {
+    var badge = document.getElementById(id);
+    if (!badge) return;
+    if (count > 0) { badge.textContent = count > 99 ? '99+' : String(count); badge.style.display = 'inline-block'; }
     else badge.style.display = 'none';
-  }
+  });
 }
 function _chatSetAppBadge(count) {
   try {
@@ -6608,6 +6609,7 @@ reclaimFromLineRedirect().then(function(reclaimed) {
     <button class="pcdv-btn" data-pcdview="store-status" onclick="pcdSwitchView('store-status')">🏪 店舗状況</button>
     <button class="pcdv-btn" data-pcdview="my" onclick="pcdSwitchView('my')">👤 マイ</button>
     <button class="pcdv-btn" data-pcdview="settings" onclick="pcdSwitchView('settings')">⚙️ 設定</button>
+    <button class="pcdv-btn" onclick="pcdOpenChat()" title="グループチャットを開く" style="position:relative;">💬 チャット<span id="pcd-chat-unread-dot" style="display:none;position:absolute;top:2px;right:2px;min-width:15px;height:15px;padding:0 3px;border-radius:8px;background:#e74c3c;color:#fff;font-size:9px;font-weight:700;line-height:15px;text-align:center;"></span></button>
     <button class="pcdv-btn" onclick="openYoteiGrid()" title="入庫予定表（月間ガントチャート）を表示">📋 入庫予定表</button>
     <button class="pcdv-btn" onclick="openDaishaGrid()" title="代車管理を表示">🚙 代車管理</button>
     <button class="pcdv-btn" onclick="openShiftGrid()" title="シフト（出勤・休み）を表示">🗓 シフト</button>
@@ -10328,6 +10330,16 @@ function pcdSwitchView(mode){
     if(rb) rb.style.display = 'block';
   }
   pcdUpdateViewSwitchButtons();
+}
+// PC版ナビの💬チャットボタン。店舗状況ビューに切り替えたあと、チャットのサブタブをクリックして開く
+// (pcdSwitchViewは既存のswitchTab('store-status')をそのまま呼ぶ簡易実装なので、サブタブの
+// 切り替えはDOM操作後に別途行う必要がある)。
+function pcdOpenChat(){
+  pcdSwitchView('store-status');
+  setTimeout(function(){
+    var b = document.querySelector('#store-status-sub-tabs [data-sstab="chat"]');
+    if (b) b.click();
+  }, 50);
 }
 function pcdUpdateViewSwitchButtons(){
   document.querySelectorAll('#pcd-viewbar .pcdv-btn').forEach(function(b){
