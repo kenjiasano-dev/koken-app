@@ -300,6 +300,10 @@ button{font-family:inherit; cursor:pointer;}
   <div style="display:flex; align-items:center; gap:14px;">
     <div class="sync"><span class="dot"></span><span id="sync-label">この端末に保存</span></div>
     <button class="iconbtn" id="theme-btn" style="color:var(--muted);" title="明るさ切替" onclick="toggleTheme()"><svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M12 3a9 9 0 1 0 9 9c0-.46-.04-.92-.1-1.36a5.4 5.4 0 0 1-7.54-7.54c-.44-.06-.9-.1-1.36-.1z"/></svg></button>
+    <button class="iconbtn" style="color:var(--muted);position:relative;" title="チャット" onclick="openBoardChat()">
+      <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/></svg>
+      <span id="board-chat-unread-dot" style="display:none;position:absolute;top:-2px;right:-2px;min-width:16px;height:16px;padding:0 3px;border-radius:8px;background:#e74c3c;color:#fff;font-size:10px;font-weight:700;line-height:16px;text-align:center;"></span>
+    </button>
     <button class="iconbtn" style="color:var(--muted);" title="設定" onclick="openSettings()"><svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg></button>
   </div>
 </div>
@@ -384,7 +388,7 @@ button{font-family:inherit; cursor:pointer;}
      同じスプレッドシートに「進捗/入庫/完成履歴」シートとして相乗りできる。
    - いまは persist() が localStorage に書くだけ＝バックエンド不要で即使える。
    =================================================================== */
-const APP_VERSION = '20260824h';
+const APP_VERSION = '20260930a';
 const STORE_KEY   = 'board_state_v1';
 const DEFAULT_STAGES = ['パネル修正','パテ','サフ','調色','マスキング','塗装','乾燥','磨き','組み付け'];
 /* 工程は店舗ごとに設定で変更可。state.store.stages に保存、無ければ標準9工程 */
@@ -510,6 +514,192 @@ async function boardFetchGAS(action, params) {
     const res = await fetch(BOARD_GAS_URL + '?' + qs);
     return await res.json();
   } catch (e) { return null; }
+}
+
+/* ---------- グループチャット(工賃アプリindex.htmlと同じGASバックエンド/シートを共有)
+   2026-09-30追加。既読管理は'chatSeenIds'キーで工賃アプリ側とlocalStorageを共有するため、
+   どちらのアプリで既読にしても未読バッジが揃って消える。UUIDは工賃アプリとは別体系
+   (state.store.uuid、簡易版のため統一しない)だが、送信・削除にメンバー登録は不要な
+   設計なので支障はない。 */
+let _boardChatPollTimer = null;
+let _boardChatLastSignature = '';
+function _boardChatGetSeenId(code) {
+  try { return JSON.parse(localStorage.getItem('chatSeenIds') || '{}')[code] || ''; } catch (e) { return ''; }
+}
+function _boardChatSetSeenId(code, id) {
+  try {
+    var m = JSON.parse(localStorage.getItem('chatSeenIds') || '{}');
+    m[code] = id;
+    localStorage.setItem('chatSeenIds', JSON.stringify(m));
+  } catch (e) {}
+}
+function _boardChatSetUnreadDot(count) {
+  var el = document.getElementById('board-chat-unread-dot');
+  if (!el) return;
+  if (count > 0) { el.textContent = count > 99 ? '99+' : String(count); el.style.display = 'block'; }
+  else el.style.display = 'none';
+}
+function _boardChatSetAppBadge(count) {
+  try {
+    if (!('setAppBadge' in navigator)) return;
+    if (count > 0) navigator.setAppBadge(count).catch(function(){});
+    else if ('clearAppBadge' in navigator) navigator.clearAppBadge().catch(function(){});
+  } catch (e) {}
+}
+// チャットのシートを開いていない間、下タブ相当のヘッダーアイコンに未読件数を反映する(起動時＋定期)
+async function checkBoardUnreadChat() {
+  if (document.getElementById('board-chat-messages')) return; // 開いている間はrenderBoardChat側で既読処理
+  var code = state.store && state.store.group;
+  if (!code) { _boardChatSetUnreadDot(0); _boardChatSetAppBadge(0); return; }
+  var res = await boardFetchGAS('getGroupMessages', { groupCode: code });
+  var msgs = (res && res.messages) ? res.messages : [];
+  if (!msgs.length) { _boardChatSetUnreadDot(0); _boardChatSetAppBadge(0); return; }
+  var myUuid = (state.store && state.store.uuid) || '';
+  var seenId = _boardChatGetSeenId(code);
+  var seenIdx = seenId ? msgs.findIndex(function(m){ return m.id === seenId; }) : -1;
+  var newSince = seenIdx >= 0 ? msgs.slice(seenIdx + 1) : msgs;
+  var unreadCount = newSince.filter(function(m){ return !(m.uuid && myUuid && m.uuid === myUuid); }).length;
+  _boardChatSetUnreadDot(unreadCount);
+  _boardChatSetAppBadge(unreadCount);
+}
+function openBoardChat() {
+  if (!state.store || !state.store.group) { toast('先に店舗の設定をしてください'); return; }
+  showSheet(
+    '<h2>💬 チャット</h2>' +
+    '<div id="board-chat-messages" style="max-height:50vh;overflow-y:auto;padding:4px 2px;margin-bottom:10px;"></div>' +
+    '<div style="display:flex;gap:8px;align-items:center;">' +
+      '<input type="file" id="board-chat-image-input" accept="image/*" style="display:none;" onchange="onBoardChatImageSelected(event)">' +
+      '<button class="iconbtn" onclick="document.getElementById(\'board-chat-image-input\').click()" style="border:0.5px solid var(--line);flex:0 0 auto;">📷</button>' +
+      '<input id="board-chat-input" type="text" placeholder="メッセージを入力" maxlength="500" style="flex:1;padding:10px 12px;border-radius:20px;border:0.5px solid var(--line2);background:var(--card);color:var(--text);font-size:14px;">' +
+      '<button class="btn" onclick="sendBoardChatMessage()">送信</button>' +
+    '</div>'
+  );
+  var input = document.getElementById('board-chat-input');
+  if (input) input.addEventListener('keydown', function(e) { if (e.key === 'Enter') sendBoardChatMessage(); });
+  renderBoardChat();
+  clearInterval(_boardChatPollTimer);
+  _boardChatPollTimer = setInterval(function() {
+    if (!document.getElementById('board-chat-messages')) { clearInterval(_boardChatPollTimer); _boardChatPollTimer = null; return; }
+    renderBoardChat();
+  }, 15000);
+}
+async function renderBoardChat() {
+  var code = state.store.group;
+  var res = await boardFetchGAS('getGroupMessages', { groupCode: code });
+  var msgs = (res && res.messages) ? res.messages : [];
+  var listEl = document.getElementById('board-chat-messages'); // 応答待ち中にシートが閉じられていたら中断
+  if (!listEl) return;
+  if (!msgs.length) {
+    listEl.innerHTML = '<div style="text-align:center;padding:20px;color:var(--muted);font-size:13px;">まだメッセージがありません</div>';
+    _boardChatLastSignature = '';
+    _boardChatSetUnreadDot(0);
+    _boardChatSetAppBadge(0);
+    return;
+  }
+  _boardChatSetSeenId(code, msgs[msgs.length - 1].id);
+  _boardChatSetUnreadDot(0);
+  _boardChatSetAppBadge(0);
+  var signature = msgs.length + ':' + (msgs[msgs.length - 1].id || msgs[msgs.length - 1].time);
+  if (signature === _boardChatLastSignature) return;
+  _boardChatLastSignature = signature;
+  var wasAtBottom = listEl.scrollTop + listEl.clientHeight >= listEl.scrollHeight - 30;
+  var myUuid = (state.store && state.store.uuid) || '';
+  listEl.innerHTML = msgs.map(function(m) {
+    var mine = !!(m.uuid && myUuid && m.uuid === myUuid);
+    var nameLine = mine ? '' : ('<div style="font-size:11px;color:var(--muted);margin-bottom:2px;padding:0 4px;">' + (m.isObserver ? '🥷 ' : '') + esc(m.name) + '</div>');
+    var delLink = mine ? ('<span onclick="deleteBoardChatMessage(\'' + m.id + '\')" style="cursor:pointer;text-decoration:underline;margin-left:6px;">削除</span>') : '';
+    var imageHtml = m.imageUrl ? ('<img src="' + esc(m.imageUrl) + '" alt="画像" loading="lazy" style="max-width:200px;max-height:260px;border-radius:12px;display:block;cursor:pointer;' + (m.text ? 'margin-bottom:4px;' : '') + '" onclick="window.open(\'' + esc(m.imageUrl) + '\',\'_blank\')">') : '';
+    var textHtml = m.text ? ('<div style="padding:8px 12px;border-radius:14px;font-size:13px;line-height:1.4;white-space:pre-wrap;word-break:break-word;' +
+        (mine ? 'background:var(--accent);color:#fff;border-bottom-right-radius:4px;' : 'background:var(--card2);border:0.5px solid var(--line);border-bottom-left-radius:4px;') + '">' + esc(m.text) + '</div>') : '';
+    return '<div style="display:flex;flex-direction:column;align-items:' + (mine ? 'flex-end' : 'flex-start') + ';margin-bottom:10px;">' +
+      nameLine +
+      '<div style="max-width:80%;">' + imageHtml + textHtml + '</div>' +
+      '<div style="font-size:10px;color:var(--muted);margin-top:2px;padding:0 4px;">' + esc(m.time || '') + delLink + '</div>' +
+    '</div>';
+  }).join('');
+  if (wasAtBottom) listEl.scrollTop = listEl.scrollHeight;
+}
+async function sendBoardChatMessage() {
+  var input = document.getElementById('board-chat-input');
+  if (!input) return;
+  var text = (input.value || '').trim();
+  if (!text) return;
+  var code = state.store && state.store.group;
+  if (!code) { toast('先にグループコードを設定してください'); return; }
+  var name = (state.store && state.store.myName) || '';
+  if (!name) { toast('先に担当者名を設定してください'); return; }
+  input.value = '';
+  input.disabled = true;
+  try {
+    const res = await fetch(BOARD_GAS_URL, {
+      method: 'POST', headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify({ action: 'sendGroupMessage', token: BOARD_GAS_TOKEN, uuid: state.store.uuid || '', groupCode: code, name: name, text: text }),
+    });
+    const json = await res.json();
+    if (!json || !json.success) { toast('⚠️ 送信できませんでした'); input.value = text; }
+    else { _boardChatLastSignature = ''; await renderBoardChat(); }
+  } catch (e) { toast('📡 通信できませんでした'); input.value = text; }
+  finally { input.disabled = false; input.focus(); }
+}
+function _resizeImageFileBoard(file, maxDim, quality) {
+  return new Promise(function(resolve, reject) {
+    var reader = new FileReader();
+    reader.onerror = function() { reject(new Error('read failed')); };
+    reader.onload = function() {
+      var img = new Image();
+      img.onerror = function() { reject(new Error('decode failed')); };
+      img.onload = function() {
+        var w = img.width, h = img.height;
+        if (w > maxDim || h > maxDim) {
+          if (w > h) { h = Math.round(h * maxDim / w); w = maxDim; }
+          else { w = Math.round(w * maxDim / h); h = maxDim; }
+        }
+        var canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        var dataUrl = canvas.toDataURL('image/jpeg', quality);
+        resolve({ base64: dataUrl.split(',')[1], mimeType: 'image/jpeg' });
+      };
+      img.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+async function onBoardChatImageSelected(e) {
+  var fileInput = e.target;
+  var file = fileInput.files && fileInput.files[0];
+  fileInput.value = '';
+  if (!file) return;
+  var code = state.store && state.store.group;
+  if (!code) { toast('先にグループコードを設定してください'); return; }
+  var name = (state.store && state.store.myName) || '';
+  if (!name) { toast('先に担当者名を設定してください'); return; }
+  var input = document.getElementById('board-chat-input');
+  var caption = (input && input.value || '').trim();
+  if (input) input.value = '';
+  toast('📷 画像を送信中...');
+  try {
+    var image = await _resizeImageFileBoard(file, 1280, 0.7);
+    const res = await fetch(BOARD_GAS_URL, {
+      method: 'POST', headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify({ action: 'sendGroupMessage', token: BOARD_GAS_TOKEN, uuid: state.store.uuid || '', groupCode: code, name: name, text: caption, image: image }),
+    });
+    const json = await res.json();
+    if (!json || !json.success) toast('⚠️ 画像を送信できませんでした');
+    else { _boardChatLastSignature = ''; await renderBoardChat(); }
+  } catch (err) { toast('📡 通信できませんでした'); }
+}
+async function deleteBoardChatMessage(id) {
+  if (!confirm('このメッセージを削除しますか？')) return;
+  try {
+    const res = await fetch(BOARD_GAS_URL, {
+      method: 'POST', headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify({ action: 'deleteGroupMessage', token: BOARD_GAS_TOKEN, uuid: state.store.uuid || '', id: id }),
+    });
+    const json = await res.json();
+    if (json && json.success) { _boardChatLastSignature = ''; await renderBoardChat(); }
+    else toast('⚠️ 削除できませんでした');
+  } catch (e) { toast('📡 通信できませんでした'); }
 }
 
 let _boardSyncTimer=null, _boardSyncing=false;
@@ -2098,6 +2288,8 @@ if(!ensureStore()){ /* setup shown */ }
 switchTab('work');
 boardSyncNow();   // 起動直後に他端末の変更を取り込む
 loadGroupStages(); // 起動時に、店長が他端末で編集した工程設定を取り込む
+checkBoardUnreadChat();            // チャットの未読を起動時に確認
+setInterval(checkBoardUnreadChat, 60000); // 以後1分ごと
 </script>
 </body>
 </html>
