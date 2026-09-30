@@ -2005,7 +2005,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = 'app202609302400';
+const APP_VERSION = 'app202609302500';
 // LINEログイン(LIFF) — LINEコンソールで作成したLIFFアプリのIDを入れる
 const LIFF_ID = '2010638896-vJtjkUOr';
 // 公式アカウント「カーコン工賃通知」友だち追加URL（ここに飛ばすとLINEアプリの友だち追加画面が直接開く）
@@ -9984,8 +9984,18 @@ function bd_arriveCar(id){ var c=findCar(id); if(!c) return; c.status='nyuko'; c
 var _yoteiCalY=null, _yoteiCalM=null;
 /* 入庫予定表・代車管理・シフトの3表を同時に表示した時、日付の列が縦にきれいに揃って
    「1枚のスケジュール表」に見えるよう、左ラベル列幅・1日あたりの列幅を3表で共通にする
-   (2026-09-07)。以前は表ごとにminmax(34px,1fr)/固定28px等バラバラで、並べるとズレていた。 */
+   (2026-09-07)。以前は表ごとにminmax(34px,1fr)/固定28px等バラバラで、並べるとズレていた。
+   その後PCで画面幅を余らせたまま列が細く表示される指摘を受け、固定pxのままだと画面を
+   使い切れないため、画面幅に応じて動的に列幅を計算する関数に変更(2026-09-30)。3表とも
+   同じdays(その月の日数)・同じwindow.innerWidthを使って独立に呼ぶだけで、常に同じ値になり
+   結果として揃う(状態を共有する必要がない)。 */
 var YOTEI_LABEL_W=90, YOTEI_DAY_W=30;
+function _yoteiDayColWidth(days){
+  var sheetEl = document.querySelector('.sheet.sheet-wide');
+  var avail = (sheetEl ? sheetEl.clientWidth : Math.min(window.innerWidth, 1800)) - 32; // シート左右の余白分を差し引く
+  var w = Math.floor((avail - YOTEI_LABEL_W) / days);
+  return Math.max(YOTEI_DAY_W, w);
+}
 var _yoteiCalMode='in'; // 'in'=入庫予定のみ・'out'=出庫予定のみ・'both'=両方同時。1つのカレンダーをトグルで切り替える(2026-09-30)
 function _yoteiCalHeading(mode){ return mode==='out'?'📤 出庫予定カレンダー':(mode==='both'?'📆📤 入庫・出庫予定カレンダー':'📆 入庫予定カレンダー'); }
 function openYoteiCal(){
@@ -10258,7 +10268,7 @@ function yoteiMainGanttHTML(){
   // 代車管理・シフトと日付列の幅・開始位置を揃えるため、列幅は他の2表と同じ固定値にする
   // (2026-09-07。以前はminmax(34px,1fr)で画面幅に応じて伸縮していたため、3表を並べた時に
   // 日付の位置がずれて見えていた)。
-  var gridStyle='grid-template-columns:'+YOTEI_LABEL_W+'px repeat('+days+','+YOTEI_DAY_W+'px);grid-template-rows:32px repeat('+totalDataRows+',28px);';
+  var gridStyle='grid-template-columns:'+YOTEI_LABEL_W+'px repeat('+days+','+_yoteiDayColWidth(days)+'px);grid-template-rows:32px repeat('+totalDataRows+',28px);';
   return '<div class="ywgantt-wrap"><div class="ywgantt" style="'+gridStyle+'">'+headCells+colSeps+sectionsHtml+'</div></div>';
 }
 /* 代車管理: 入庫予定表と同じ月・同じ日付軸で、行=登録済みの代車、バー=貸出中の車(お客様名・車種)。
@@ -10336,7 +10346,7 @@ function daishaGridHTML(){
     rowCursor += lanes;
   });
   var totalRows=Math.max(rowCursor-2, 1);
-  var gridStyle='grid-template-columns:'+YOTEI_LABEL_W+'px repeat('+days+','+YOTEI_DAY_W+'px);grid-template-rows:32px repeat('+totalRows+',36px);';
+  var gridStyle='grid-template-columns:'+YOTEI_LABEL_W+'px repeat('+days+','+_yoteiDayColWidth(days)+'px);grid-template-rows:32px repeat('+totalRows+',36px);';
   return '<h3 style="font-size:14px;margin:0 0 8px;display:flex;align-items:center;gap:8px;">🚙 代車管理'+editBtn+'</h3>'
     + '<div class="ywgantt-wrap"><div class="ywgantt" style="'+gridStyle+'">'+headCells+colSeps+rowsHtml+'</div></div>';
 }
@@ -10387,7 +10397,7 @@ function shiftGridBodyHTML(){
       + '<button class="btn" onclick="openMembers()">＋ メンバーを登録する</button></div>';
   }
   var today=new Date();
-  var colTemplate=YOTEI_LABEL_W+'px repeat('+days+','+YOTEI_DAY_W+'px)';
+  var colTemplate=YOTEI_LABEL_W+'px repeat('+days+','+_yoteiDayColWidth(days)+'px)';
   var headRow='<div style="display:grid;grid-template-columns:'+colTemplate+';gap:2px;"><div></div>';
   for(var d=1; d<=days; d++){
     var dow=new Date(_yoteiCalY,_yoteiCalM-1,d).getDay();
