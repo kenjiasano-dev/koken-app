@@ -341,7 +341,7 @@ function saveAppState() {
         <button class="sub-tab" data-sstab="front-status">📋 受付状況</button>
         <button class="sub-tab" data-sstab="trend">📈 推移</button>
         <button class="sub-tab" data-sstab="members">👥 メンバー</button>
-        <button class="sub-tab" data-sstab="chat">💬 チャット</button>
+        <button class="sub-tab" data-sstab="chat" style="position:relative;">💬 チャット<span id="chat-unread-dot" style="display:none;position:absolute;top:2px;right:6px;width:7px;height:7px;border-radius:50%;background:#e74c3c;"></span></button>
       </div>
       <!-- 店舗目標 -->
       <div id="sstab-team-wage">
@@ -1228,7 +1228,10 @@ function saveAppState() {
       工賃入力
     </button>
     <button class="tab-btn" data-tab="store-status" onclick="switchTab('store-status')">
-      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 3L2 12h3v8h6v-5h2v5h6v-8h3L12 3z"/></svg>
+      <span style="position:relative;display:inline-flex;">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 3L2 12h3v8h6v-5h2v5h6v-8h3L12 3z"/></svg>
+        <span id="store-status-unread-dot" style="display:none;position:absolute;top:-2px;right:-2px;width:8px;height:8px;border-radius:50%;background:#e74c3c;"></span>
+      </span>
       店舗状況
     </button>
     <button class="tab-btn" data-tab="my" onclick="switchTab('my')">
@@ -1386,7 +1389,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = '20260930a';
+const APP_VERSION = '20260930b';
 // LINEログイン(LIFF) — LINEコンソールで作成したLIFFアプリのIDを入れる
 const LIFF_ID = '2010638896-vJtjkUOr';
 // 公式アカウント「カーコン工賃通知」友だち追加URL（ここに飛ばすとLINEアプリの友だち追加画面が直接開く）
@@ -1960,6 +1963,38 @@ async function initGroupChat() {
 function stopGroupChatPolling() {
   if (_chatPollTimer) { clearInterval(_chatPollTimer); _chatPollTimer = null; }
 }
+// 未読バッジ: グループごとに「最後に見たメッセージID」をlocalStorageに覚えておく
+function _chatGetSeenId(code) {
+  try { return JSON.parse(localStorage.getItem('chatSeenIds') || '{}')[code] || ''; } catch(e) { return ''; }
+}
+function _chatSetSeenId(code, id) {
+  try {
+    var m = JSON.parse(localStorage.getItem('chatSeenIds') || '{}');
+    m[code] = id;
+    localStorage.setItem('chatSeenIds', JSON.stringify(m));
+  } catch(e) {}
+}
+function _chatSetUnreadDot(show) {
+  ['store-status-unread-dot', 'chat-unread-dot'].forEach(function(id) {
+    var el = document.getElementById(id);
+    if (el) el.style.display = show ? '' : 'none';
+  });
+}
+// 店舗状況→チャットを開いていない間も、新着があれば下タブ・サブタブに赤丸を出す。
+// initGroupChat/renderGroupChatが動いていない時だけ呼ぶ想定（init()から定期実行）。
+async function checkUnreadChat() {
+  if (currentTab === 'store-status' && storeStatusTab === 'chat') return; // 見ている間はrenderGroupChat側で既読処理
+  var code = userData.activeGroupCode || userData.groupCode;
+  if (!code) return;
+  var res = await fetchFromGAS('getGroupMessages', { groupCode: code });
+  var msgs = (res && res.messages) ? res.messages : [];
+  if (!msgs.length) return;
+  var last = msgs[msgs.length - 1];
+  var myUuid = userData.uuid || '';
+  var isMine = !!(last.uuid && myUuid && last.uuid === myUuid);
+  var unread = !isMine && last.id !== _chatGetSeenId(code);
+  _chatSetUnreadDot(unread);
+}
 async function renderGroupChat() {
   var listEl = document.getElementById('chat-messages');
   if (!listEl) return;
@@ -1973,8 +2008,12 @@ async function renderGroupChat() {
   if (!msgs.length) {
     listEl.innerHTML = '<div style="text-align:center;padding:32px;color:var(--text-sub);font-size:13px;">まだメッセージがありません。最初の一言をどうぞ</div>';
     _chatLastSignature = '';
+    _chatSetUnreadDot(false);
     return;
   }
+  // 開いている間は最新まで見た扱いにして赤丸を消す
+  _chatSetSeenId(code, msgs[msgs.length - 1].id);
+  _chatSetUnreadDot(false);
   // 内容が変わっていなければ再描画しない（入力中にスクロール位置が飛ぶのを防ぐ）
   var signature = msgs.length + ':' + (msgs[msgs.length - 1].id || msgs[msgs.length - 1].time);
   if (signature === _chatLastSignature) return;
@@ -1983,13 +2022,15 @@ async function renderGroupChat() {
   var myUuid = userData.uuid || '';
   listEl.innerHTML = msgs.map(function(m) {
     var mine = !!(m.uuid && myUuid && m.uuid === myUuid);
+    var nameLine = mine ? '' : ('<div style="font-size:11px;color:var(--text-sub);margin-bottom:2px;padding:0 4px;">' + (m.isObserver ? '🥷 ' : '') + escapeHtml(m.name) + '</div>');
+    var delLink = mine ? ('<span onclick="deleteChatMessage(\'' + m.id + '\')" style="cursor:pointer;text-decoration:underline;margin-left:6px;">削除</span>') : '';
     return '<div style="display:flex;flex-direction:column;align-items:' + (mine ? 'flex-end' : 'flex-start') + ';margin-bottom:10px;">' +
-      (mine ? '' : '<div style="font-size:11px;color:var(--text-sub);margin-bottom:2px;padding:0 4px;">' + escapeHtml(m.name) + '</div>') +
+      nameLine +
       '<div style="max-width:75%;padding:8px 12px;border-radius:14px;font-size:13px;line-height:1.4;white-space:pre-wrap;word-break:break-word;' +
         (mine ? 'background:var(--green);color:#111;border-bottom-right-radius:4px;' : 'background:var(--card);border:1px solid var(--border);border-bottom-left-radius:4px;') + '">' +
         escapeHtml(m.text) +
       '</div>' +
-      '<div style="font-size:10px;color:var(--text-sub);margin-top:2px;padding:0 4px;">' + escapeHtml(m.time || '') + '</div>' +
+      '<div style="font-size:10px;color:var(--text-sub);margin-top:2px;padding:0 4px;">' + escapeHtml(m.time || '') + delLink + '</div>' +
     '</div>';
   }).join('');
   if (wasAtBottom) listEl.scrollTop = listEl.scrollHeight;
@@ -2024,6 +2065,21 @@ async function sendChatMessage() {
   } finally {
     input.disabled = false;
     input.focus();
+  }
+}
+async function deleteChatMessage(id) {
+  if (!confirm('このメッセージを削除しますか？')) return;
+  try {
+    var res = await fetch(GAS_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify({ action: 'deleteGroupMessage', token: GAS_TOKEN, uuid: userData.uuid || '', id: id }),
+    });
+    var json = await res.json();
+    if (json && json.success) { _chatLastSignature = ''; await renderGroupChat(); }
+    else showToast('⚠️ 削除できませんでした');
+  } catch (e) {
+    showToast('📡 通信できませんでした');
   }
 }
 
@@ -4644,6 +4700,12 @@ function init() {
 
   // フォロー中店舗の表示名がコードのままなら実店舗名で補完
   refreshGroupNames();
+
+  // チャットの未読チェック（起動時＋1分ごと。開いている間はrenderGroupChat側で処理するので二重にはならない）
+  if (typeof checkUnreadChat === 'function') {
+    checkUnreadChat();
+    setInterval(checkUnreadChat, 60000);
+  }
 
   // Check if first launch
   if (!userData.name) {
