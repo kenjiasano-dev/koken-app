@@ -341,6 +341,7 @@ function saveAppState() {
         <button class="sub-tab" data-sstab="front-status">📋 受付状況</button>
         <button class="sub-tab" data-sstab="trend">📈 推移</button>
         <button class="sub-tab" data-sstab="members">👥 メンバー</button>
+        <button class="sub-tab" data-sstab="chat">💬 チャット</button>
       </div>
       <!-- 店舗目標 -->
       <div id="sstab-team-wage">
@@ -390,6 +391,14 @@ function saveAppState() {
       <div id="sstab-members" style="display:none;padding:12px;">
         <div id="member-list-content">
           <div style="text-align:center;padding:32px;color:var(--text-sub);font-size:13px;">読み込み中...</div>
+        </div>
+      </div>
+      <!-- グループチャット（同じグループのメンバー同士だけが見える） -->
+      <div id="sstab-chat" style="display:none;flex-direction:column;height:calc(100vh - 210px);">
+        <div id="chat-messages" style="flex:1;overflow-y:auto;padding:12px;"></div>
+        <div style="display:flex;gap:8px;padding:8px 12px;border-top:1px solid var(--border);background:var(--bg);">
+          <input id="chat-input" type="text" placeholder="メッセージを入力" maxlength="500" style="flex:1;padding:10px 12px;border-radius:20px;border:1px solid var(--border);background:var(--input-bg,#222);color:var(--text);font-size:14px;">
+          <button onclick="sendChatMessage()" style="padding:0 18px;border-radius:20px;border:none;background:var(--green);color:#111;font-weight:700;font-size:13px;cursor:pointer;">送信</button>
         </div>
       </div>
     </div>
@@ -1377,7 +1386,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = '20260925c';
+const APP_VERSION = '20260930a';
 // LINEログイン(LIFF) — LINEコンソールで作成したLIFFアプリのIDを入れる
 const LIFF_ID = '2010638896-vJtjkUOr';
 // 公式アカウント「カーコン工賃通知」友だち追加URL（ここに飛ばすとLINEアプリの友だち追加画面が直接開く）
@@ -1548,6 +1557,7 @@ let currentRankTab = 'store';
 let calendarYear, calendarMonth;
 
 function switchTab(tab) {
+  if (tab !== 'store-status' && typeof stopGroupChatPolling === 'function') stopGroupChatPolling();
   const allPages = ['ranking','input','mypage','rankguide','settings','front','store-status','my','summary','trend'];
   allPages.forEach(t => {
     const p = document.getElementById('page-' + t);
@@ -1594,14 +1604,15 @@ async function initStoreStatusPage() {
       document.querySelectorAll('[data-sstab]').forEach(function(b){ b.classList.remove('active'); });
       btn.classList.add('active');
       storeStatusTab = btn.dataset.sstab;
-      ['team-wage','front-status','trend','members'].forEach(function(t){
+      ['team-wage','front-status','trend','members','chat'].forEach(function(t){
         var el = document.getElementById('sstab-' + t);
-        if (el) el.style.display = t === storeStatusTab ? '' : 'none';
+        if (el) el.style.display = t === storeStatusTab ? (t === 'chat' ? 'flex' : '') : 'none';
       });
       if (storeStatusTab === 'team-wage') renderCategoryBudget();
       if (storeStatusTab === 'front-status') initStoreFrontStatus();
       if (storeStatusTab === 'trend') renderStoreYearTrend();
       if (storeStatusTab === 'members') renderMemberList();
+      if (storeStatusTab === 'chat') initGroupChat(); else stopGroupChatPolling();
     });
   }
   await syncGroupGoalFromServer();
@@ -1931,6 +1942,91 @@ async function renderMemberHistoryList() {
     if (receiptBodyEl) receiptBodyEl.innerHTML = '<div style="text-align:center;padding:8px 0;color:var(--text-sub);font-size:12px;">取得できませんでした</div>';
   }
 }
+// ============================================================
+// グループチャット（店舗状況→💬チャット。同じグループコードのメンバー同士だけが見える）
+// ============================================================
+var _chatPollTimer = null;
+var _chatLastSignature = '';
+async function initGroupChat() {
+  var input = document.getElementById('chat-input');
+  if (input && !input._enterBound) {
+    input._enterBound = true;
+    input.addEventListener('keydown', function(e) { if (e.key === 'Enter') sendChatMessage(); });
+  }
+  await renderGroupChat();
+  stopGroupChatPolling();
+  _chatPollTimer = setInterval(renderGroupChat, 15000);
+}
+function stopGroupChatPolling() {
+  if (_chatPollTimer) { clearInterval(_chatPollTimer); _chatPollTimer = null; }
+}
+async function renderGroupChat() {
+  var listEl = document.getElementById('chat-messages');
+  if (!listEl) return;
+  var code = userData.activeGroupCode || userData.groupCode;
+  if (!code) {
+    listEl.innerHTML = '<div style="text-align:center;padding:32px;color:var(--text-sub);font-size:13px;">グループに参加してから使えます</div>';
+    return;
+  }
+  var res = await fetchFromGAS('getGroupMessages', { groupCode: code });
+  var msgs = (res && res.messages) ? res.messages : [];
+  if (!msgs.length) {
+    listEl.innerHTML = '<div style="text-align:center;padding:32px;color:var(--text-sub);font-size:13px;">まだメッセージがありません。最初の一言をどうぞ</div>';
+    _chatLastSignature = '';
+    return;
+  }
+  // 内容が変わっていなければ再描画しない（入力中にスクロール位置が飛ぶのを防ぐ）
+  var signature = msgs.length + ':' + (msgs[msgs.length - 1].id || msgs[msgs.length - 1].time);
+  if (signature === _chatLastSignature) return;
+  _chatLastSignature = signature;
+  var wasAtBottom = listEl.scrollTop + listEl.clientHeight >= listEl.scrollHeight - 30;
+  var myUuid = userData.uuid || '';
+  listEl.innerHTML = msgs.map(function(m) {
+    var mine = !!(m.uuid && myUuid && m.uuid === myUuid);
+    return '<div style="display:flex;flex-direction:column;align-items:' + (mine ? 'flex-end' : 'flex-start') + ';margin-bottom:10px;">' +
+      (mine ? '' : '<div style="font-size:11px;color:var(--text-sub);margin-bottom:2px;padding:0 4px;">' + escapeHtml(m.name) + '</div>') +
+      '<div style="max-width:75%;padding:8px 12px;border-radius:14px;font-size:13px;line-height:1.4;white-space:pre-wrap;word-break:break-word;' +
+        (mine ? 'background:var(--green);color:#111;border-bottom-right-radius:4px;' : 'background:var(--card);border:1px solid var(--border);border-bottom-left-radius:4px;') + '">' +
+        escapeHtml(m.text) +
+      '</div>' +
+      '<div style="font-size:10px;color:var(--text-sub);margin-top:2px;padding:0 4px;">' + escapeHtml(m.time || '') + '</div>' +
+    '</div>';
+  }).join('');
+  if (wasAtBottom) listEl.scrollTop = listEl.scrollHeight;
+}
+async function sendChatMessage() {
+  var input = document.getElementById('chat-input');
+  if (!input) return;
+  var text = (input.value || '').trim();
+  if (!text) return;
+  if (!userData.name) { showToast('⚠️ 先に設定でお名前を登録してください'); switchTab('settings'); return; }
+  var code = userData.activeGroupCode || userData.groupCode;
+  if (!code) { showToast('⚠️ グループに参加してから使えます'); return; }
+  input.value = '';
+  input.disabled = true;
+  try {
+    var res = await fetch(GAS_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify({ action: 'sendGroupMessage', token: GAS_TOKEN, uuid: userData.uuid || '', groupCode: code, name: userData.name, text: text }),
+    });
+    var json = await res.json();
+    if (!json || !json.success) {
+      showToast('⚠️ 送信できませんでした。もう一度お試しください');
+      input.value = text; // 送れなかった分は入力欄に戻す
+    } else {
+      _chatLastSignature = ''; // 送信直後は必ず再描画させる
+      await renderGroupChat();
+    }
+  } catch (e) {
+    showToast('📡 通信できませんでした。オンラインになってからもう一度お試しください');
+    input.value = text;
+  } finally {
+    input.disabled = false;
+    input.focus();
+  }
+}
+
 async function renderMemberList() {
   var el = document.getElementById('member-list-content');
   if (!el) return;
