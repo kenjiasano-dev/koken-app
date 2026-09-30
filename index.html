@@ -1389,7 +1389,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = '20260930b';
+const APP_VERSION = '20260930c';
 // LINEログイン(LIFF) — LINEコンソールで作成したLIFFアプリのIDを入れる
 const LIFF_ID = '2010638896-vJtjkUOr';
 // 公式アカウント「カーコン工賃通知」友だち追加URL（ここに飛ばすとLINEアプリの友だち追加画面が直接開く）
@@ -1980,20 +1980,32 @@ function _chatSetUnreadDot(show) {
     if (el) el.style.display = show ? '' : 'none';
   });
 }
-// 店舗状況→チャットを開いていない間も、新着があれば下タブ・サブタブに赤丸を出す。
-// initGroupChat/renderGroupChatが動いていない時だけ呼ぶ想定（init()から定期実行）。
+// ホーム画面に追加してアプリっぽく開いている時、アイコンに未読件数バッジを出す(Badging API)。
+// iOS16.4+のSafari・Android Chrome等が対応。通常のブラウザタブでは対応外環境が多いが、
+// 未対応ならsetAppBadge自体が存在しないかrejectするだけなので、失敗は握りつぶして無害にする。
+function _chatSetAppBadge(count) {
+  try {
+    if (!('setAppBadge' in navigator)) return;
+    if (count > 0) navigator.setAppBadge(count).catch(function(){});
+    else if ('clearAppBadge' in navigator) navigator.clearAppBadge().catch(function(){});
+  } catch (e) {}
+}
+// 店舗状況→チャットを開いていない間も、新着件数を下タブ・サブタブの赤丸とホーム画面アイコンの
+// バッジ数に反映する。initGroupChat/renderGroupChatが動いていない時だけ呼ぶ想定（init()から定期実行）。
 async function checkUnreadChat() {
   if (currentTab === 'store-status' && storeStatusTab === 'chat') return; // 見ている間はrenderGroupChat側で既読処理
   var code = userData.activeGroupCode || userData.groupCode;
-  if (!code) return;
+  if (!code) { _chatSetUnreadDot(false); _chatSetAppBadge(0); return; }
   var res = await fetchFromGAS('getGroupMessages', { groupCode: code });
   var msgs = (res && res.messages) ? res.messages : [];
-  if (!msgs.length) return;
-  var last = msgs[msgs.length - 1];
+  if (!msgs.length) { _chatSetUnreadDot(false); _chatSetAppBadge(0); return; }
   var myUuid = userData.uuid || '';
-  var isMine = !!(last.uuid && myUuid && last.uuid === myUuid);
-  var unread = !isMine && last.id !== _chatGetSeenId(code);
-  _chatSetUnreadDot(unread);
+  var seenId = _chatGetSeenId(code);
+  var seenIdx = seenId ? msgs.findIndex(function(m){ return m.id === seenId; }) : -1;
+  var newSince = seenIdx >= 0 ? msgs.slice(seenIdx + 1) : msgs; // 既読記録が無い(初回)なら全部未読扱い
+  var unreadCount = newSince.filter(function(m){ return !(m.uuid && myUuid && m.uuid === myUuid); }).length;
+  _chatSetUnreadDot(unreadCount > 0);
+  _chatSetAppBadge(unreadCount);
 }
 async function renderGroupChat() {
   var listEl = document.getElementById('chat-messages');
@@ -2009,11 +2021,13 @@ async function renderGroupChat() {
     listEl.innerHTML = '<div style="text-align:center;padding:32px;color:var(--text-sub);font-size:13px;">まだメッセージがありません。最初の一言をどうぞ</div>';
     _chatLastSignature = '';
     _chatSetUnreadDot(false);
+    _chatSetAppBadge(0);
     return;
   }
-  // 開いている間は最新まで見た扱いにして赤丸を消す
+  // 開いている間は最新まで見た扱いにして赤丸・アプリアイコンのバッジを消す
   _chatSetSeenId(code, msgs[msgs.length - 1].id);
   _chatSetUnreadDot(false);
+  _chatSetAppBadge(0);
   // 内容が変わっていなければ再描画しない（入力中にスクロール位置が飛ぶのを防ぐ）
   var signature = msgs.length + ':' + (msgs[msgs.length - 1].id || msgs[msgs.length - 1].time);
   if (signature === _chatLastSignature) return;
