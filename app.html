@@ -1988,7 +1988,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = 'app202609301700';
+const APP_VERSION = 'app202609301800';
 // LINEログイン(LIFF) — LINEコンソールで作成したLIFFアプリのIDを入れる
 const LIFF_ID = '2010638896-vJtjkUOr';
 // 公式アカウント「カーコン工賃通知」友だち追加URL（ここに飛ばすとLINEアプリの友だち追加画面が直接開く）
@@ -2514,6 +2514,7 @@ async function renderCategoryBudget() {
 // ============================================================
 var _chatPollTimer = null;
 var _chatLastSignature = '';
+var _chatReqId = 0;
 async function initGroupChat() {
   var input = document.getElementById('chat-input');
   if (input && !input._enterBound) {
@@ -2577,7 +2578,12 @@ async function renderGroupChat() {
     listEl.innerHTML = '<div style="text-align:center;padding:32px;color:var(--text-sub);font-size:13px;">グループに参加してから使えます</div>';
     return;
   }
+  // 15秒ごとのポーリングはGASの応答が数秒〜数十秒とばらつくため、複数のリクエストが並行し、
+  // 後から届いた方が古い内容で上書きして「表示→消える→また表示」を繰り返すことがあった
+  // (2026-09-30、実機で確認)。自分より新しいリクエストが割り込んでいたら描画を捨てる。
+  var reqId = ++_chatReqId;
   var res = await fetchFromGAS('getGroupMessages', { groupCode: code });
+  if (reqId !== _chatReqId) return;
   var msgs = (res && res.messages) ? res.messages : [];
   if (!msgs.length) {
     listEl.innerHTML = '<div style="text-align:center;padding:32px;color:var(--text-sub);font-size:13px;">まだメッセージがありません。最初の一言をどうぞ</div>';

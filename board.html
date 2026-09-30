@@ -388,7 +388,7 @@ button{font-family:inherit; cursor:pointer;}
      同じスプレッドシートに「進捗/入庫/完成履歴」シートとして相乗りできる。
    - いまは persist() が localStorage に書くだけ＝バックエンド不要で即使える。
    =================================================================== */
-const APP_VERSION = '20260930a';
+const APP_VERSION = '20260930b';
 const STORE_KEY   = 'board_state_v1';
 const DEFAULT_STAGES = ['パネル修正','パテ','サフ','調色','マスキング','塗装','乾燥','磨き','組み付け'];
 /* 工程は店舗ごとに設定で変更可。state.store.stages に保存、無ければ標準9工程 */
@@ -523,6 +523,7 @@ async function boardFetchGAS(action, params) {
    設計なので支障はない。 */
 let _boardChatPollTimer = null;
 let _boardChatLastSignature = '';
+let _boardChatReqId = 0;
 function _boardChatGetSeenId(code) {
   try { return JSON.parse(localStorage.getItem('chatSeenIds') || '{}')[code] || ''; } catch (e) { return ''; }
 }
@@ -585,7 +586,12 @@ function openBoardChat() {
 }
 async function renderBoardChat() {
   var code = state.store.group;
+  // 15秒ごとのポーリングはGASの応答が数秒〜数十秒とばらつくため、複数のリクエストが並行し、
+  // 後から届いた方が古い内容で上書きして「表示→消える→また表示」を繰り返すことがあった
+  // (2026-09-30、実機で確認)。自分より新しいリクエストが割り込んでいたら描画を捨てる。
+  var reqId = ++_boardChatReqId;
   var res = await boardFetchGAS('getGroupMessages', { groupCode: code });
+  if (reqId !== _boardChatReqId) return;
   var msgs = (res && res.messages) ? res.messages : [];
   var listEl = document.getElementById('board-chat-messages'); // 応答待ち中にシートが閉じられていたら中断
   if (!listEl) return;
