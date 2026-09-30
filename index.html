@@ -397,6 +397,8 @@ function saveAppState() {
       <div id="sstab-chat" style="display:none;flex-direction:column;height:calc(100vh - 210px);">
         <div id="chat-messages" style="flex:1;overflow-y:auto;padding:12px;"></div>
         <div style="display:flex;gap:8px;padding:8px 12px;border-top:1px solid var(--border);background:var(--bg);">
+          <input type="file" id="chat-image-input" accept="image/*" style="display:none;" onchange="onChatImageSelected(event)">
+          <button onclick="document.getElementById('chat-image-input').click()" style="flex:0 0 auto;width:38px;height:38px;border-radius:50%;border:1px solid var(--border);background:var(--card);color:var(--text);font-size:17px;cursor:pointer;">📷</button>
           <input id="chat-input" type="text" placeholder="メッセージを入力" maxlength="500" style="flex:1;padding:10px 12px;border-radius:20px;border:1px solid var(--border);background:var(--input-bg,#222);color:var(--text);font-size:14px;">
           <button onclick="sendChatMessage()" style="padding:0 18px;border-radius:20px;border:none;background:var(--green);color:#111;font-weight:700;font-size:13px;cursor:pointer;">送信</button>
         </div>
@@ -1389,7 +1391,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = '20260930c';
+const APP_VERSION = '20260930d';
 // LINEログイン(LIFF) — LINEコンソールで作成したLIFFアプリのIDを入れる
 const LIFF_ID = '2010638896-vJtjkUOr';
 // 公式アカウント「カーコン工賃通知」友だち追加URL（ここに飛ばすとLINEアプリの友だち追加画面が直接開く）
@@ -2038,12 +2040,14 @@ async function renderGroupChat() {
     var mine = !!(m.uuid && myUuid && m.uuid === myUuid);
     var nameLine = mine ? '' : ('<div style="font-size:11px;color:var(--text-sub);margin-bottom:2px;padding:0 4px;">' + (m.isObserver ? '🥷 ' : '') + escapeHtml(m.name) + '</div>');
     var delLink = mine ? ('<span onclick="deleteChatMessage(\'' + m.id + '\')" style="cursor:pointer;text-decoration:underline;margin-left:6px;">削除</span>') : '';
-    return '<div style="display:flex;flex-direction:column;align-items:' + (mine ? 'flex-end' : 'flex-start') + ';margin-bottom:10px;">' +
-      nameLine +
-      '<div style="max-width:75%;padding:8px 12px;border-radius:14px;font-size:13px;line-height:1.4;white-space:pre-wrap;word-break:break-word;' +
+    var imageHtml = m.imageUrl ? ('<img src="' + escapeHtml(m.imageUrl) + '" alt="画像" loading="lazy" style="max-width:220px;max-height:280px;border-radius:12px;display:block;cursor:pointer;' + (m.text ? 'margin-bottom:4px;' : '') + '" onclick="window.open(\'' + escapeHtml(m.imageUrl) + '\',\'_blank\')">') : '';
+    var textHtml = m.text ? ('<div style="padding:8px 12px;border-radius:14px;font-size:13px;line-height:1.4;white-space:pre-wrap;word-break:break-word;' +
         (mine ? 'background:var(--green);color:#111;border-bottom-right-radius:4px;' : 'background:var(--card);border:1px solid var(--border);border-bottom-left-radius:4px;') + '">' +
         escapeHtml(m.text) +
-      '</div>' +
+      '</div>') : '';
+    return '<div style="display:flex;flex-direction:column;align-items:' + (mine ? 'flex-end' : 'flex-start') + ';margin-bottom:10px;">' +
+      nameLine +
+      '<div style="max-width:75%;">' + imageHtml + textHtml + '</div>' +
       '<div style="font-size:10px;color:var(--text-sub);margin-top:2px;padding:0 4px;">' + escapeHtml(m.time || '') + delLink + '</div>' +
     '</div>';
   }).join('');
@@ -2079,6 +2083,62 @@ async function sendChatMessage() {
   } finally {
     input.disabled = false;
     input.focus();
+  }
+}
+// 画像を長辺maxDim・JPEG品質qualityに圧縮してbase64化する（そのまま送るとモバイル回線・
+// Sheet/Drive容量的に重すぎるため）。
+function _resizeImageFile(file, maxDim, quality) {
+  return new Promise(function(resolve, reject) {
+    var reader = new FileReader();
+    reader.onerror = function() { reject(new Error('read failed')); };
+    reader.onload = function() {
+      var img = new Image();
+      img.onerror = function() { reject(new Error('decode failed')); };
+      img.onload = function() {
+        var w = img.width, h = img.height;
+        if (w > maxDim || h > maxDim) {
+          if (w > h) { h = Math.round(h * maxDim / w); w = maxDim; }
+          else { w = Math.round(w * maxDim / h); h = maxDim; }
+        }
+        var canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        var dataUrl = canvas.toDataURL('image/jpeg', quality);
+        resolve({ base64: dataUrl.split(',')[1], mimeType: 'image/jpeg' });
+      };
+      img.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+async function onChatImageSelected(e) {
+  var fileInput = e.target;
+  var file = fileInput.files && fileInput.files[0];
+  fileInput.value = ''; // 同じ画像を続けて選べるようにリセット
+  if (!file) return;
+  if (!userData.name) { showToast('⚠️ 先に設定でお名前を登録してください'); switchTab('settings'); return; }
+  var code = userData.activeGroupCode || userData.groupCode;
+  if (!code) { showToast('⚠️ グループに参加してから使えます'); return; }
+  var input = document.getElementById('chat-input');
+  var caption = (input && input.value || '').trim();
+  if (input) input.value = '';
+  showToast('📷 画像を送信中...');
+  try {
+    var image = await _resizeImageFile(file, 1280, 0.7);
+    var res = await fetch(GAS_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify({ action: 'sendGroupMessage', token: GAS_TOKEN, uuid: userData.uuid || '', groupCode: code, name: userData.name, text: caption, image: image }),
+    });
+    var json = await res.json();
+    if (!json || !json.success) {
+      showToast('⚠️ 画像を送信できませんでした' + (json && json.reason ? '（' + json.reason + '）' : ''));
+    } else {
+      _chatLastSignature = '';
+      await renderGroupChat();
+    }
+  } catch (err) {
+    showToast('📡 通信できませんでした。オンラインになってからもう一度お試しください');
   }
 }
 async function deleteChatMessage(id) {
