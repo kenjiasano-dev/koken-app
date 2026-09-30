@@ -2005,7 +2005,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = 'app202609302100';
+const APP_VERSION = 'app202609302200';
 // LINEログイン(LIFF) — LINEコンソールで作成したLIFFアプリのIDを入れる
 const LIFF_ID = '2010638896-vJtjkUOr';
 // 公式アカウント「カーコン工賃通知」友だち追加URL（ここに飛ばすとLINEアプリの友だち追加画面が直接開く）
@@ -10485,7 +10485,10 @@ function renderYoteiCal(){
   var days=new Date(_yoteiCalY,_yoteiCalM,0).getDate();
   var today=new Date();
   var ym=_yoteiCalY+'-'+String(_yoteiCalM).padStart(2,'0');
-  var yotei=state.cars.filter(function(c){ return c.status==='yotei'||c.status==='nyuko'||c.status==='work'; });
+  // 「入庫予定カレンダー」は文字通り入庫予定(まだ来ていない車)だけを見せる。既に入庫済み(nyuko)・
+  // 作業中(work)の車は工賃入力ページ側で確認できるため、ここに混ぜると「まだ来てない予定」が
+  // 埋もれて見づらくなる(2026-09-30、指摘を受けて絞り込みに変更)。
+  var yotei=state.cars.filter(function(c){ return c.status==='yotei'; });
   for(var i=0;i<first;i++) html+='<div class="cal-day empty"></div>';
   for(var d=1;d<=days;d++){
     var dateStr=ym+'-'+String(d).padStart(2,'0');
@@ -10505,10 +10508,10 @@ function bd_yoteiDayRow(c){
   return bd_yoteiRow(c);
 }
 function openYoteiCalDay(dateStr){
-  var cars=state.cars.filter(function(c){ return (c.status==='yotei'||c.status==='nyuko'||c.status==='work') && bd_yoteiOccupyKey(c)===dateStr; }).sort(function(a,b){ return bd_yoteiStartMs(a)-bd_yoteiStartMs(b); });
-  var body = cars.length ? cars.map(bd_yoteiDayRow).join('') : '<p style="color:var(--muted);font-size:13px;">この日の車両はありません。</p>';
+  var cars=state.cars.filter(function(c){ return c.status==='yotei' && bd_yoteiOccupyKey(c)===dateStr; }).sort(function(a,b){ return bd_yoteiStartMs(a)-bd_yoteiStartMs(b); });
+  var body = cars.length ? cars.map(bd_yoteiDayRow).join('') : '<p style="color:var(--muted);font-size:13px;">この日の入庫予定車両はありません。</p>';
   showSheet(
-    '<h2>'+esc(bd_dayHeader(dateStr))+'の車両（予定・入庫中）</h2>'
+    '<h2>'+esc(bd_dayHeader(dateStr))+'の入庫予定車両</h2>'
     + '<p style="color:var(--muted);font-size:12px;margin:0 0 12px;">'+cars.length+'件</p>'
     + '<div style="max-height:50vh;overflow:auto;margin-bottom:12px;">'+body+'</div>'
     + '<button class="btn ghost" onclick="openYoteiCal()">← カレンダーに戻る</button>'
