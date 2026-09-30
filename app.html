@@ -106,8 +106,7 @@ input, select, textarea { font-family: inherit; }
 .card-title { font-size: 13px; color: var(--text-sub); margin-bottom: 12px; font-weight: 600; }
 
 /* ===== SUB TABS ===== */
-.sub-tabs { display: flex; background: var(--card); border-bottom: 1px solid var(--green-light); padding: 0 12px; gap: 4px; position: sticky; top: 0; z-index: 10; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
-.sub-tabs::-webkit-scrollbar { display: none; }
+.sub-tabs { display: flex; background: var(--card); border-bottom: 1px solid var(--green-light); padding: 0 12px; gap: 4px; position: sticky; top: 0; z-index: 10; overflow-x: auto; -webkit-overflow-scrolling: touch; }
 .sub-tab { padding: 10px 14px; font-size: 13px; color: var(--text-sub); border-bottom: 3px solid transparent; white-space: nowrap; flex: 0 0 auto; }
 .sub-tab.active { color: var(--green); border-bottom-color: var(--green); font-weight: 700; }
 
@@ -1989,7 +1988,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = 'app202609301500';
+const APP_VERSION = 'app202609301600';
 // LINEログイン(LIFF) — LINEコンソールで作成したLIFFアプリのIDを入れる
 const LIFF_ID = '2010638896-vJtjkUOr';
 // 公式アカウント「カーコン工賃通知」友だち追加URL（ここに飛ばすとLINEアプリの友だち追加画面が直接開く）
@@ -2295,6 +2294,7 @@ async function initStoreStatusPage() {
       if (!btn) return;
       document.querySelectorAll('[data-sstab]').forEach(function(b){ b.classList.remove('active'); });
       btn.classList.add('active');
+      btn.scrollIntoView({ behavior: 'smooth', inline: 'nearest', block: 'nearest' }); // 幅が狭くタブがはみ出る環境でも、押したタブ全体が見えるようにする
       storeStatusTab = btn.dataset.sstab;
       ['team-wage','front-status','trend','members','chat'].forEach(function(t){
         var el = document.getElementById('sstab-' + t);
