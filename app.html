@@ -2006,7 +2006,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = 'app202610011300';
+const APP_VERSION = 'app202610011400';
 // LINEログイン(LIFF) — LINEコンソールで作成したLIFFアプリのIDを入れる
 const LIFF_ID = '2010638896-vJtjkUOr';
 // 公式アカウント「カーコン工賃通知」友だち追加URL（ここに飛ばすとLINEアプリの友だち追加画面が直接開く）
@@ -8560,18 +8560,27 @@ function areasHTML(){
     </div>`).join('');
   const emptyNote = editAreas.length===0
     ? '<p style="color:var(--muted); font-size:13px; margin:2px 0 10px;">エリア未設定の間は、今まで通り「板金塗装／車検整備／一般整備／その他」の固定区分で入庫予定表が表示されます。ここでエリアを作ると、その区分に切り替わります。</p>' : '';
+  const atLimit = editAreas.length>=AREA_MAX;
+  const addBtn = atLimit
+    ? '<p style="color:var(--muted); font-size:12px; margin-bottom:10px;">エリアは最大'+AREA_MAX+'個までです。</p>'
+    : '<button class="btn ghost" onclick="addArea()" style="margin-bottom:10px;">＋ エリアを追加（'+editAreas.length+'/'+AREA_MAX+'）</button>';
   return `
     <h2>🗂 エリアの設定</h2>
     <p style="color:var(--muted); font-size:12px; margin:0 0 12px;">入庫予定表を自分の店の区分（板金・車検・整備・外注・レンタカー・保険など）で分けられます。上から順に表に並びます。</p>
     ${emptyNote}
     <div style="max-height:44vh; overflow:auto; margin-bottom:10px; padding-right:2px;">${rows}</div>
-    <button class="btn ghost" onclick="addArea()" style="margin-bottom:10px;">＋ エリアを追加</button>
+    ${addBtn}
     <div class="sheet-actions">
       <button class="btn ghost" onclick="openSettings()">戻る</button>
       <button class="btn" onclick="saveAreas()">保存</button>
     </div>`;
 }
-function addArea(){ editAreas.push({ id: uuid(), name:'', color: AREA_COLOR_CYCLE[editAreas.length % AREA_COLOR_CYCLE.length] }); rebuildAreas(); }
+var AREA_MAX = 18; // 入庫予定表の見出しが増えすぎて見づらくならないよう上限を設ける(2026-10-01)
+function addArea(){
+  if(editAreas.length>=AREA_MAX){ toast('エリアは最大'+AREA_MAX+'個までです'); return; }
+  editAreas.push({ id: uuid(), name:'', color: AREA_COLOR_CYCLE[editAreas.length % AREA_COLOR_CYCLE.length] });
+  rebuildAreas();
+}
 function removeArea(i){ editAreas.splice(i,1); rebuildAreas(); }
 function moveArea(i,delta){
   var j=i+delta; if(j<0||j>=editAreas.length) return;
@@ -8579,7 +8588,7 @@ function moveArea(i,delta){
   rebuildAreas();
 }
 function saveAreas(){
-  var cleaned = editAreas.map(function(a){ return { id:a.id, name:String(a.name||'').trim(), color:a.color||'#4A9ECC' }; }).filter(function(a){ return a.name; });
+  var cleaned = editAreas.map(function(a){ return { id:a.id, name:String(a.name||'').trim(), color:a.color||'#4A9ECC' }; }).filter(function(a){ return a.name; }).slice(0, AREA_MAX);
   state.store.areas = cleaned;
   bd_saveLocal(); closeSheet(); toast('エリアを保存しました');
   if(state.store.group){
