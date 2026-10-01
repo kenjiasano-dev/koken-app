@@ -2005,7 +2005,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = 'app202609302500';
+const APP_VERSION = 'app202610010900';
 // LINEログイン(LIFF) — LINEコンソールで作成したLIFFアプリのIDを入れる
 const LIFF_ID = '2010638896-vJtjkUOr';
 // 公式アカウント「カーコン工賃通知」友だち追加URL（ここに飛ばすとLINEアプリの友だち追加画面が直接開く）
@@ -8141,6 +8141,7 @@ function settingsHTML(){
       <button class="btn" onclick="saveStages()">保存</button>
     </div>
     <button class="btn ghost" style="margin-top:9px;" onclick="openMembers()">担当者（メンバー）の編集</button>
+    <button class="btn ghost" style="margin-top:9px;" onclick="openAreas()">🗂 エリアの設定${getAreas().length?'（'+getAreas().length+'）':''}</button>
     <button class="btn ghost" style="margin-top:9px;" onclick="openLoanerCars()">🚙 代車の編集</button>
     <button class="btn ghost" style="margin-top:9px;" onclick="openShiftGrid()">🗓 シフトの編集</button>
     <button class="btn ghost" style="margin-top:9px;" onclick="openRankingBoard()">🏆 称号・ランキング</button>
@@ -8502,6 +8503,63 @@ function saveLoanerCars(){
     postToBoardGAS('setGroupStages', { groupCode: state.store.group, loanerCars: state.store.loanerCars });
   }
 }
+
+/* ========== カスタムエリア(2026-10-01)==========
+   入庫予定表はこれまで板金塗装/車検整備/一般整備/その他の固定4区分でグループ分けしていたが、
+   お店によって実際の運用区分(外注・レンタカー・保険など)が違うため、自分で名前・色・並び順を
+   決められるようにする。エリアを1つも作っていない店は今まで通り固定4区分のまま(段階導入)。
+   実際に車をエリアへ割り当てる機能・入庫予定表側の表示切り替えは別途対応予定。 */
+function getAreas(){
+  var raw = (state.store && Array.isArray(state.store.areas)) ? state.store.areas : [];
+  return raw.map(function(o){ return { id:o.id||uuid(), name:o.name||'', color:o.color||'#4A9ECC' }; });
+}
+var AREA_COLOR_CYCLE = ['#e74c3c','#3498db','#2ecc71','#9b59b6','#f39c12','#1abc9c','#e67e22','#34495e'];
+let editAreas = [];
+function openAreas(){
+  if(!state.store) return;
+  editAreas = getAreas();
+  showSheet(areasHTML());
+}
+function rebuildAreas(){ const s=document.querySelector('#overlay .sheet'); if(s) s.innerHTML=areasHTML(); }
+function areasHTML(){
+  const rows = editAreas.map((a,i)=>`
+    <div style="display:flex; gap:6px; align-items:center; margin-bottom:7px;">
+      <span style="width:20px; text-align:center; color:var(--muted2); font-size:14px;">${mark(i)}</span>
+      <input type="color" value="${esc(a.color)}" oninput="editAreas[${i}].color=this.value" style="width:38px;height:38px;padding:0;border:1px solid var(--line2);border-radius:8px;flex:0 0 auto;">
+      <input value="${esc(a.name)}" oninput="editAreas[${i}].name=this.value" placeholder="エリア名（例：外注）" style="flex:1; padding:9px 10px; font-size:15px;">
+      <button class="iconbtn" title="上へ" onclick="moveArea(${i},-1)" ${i===0?'style="opacity:.25"':''}>↑</button>
+      <button class="iconbtn" title="下へ" onclick="moveArea(${i},1)" ${i===editAreas.length-1?'style="opacity:.25"':''}>↓</button>
+      <button class="iconbtn danger-text" title="削除" onclick="removeArea(${i})">✕</button>
+    </div>`).join('');
+  const emptyNote = editAreas.length===0
+    ? '<p style="color:var(--muted); font-size:13px; margin:2px 0 10px;">エリア未設定の間は、今まで通り「板金塗装／車検整備／一般整備／その他」の固定区分で入庫予定表が表示されます。ここでエリアを作ると、その区分に切り替わります。</p>' : '';
+  return `
+    <h2>🗂 エリアの設定</h2>
+    <p style="color:var(--muted); font-size:12px; margin:0 0 12px;">入庫予定表を自分の店の区分（板金・車検・整備・外注・レンタカー・保険など）で分けられます。上から順に表に並びます。</p>
+    ${emptyNote}
+    <div style="max-height:44vh; overflow:auto; margin-bottom:10px; padding-right:2px;">${rows}</div>
+    <button class="btn ghost" onclick="addArea()" style="margin-bottom:10px;">＋ エリアを追加</button>
+    <div class="sheet-actions">
+      <button class="btn ghost" onclick="openSettings()">戻る</button>
+      <button class="btn" onclick="saveAreas()">保存</button>
+    </div>`;
+}
+function addArea(){ editAreas.push({ id: uuid(), name:'', color: AREA_COLOR_CYCLE[editAreas.length % AREA_COLOR_CYCLE.length] }); rebuildAreas(); }
+function removeArea(i){ editAreas.splice(i,1); rebuildAreas(); }
+function moveArea(i,delta){
+  var j=i+delta; if(j<0||j>=editAreas.length) return;
+  var tmp=editAreas[i]; editAreas[i]=editAreas[j]; editAreas[j]=tmp;
+  rebuildAreas();
+}
+function saveAreas(){
+  var cleaned = editAreas.map(function(a){ return { id:a.id, name:String(a.name||'').trim(), color:a.color||'#4A9ECC' }; }).filter(function(a){ return a.name; });
+  state.store.areas = cleaned;
+  bd_saveLocal(); closeSheet(); toast('エリアを保存しました');
+  if(state.store.group){
+    postToBoardGAS('setGroupStages', { groupCode: state.store.group, areas: state.store.areas });
+  }
+}
+
 /* 車ごとの代車貸出。期間は基本その車自身の入庫〜納車予定と同じだが、
    代車だけ別期間にしたい場合のためloanerStart/loanerEndで個別に上書きできる。 */
 function bd_loanerLine(c){
@@ -8939,6 +8997,7 @@ async function loadGroupStages(){
   if(res.shifts && typeof res.shifts==='object' && !Array.isArray(res.shifts)){
     state.store.shifts = res.shifts; changed = true;
   }
+  if(Array.isArray(res.areas)){ state.store.areas = res.areas; changed = true; }
   if(!changed) return;
   bd_saveLocal();
   state.cars.forEach(c=>{
