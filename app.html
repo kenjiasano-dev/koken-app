@@ -7481,6 +7481,8 @@ function saveCar(){
   if(editingId){
     var ecar = findCar(editingId);
     if(!ecar){ toast('対象の車が見つかりませんでした'); closeSheet(); return; }
+    var _oldDeliv = ecar.deliveryDate || '';
+    var _oldNyukoDate = (ecar.nyukoPlan||'').slice(0,10);
     ecar.cartype = cartype; ecar.number = number;
     ecar.plateRegion = plateRegion; ecar.plateClass = plateClass; ecar.plateKana = plateKana;
     ecar.customerName = customerName;
@@ -7497,7 +7499,15 @@ function saveCar(){
       var _nt2=(document.getElementById('c-nyuko-time')||{}).value||'';
       ecar.nyukoPlan = _nd2 ? (_nd2 + (_nt2?('T'+_nt2):'')) : '';
     }
+    // 代車の貸出期間がこれまでのこの車自身の予定日と同じだった場合は、編集後の新しい予定日に
+    // 合わせて一緒に動かす(setDelivery/saveNyukoEditと同じ考え方、2026-10-01)。
+    if(ecar.loanerCar){
+      if(ecar.loanerEnd && _oldDeliv && ecar.loanerEnd===_oldDeliv){ ecar.loanerEnd = ecar.deliveryDate; }
+      var _newNyukoDate = (ecar.nyukoPlan||'').slice(0,10);
+      if(ecar.loanerStart && _oldNyukoDate && ecar.loanerStart===_oldNyukoDate){ ecar.loanerStart = _newNyukoDate; }
+    }
     persist(ecar); closeSheet(); editingId=null; render(); toast('変更を保存しました');
+    checkLoanerConflictAfterDateChange(ecar);
     return;
   }
   state.cars.push({
@@ -7999,7 +8009,12 @@ function updateFdDisp(){
 }
 function setDelivery(id,val){
   const c=findCar(id); if(!c) return;
+  var oldDeliv = c.deliveryDate || '';
   c.deliveryDate = val||'';
+  // 代車の貸出終了日がこれまでの納車予定日と同じ(=この車の予定に連動していた)だった場合は、
+  // 代車の終了日も新しい納車予定日に合わせて一緒に伸ばす(2026-10-01、納車日を延長しても
+  // 代車の予約が古いままになってしまう不具合の対応)。
+  if(c.loanerCar && c.loanerEnd && oldDeliv && c.loanerEnd===oldDeliv){ c.loanerEnd = c.deliveryDate; }
   persist(c); closeSheet(); render();
   checkLoanerConflictAfterDateChange(c);
 }
@@ -8048,11 +8063,16 @@ function saveNyukoEdit(id){
   var ds = (nyEditCal && nyEditCal.selected) || '';
   if(!ds){ toast('日付を選んでください'); return; }
   var tm = (document.getElementById('ny-edit-time')||{}).value || '';
+  var oldStart = c.status==='yotei' ? (c.nyukoPlan||'').slice(0,10) : (c.nyukoAt ? isoDateStr(new Date(c.nyukoAt)) : '');
   if(c.status==='yotei'){
     c.nyukoPlan = ds + (tm?('T'+tm):'');
   } else {
     c.nyukoAt = new Date(ds+'T'+(tm||'00:00')+':00').toISOString();
   }
+  // 代車の貸出開始日がこれまでの入庫予定日と同じだった場合は、新しい入庫予定日に合わせて
+  // 一緒に動かす(考え方はsetDeliveryの終了日側と同じ、2026-10-01)。
+  var newStart = c.status==='yotei' ? (c.nyukoPlan||'').slice(0,10) : (c.nyukoAt ? isoDateStr(new Date(c.nyukoAt)) : '');
+  if(c.loanerCar && c.loanerStart && oldStart && c.loanerStart===oldStart){ c.loanerStart = newStart; }
   persist(c); closeSheet(); render();
   toast('入庫日時を変更しました');
   checkLoanerConflictAfterDateChange(c);
@@ -8773,6 +8793,12 @@ function checkLoanerConflictAfterDateChange(c){
 let _loanerAssignCarId = null;
 let _loanerCandStart = '';
 let _loanerCandEnd = '';
+// 開始日・終了日をユーザーが実際にカレンダーで選び直したかどうか(2026-10-01追加)。
+// 触っていなければ、画面に表示しているのは単なる「現時点の入庫予定〜納車予定」の初期値に
+// 過ぎないので、保存時はloanerStart/loanerEndを空のまま残し、以後その車の日付変更に
+// 自動で追従させる(loanerPeriodOf)。ここをtrueにした時だけ個別の固定期間として保存する。
+let _loanerCandStartTouched = false;
+let _loanerCandEndTouched = false;
 let _loanerStartCalYM = null;
 let _loanerEndCalYM = null;
 /* 開始日・終了日それぞれのカレンダー月を、現在の候補日から初期化(2026-08-28) */
@@ -8789,12 +8815,15 @@ function openLoanerAssign(carId){
   var p = loanerPeriodOf(c);
   _loanerCandStart = p.s;
   _loanerCandEnd = p.e;
+  _loanerCandStartTouched = false;
+  _loanerCandEndTouched = false;
   initLoanerCalYM();
   showSheet(loanerAssignHTML(c));
 }
 /* 貸出期間を変更するたびに、その期間で本当に空いているかを判定し直す */
 function loanerPickStart(ds){
   _loanerCandStart = ds;
+  _loanerCandStartTouched = true;
   var d=new Date(ds+'T00:00:00'); _loanerStartCalYM={y:d.getFullYear(), m:d.getMonth()};
   var c = findCar(_loanerAssignCarId); if(!c) return;
   showSheet(loanerAssignHTML(c));
@@ -8808,6 +8837,7 @@ function loanerMoveStart(delta){
 }
 function loanerPickEnd(ds){
   _loanerCandEnd = ds;
+  _loanerCandEndTouched = true;
   var d=new Date(ds+'T00:00:00'); _loanerEndCalYM={y:d.getFullYear(), m:d.getMonth()};
   var c = findCar(_loanerAssignCarId); if(!c) return;
   showSheet(loanerAssignHTML(c));
@@ -8896,8 +8926,10 @@ function saveLoanerAssign(){
       return;
     }
   }
-  c.loanerStart = _loanerCandStart || '';
-  c.loanerEnd = _loanerCandEnd || '';
+  // 開始日・終了日をユーザーが実際に触っていなければ空のまま保存し、この車の入庫予定・
+  // 納車予定日を後で伸ばした時に代車の貸出期間も自動で追従するようにする(2026-10-01)。
+  c.loanerStart = _loanerCandStartTouched ? (_loanerCandStart || '') : '';
+  c.loanerEnd = _loanerCandEndTouched ? (_loanerCandEnd || '') : '';
   persist(c); closeSheet(); render();
   toast(c.loanerCar ? ('🚙 '+c.loanerCar+' を貸出登録しました') : '代車情報を更新しました');
 }
@@ -8941,6 +8973,8 @@ function assignLoanerRowToCar(carId, key){
   _loanerAssignCarId = carId;
   var p = loanerPeriodOf(c);
   _loanerCandStart = p.s; _loanerCandEnd = p.e;
+  _loanerCandStartTouched = false;
+  _loanerCandEndTouched = false;
   initLoanerCalYM();
   c.loanerCar = key;
   // 代車管理の行から来たので、保存/キャンセル後は代車管理に戻す
