@@ -10436,7 +10436,11 @@ function yoteiMainGanttHTML(){
   buckets.forEach(function(b){
     var lanes=Math.max(bd_yoteiAssignLanes(b.items),1);
     var sectionColorStyle = b.cat.color ? ('border-left:5px solid '+b.cat.color+';padding-left:9px;') : '';
-    sectionsHtml += '<div class="ywsectionhead" style="grid-column:1/-1;grid-row:'+rowCursor+';'+sectionColorStyle+'">'+esc(b.cat.label)+'（'+b.items.length+'台）</div>';
+    // エリアごとの見積合計(予約金額の目安)を見出しの右端に表示(2026-10-01、ユーザー要望)。
+    var sectionAmt = b.items.reduce(function(s,it){ return s+(Number(it.car.estimateAmount)||0); },0);
+    sectionsHtml += '<div class="ywsectionhead" style="grid-column:1/-1;grid-row:'+rowCursor+';'+sectionColorStyle+'">'+esc(b.cat.label)+'（'+b.items.length+'台）'
+      + (sectionAmt?('<span style="margin-left:auto;font-weight:700;color:var(--accent);">¥'+sectionAmt.toLocaleString()+'</span>'):'')
+      + '</div>';
     var laneBaseRow=rowCursor+1;
     // 代車管理の表と同じように、行ごとに薄い区切り線を入れて見やすくする(2026-08-28)
     for(var li=0; li<lanes; li++){
@@ -10469,7 +10473,21 @@ function yoteiMainGanttHTML(){
   // (2026-09-07。以前はminmax(34px,1fr)で画面幅に応じて伸縮していたため、3表を並べた時に
   // 日付の位置がずれて見えていた)。
   var gridStyle='grid-template-columns:'+YOTEI_LABEL_W+'px repeat('+days+','+_yoteiDayColWidth(days)+'px);grid-template-rows:32px repeat('+totalDataRows+',28px);';
-  return '<div class="ywgantt-wrap"><div class="ywgantt" style="'+gridStyle+'">'+headCells+colSeps+sectionsHtml+'</div></div>';
+  // 右下に合計台数・合計金額(予約見込み額)・店舗工賃目標との達成状況を表示(2026-10-01、ユーザー要望)。
+  // 目標は設定ページの🎯目標設定(adminGoals.storeWageGoal、単位=万円)をそのまま流用する。
+  var totalCars = items.length;
+  var totalAmt = items.reduce(function(s,it){ return s+(Number(it.car.estimateAmount)||0); },0);
+  var sgoal = ((typeof adminGoals!=='undefined' && adminGoals && adminGoals.storeWageGoal) || 0) * 10000;
+  var remain = Math.max(0, sgoal - totalAmt);
+  var summaryHtml = '<div style="margin-top:10px;padding:10px 14px;background:var(--card2);border-radius:10px;display:flex;flex-wrap:wrap;gap:6px 16px;align-items:center;justify-content:flex-end;font-size:12px;">'
+    + '<span style="color:var(--muted);">🚗 合計 <b style="color:var(--text);font-size:14px;">'+totalCars+'</b>台</span>'
+    + '<span style="color:var(--muted);">💴 見積合計 <b style="color:var(--accent);font-size:14px;">¥'+totalAmt.toLocaleString()+'</b></span>'
+    + (sgoal>0
+        ? ('<span style="color:var(--muted);">🎯 目標 <b style="font-size:14px;">¥'+sgoal.toLocaleString()+'</b></span>'
+          + (remain>0 ? ('<span style="color:var(--amber);font-weight:700;">あと ¥'+remain.toLocaleString()+'で達成</span>') : '<span style="color:var(--green);font-weight:700;">🎉 達成！</span>'))
+        : '<span style="color:var(--muted2);">（目標未設定・⚙設定の🎯目標設定から）</span>')
+    + '</div>';
+  return '<div class="ywgantt-wrap"><div class="ywgantt" style="'+gridStyle+'">'+headCells+colSeps+sectionsHtml+'</div></div>' + summaryHtml;
 }
 /* 代車管理: 入庫予定表と同じ月・同じ日付軸で、行=登録済みの代車、バー=貸出中の車(お客様名・車種)。
    貸出期間は既定でその車自身の入庫〜納車予定と同じだが、loanerStart/loanerEndで個別に上書きできる。 */
