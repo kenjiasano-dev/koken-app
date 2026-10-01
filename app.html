@@ -2006,7 +2006,7 @@ function generateUUID() {
 // ============================================================
 // APP VERSION（更新のたびに日付を変更）
 // ============================================================
-const APP_VERSION = 'app202610011200';
+const APP_VERSION = 'app202610011300';
 // LINEログイン(LIFF) — LINEコンソールで作成したLIFFアプリのIDを入れる
 const LIFF_ID = '2010638896-vJtjkUOr';
 // 公式アカウント「カーコン工賃通知」友だち追加URL（ここに飛ばすとLINEアプリの友だち追加画面が直接開く）
@@ -8606,19 +8606,19 @@ function bd_noteLine(c){
   // 詰まって埋もれてしまっていた(ユーザー報告「コメント欄ないよ」)。メモは長文にもなりうる
   // ので、他とはっきり区別できるよう独立した行・枠付きのボックスにする(2026-09-07)。
   if(!c.note){
-    return '<div onclick="event.stopPropagation();openNoteEdit(\''+c.id+'\')" style="display:block;margin-top:6px;cursor:pointer;color:var(--accent);font-size:12px;">＋ 実作業を記入</div>';
+    return '<div onclick="event.stopPropagation();openNoteEdit(\''+c.id+'\')" style="display:block;margin-top:6px;cursor:pointer;color:var(--accent);font-size:12px;">＋ コメントを記入</div>';
   }
   return '<div onclick="event.stopPropagation();openNoteEdit(\''+c.id+'\')" style="display:block;margin-top:6px;padding:8px 10px;border-radius:8px;background:var(--card2,rgba(255,255,255,.04));border:1px solid var(--line2,var(--border));cursor:pointer;font-size:12px;color:var(--text);white-space:pre-wrap;">📝 '+esc(c.note)+' <span style="opacity:.5;">✎</span></div>';
 }
-// 「メモ」という名前だったが、2026-10-01にExcel運用のお店の「実作業」欄(自由記述コメント)に
-// 位置付けを合わせて表記変更(データ自体はc.noteのまま、既存の呼び出し元はそのまま使える)。
+// 「メモ」という名前だったが、2026-10-01に表記を「コメント」に変更
+// (データ自体はc.noteのまま、既存の呼び出し元はそのまま使える)。
 function openNoteEdit(id){
   var c=findCar(id); if(!c) return;
   _returnToCarDetailIfOpen(id);
-  var html='<h2>📝 実作業</h2>'
+  var html='<h2>📝 コメント</h2>'
     + '<p style="color:var(--muted);font-size:13px;margin:0 0 14px;">'+esc(c.cartype)+'・'+esc(c.number)+'</p>'
     + '<div class="field">'
-    +   '<label>実作業（コメント・任意・店舗の全員が見られます）</label>'
+    +   '<label>コメント（任意・店舗の全員が見られます）</label>'
     +   '<textarea id="note-edit-text" rows="4" placeholder="例）バンパー部品待ち。入荷は来週火曜予定" style="width:100%;background:var(--bg);border:0.5px solid var(--line2);color:var(--text);font-size:15px;padding:11px;border-radius:10px;box-sizing:border-box;resize:vertical;">'+esc(c.note||'')+'</textarea>'
     + '</div>'
     + '<div class="sheet-actions">'
@@ -8633,7 +8633,7 @@ function saveNoteEdit(id){
   var el=document.getElementById('note-edit-text');
   c.note = el ? el.value.trim() : c.note;
   persist(c); closeSheet(); render();
-  toast('実作業を保存しました');
+  toast('コメントを保存しました');
 }
 /* 代車の貸出期間(既定はその車の入庫〜納車予定、個別上書きも可)。daishaGridHTMLとも共有。 */
 function loanerPeriodOf(c){
@@ -10353,12 +10353,12 @@ function yoteiMainGanttHTML(){
       var dotStyle = c.ganttColor ? ('background:'+c.ganttColor+';') : '';
       var custEstTitle = (c.customerName?('・'+esc(c.customerName)):'') + (c.estimateAmount?('・見積¥'+Number(c.estimateAmount).toLocaleString()):'') + (c.loanerCar?('・🚙代車:'+esc(c.loanerCar.replace(/・$/,''))):'') + (c.note?('・📝'+esc(c.note)):'');
       // 入庫予定表側でも代車が貸し出し中とひと目でわかるように、バーに🚙アイコンを付ける(2026-08-28)。
-      // 実作業(旧メモ)も同様に、バーから直接書き込み・確認できるよう📝アイコンを付ける(2026-10-01、
+      // コメント(旧メモ)も同様に、バーから直接書き込み・確認できるよう📝アイコンを付ける(2026-10-01、
       // 記入済みは濃く・未記入は薄く表示してタップで追加/編集できるようにする)。
       sectionsHtml += '<div class="'+cls+'" style="'+barStyle+'" onclick="bd_openCarFromYoteiGrid(\''+c.id+'\')" title="'+esc(c.cartype)+'・'+esc(c.number)+'・'+statusLabel+'（'+span+'日）'+custEstTitle+'">'
         + '<span class="ywdot" style="'+dotStyle+'" title="色を変える" onclick="event.stopPropagation();bd_yoteiColorPick(event,\''+c.id+'\')"></span>'
         + (c.loanerCar?'<span class="ywbloaner" title="代車あり">🚙</span>':'')
-        + '<span class="ywbnote" style="'+(c.note?'':'opacity:.35;')+'" title="実作業（タップで記入・確認）" onclick="event.stopPropagation();openNoteEdit(\''+c.id+'\')">📝</span>'
+        + '<span class="ywbnote" style="'+(c.note?'':'opacity:.35;')+'" title="コメント（タップで記入・確認）" onclick="event.stopPropagation();openNoteEdit(\''+c.id+'\')">📝</span>'
         + '<span class="ywbtype">'+esc(c.cartype)+'</span>'
         + (span>1?('<span class="ywbnum">'+esc(c.number)+'</span>'):'')
         + (c.customerName?('<span class="ywbcust">👤'+esc(c.customerName)+'</span>'):'')
@@ -10759,7 +10759,7 @@ function bd_openCarDetail(id){
   acts+='<button class="pill green" onclick="closeSheet();bd_openWageInput(\''+c.id+'\')">💰 工賃</button>';
   acts+='<button class="pill" onclick="bd_toggleInsurance(\''+c.id+'\');closeSheet();bd_openCarDetail(\''+c.id+'\')">🛡 保険'+(c.isInsurance?'解除':'')+'</button>';
   if(getAreas().length) acts+='<button class="pill" onclick="bd_openAreaPicker(\''+c.id+'\')">🗂 エリア変更</button>';
-  acts+='<button class="pill" onclick="closeSheet();openNoteEdit(\''+c.id+'\')">📝 実作業'+(c.note?'':'を記入')+'</button>';
+  acts+='<button class="pill" onclick="closeSheet();openNoteEdit(\''+c.id+'\')">📝 コメント'+(c.note?'':'を記入')+'</button>';
   if(st==='yotei'){ acts+='<button class="pill green" onclick="closeSheet();bd_arriveCar(\''+c.id+'\')">入庫する →</button>'; }
   if(st==='nyuko'){ acts+='<button class="pill" onclick="closeSheet();startCar(\''+c.id+'\')">作業開始 →</button>'; if(!c.onHold){ acts+='<button class="delbtn" onclick="bd_toggleHold(\''+c.id+'\');closeSheet();bd_openCarDetail(\''+c.id+'\')">⏸ 保留</button>'; } else { acts+='<button class="delbtn" onclick="bd_clearHold(\''+c.id+'\');closeSheet();bd_openCarDetail(\''+c.id+'\')">▶ 作業OK</button>'; } }
   if(st==='work'){ var S=getStages(c.kind); if(!c.waitingParts){ if(c.stage>0&&S.length) acts+='<button class="pill" onclick="prevStage(\''+c.id+'\');closeSheet();bd_openCarDetail(\''+c.id+'\')">← 戻る</button>'; if(S.length && c.stage>=S.length-1) acts+='<button class="pill green" onclick="closeSheet();finishCar(\''+c.id+'\')">✓ 完成</button>'; else if(S.length) acts+='<button class="pill" onclick="nextStage(\''+c.id+'\');closeSheet();bd_openCarDetail(\''+c.id+'\')">次へ →</button>'; else acts+='<button class="pill green" onclick="closeSheet();finishCar(\''+c.id+'\')">✓ 完成</button>'; } acts+='<button class="delbtn" onclick="toggleParts(\''+c.id+'\');closeSheet();bd_openCarDetail(\''+c.id+'\')">'+(c.waitingParts?'🚩解除':'🚩部品待ち')+'</button>'; }
