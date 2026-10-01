@@ -7337,22 +7337,22 @@ function openAddCar(forceMode, editCar){
     <div class="field">
       <label>お客様名（任意）</label>
       <div style="display:flex; gap:8px;">
-        <input id="c-customer-sei" value="${esc(custSei)}" placeholder="姓（例）山田" autocomplete="off" style="flex:1;">
-        <input id="c-customer-mei" value="${esc(custMei)}" placeholder="名（例）太郎" autocomplete="off" style="flex:1;">
+        <input id="c-customer-sei" value="${esc(custSei)}" placeholder="姓（例）山田" autocomplete="off" style="flex:1;" onkeydown="bd_addCarEnterNext(event)">
+        <input id="c-customer-mei" value="${esc(custMei)}" placeholder="名（例）太郎" autocomplete="off" style="flex:1;" onkeydown="bd_addCarEnterNext(event)">
       </div>
     </div>
     <div class="field">
       <label>車種名 <span class="req">必須</span></label>
-      <input id="c-type" value="${ec?esc(ec.cartype):''}" placeholder="例）ノア" autocomplete="off">
+      <input id="c-type" value="${ec?esc(ec.cartype):''}" placeholder="例）ノア" autocomplete="off" onkeydown="bd_addCarEnterNext(event)">
     </div>
     <div class="field">
       <label>ナンバー（任意）</label>
       <div style="display:flex; gap:6px; margin-bottom:6px;">
-        <input id="c-plate-region" value="${ec?esc(ec.plateRegion||''):''}" list="plate-region-options" placeholder="地名（例）横浜" autocomplete="off" style="flex:1.3;">
-        <input id="c-plate-class" value="${ec?esc(ec.plateClass||''):''}" maxlength="3" placeholder="分類（例）301" inputmode="numeric" autocomplete="off" style="flex:0.9;text-align:center;">
-        <input id="c-plate-kana" value="${ec?esc(ec.plateKana||''):''}" maxlength="1" placeholder="かな" autocomplete="off" style="flex:0.6;text-align:center;">
+        <input id="c-plate-region" value="${ec?esc(ec.plateRegion||''):''}" list="plate-region-options" placeholder="地名（例）横浜" autocomplete="off" style="flex:1.3;" onkeydown="bd_addCarEnterNext(event)">
+        <input id="c-plate-class" value="${ec?esc(ec.plateClass||''):''}" maxlength="3" placeholder="分類（例）301" inputmode="numeric" autocomplete="off" style="flex:0.9;text-align:center;" onkeydown="bd_addCarEnterNext(event)">
+        <input id="c-plate-kana" value="${ec?esc(ec.plateKana||''):''}" maxlength="1" placeholder="かな" autocomplete="off" style="flex:0.6;text-align:center;" onkeydown="bd_addCarEnterNext(event)">
       </div>
-      <input id="c-num" value="${ec?esc(ec.number||''):''}" placeholder="例）4821" inputmode="numeric" maxlength="4" autocomplete="off" oninput="this.value=this.value.replace(/[^0-9]/g,''); if(this.value.length>=4) this.blur();">
+      <input id="c-num" value="${ec?esc(ec.number||''):''}" placeholder="例）4821" inputmode="numeric" maxlength="4" autocomplete="off" oninput="this.value=this.value.replace(/[^0-9]/g,''); if(this.value.length>=4) this.blur();" onkeydown="bd_addCarEnterNext(event)">
     </div>
     <div class="field">
       <label>種別</label>
@@ -7365,7 +7365,7 @@ function openAddCar(forceMode, editCar){
     </div>
     <div class="field" id="cat-field" style="display:${ecKindKey==='other'?'':'none'};">
       <label>その他の名称</label>
-      <input id="c-cat-other" value="${ec&&ecKindKey==='other'?esc(ec.category||''):''}" placeholder="例）洗車・コーティング" autocomplete="off" oninput="updateOtherCat(this.value)">
+      <input id="c-cat-other" value="${ec&&ecKindKey==='other'?esc(ec.category||''):''}" placeholder="例）洗車・コーティング" autocomplete="off" oninput="updateOtherCat(this.value)" onkeydown="bd_addCarEnterNext(event)">
     </div>
     ${areaPickerHTML()}
     <div class="field" id="nyuko-plan-field" style="display:${newCarMode==='yotei'?'':'none'};">
@@ -7405,7 +7405,7 @@ function openAddCar(forceMode, editCar){
     </div>
     <div class="field">
       <label>見積金額（任意・円）</label>
-      <input id="c-estimate" value="${ec&&ec.estimateAmount?Number(ec.estimateAmount).toLocaleString():''}" placeholder="例）150000" inputmode="numeric" autocomplete="off" oninput="formatAmountInput(this)">
+      <input id="c-estimate" value="${ec&&ec.estimateAmount?Number(ec.estimateAmount).toLocaleString():''}" placeholder="例）150000" inputmode="numeric" autocomplete="off" oninput="formatAmountInput(this)" onkeydown="bd_addCarEnterNext(event)">
     </div>
     <div class="field">
       <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-weight:500;"><input type="checkbox" id="c-insurance" ${ec&&ec.isInsurance?'checked':''} style="width:20px;height:20px;"> 🛡 保険作業（保険を使う案件）</label>
@@ -7424,6 +7424,23 @@ function openAddCar(forceMode, editCar){
   ncInit(ec ? ec.deliveryDate : '');
   nyInit(ec ? (ec.nyukoPlan||'').slice(0,10) : '');
   setTimeout(()=>document.getElementById('c-type').focus(),50);
+}
+/* 入庫追加フォームでEnterを押したら、次の未入力欄へ自動で飛ぶ(2026-10-01、
+   お客様名・車種名・ナンバー等を連続入力する際にいちいちタップせず済むように)。 */
+var AC_ENTER_ORDER = ['c-customer-sei','c-customer-mei','c-type','c-plate-region','c-plate-class','c-plate-kana','c-num','c-cat-other','c-estimate'];
+function bd_addCarEnterNext(e){
+  if(e.key!=='Enter') return;
+  e.preventDefault();
+  var idx = AC_ENTER_ORDER.indexOf(e.target.id);
+  if(idx<0) return;
+  function nextEmpty(id){
+    var el = document.getElementById(id);
+    if(!el || el.offsetParent===null || el.value) return null;
+    return el;
+  }
+  for(var i=idx+1;i<AC_ENTER_ORDER.length;i++){ var el=nextEmpty(AC_ENTER_ORDER[i]); if(el){ el.focus(); if(el.select) el.select(); return; } }
+  for(var i=0;i<idx;i++){ var el=nextEmpty(AC_ENTER_ORDER[i]); if(el){ el.focus(); if(el.select) el.select(); return; } }
+  e.target.blur();
 }
 function ncToggleCal(){
   const el=document.getElementById('nc-cal'); if(!el) return;
