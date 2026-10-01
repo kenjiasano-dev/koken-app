@@ -11227,6 +11227,7 @@ function bd_workCardHtml(c){
   }
   var expandedPart = `
     <div class="row-actions" style="display:flex;gap:8px;margin-top:9px;flex-wrap:wrap;">
+      <button class="pill" onclick="openAddCar(null, findCar('${c.id}'))">✏️ 編集</button>
       ${wageBtn(c)} ${insBtn(c)} ${photoBtn(c)} ${estBtn(c)} ${loanerBtn(c)}
       <button class="flagbtn ${c.waitingParts?'on':''}" title="部品待ち" onclick="toggleParts('${c.id}')">${c.waitingParts?'🚩':'⚑'}</button>
       <button class="flagbtn ${c.onStandby?'on':''}" title="待機（部品以外の理由でこの工程が止まっている時）" onclick="toggleStandby('${c.id}')">${c.onStandby?'▶️':'⏸'}</button>
@@ -11519,7 +11520,7 @@ function bd_yoteiRow(c){
   yoteiStyleAttr = yoteiStyleAttr ? yoteiStyleAttr.replace(/"$/, ' cursor:pointer;"') : ' style="cursor:pointer;"';
   return '<div class="car '+kindClass(c)+'"'+yoteiStyleAttr+' onclick="bd_openCarModal(\''+c.id+'\')" ondragover="bd_cardDragOver(event)" ondragleave="bd_cardDragLeave(event)" ondrop="bd_cardDrop(event,\''+c.id+'\')">'
     + '<div class="top"><div>'+kindBadge(c)+insBadge(c)+bd_carNameNum(c)+'</div>'
-    +   '<div class="row-actions">'+pinBox+bd_colorBtn(c)+'<button class="iconbtn" title="削除" onclick="event.stopPropagation();askDelete(\''+c.id+'\')">🗑</button><button class="pill green" onclick="event.stopPropagation();bd_arriveCar(\''+c.id+'\')">入庫する →</button></div>'
+    +   '<div class="row-actions">'+pinBox+bd_colorBtn(c)+'<button class="pill" onclick="event.stopPropagation();openAddCar(null, findCar(\''+c.id+'\'))">✏️ 編集</button><button class="iconbtn" title="削除" onclick="event.stopPropagation();askDelete(\''+c.id+'\')">🗑</button><button class="pill green" onclick="event.stopPropagation();bd_arriveCar(\''+c.id+'\')">入庫する →</button></div>'
     + '</div>'
     + bd_custEstLine(c)
     + bd_loanerLine(c)
@@ -11550,6 +11551,7 @@ function bd_nyukoCardHtml(c){
       </div>
       <div class="row-actions">
         ${pinBox}
+        <button class="pill" onclick="openAddCar(null, findCar('${c.id}'))">✏️ 編集</button>
         ${wageBtn(c)} ${insBtn(c)} ${photoBtn(c)} ${estBtn(c)} ${loanerBtn(c)}
         <button class="iconbtn" title="削除" onclick="askDelete('${c.id}')">🗑</button>
         <button class="pill" onclick="startCar('${c.id}')">作業開始 →</button>
@@ -11577,6 +11579,7 @@ function bd_doneCardHtml(c){
       </div>
       <div class="row-actions">
         ${pinBox}
+        <button class="pill" onclick="openAddCar(null, findCar('${c.id}'))">✏️ 編集</button>
         ${wageBtn(c)} ${insBtn(c)} ${photoBtn(c)} ${estBtn(c)} ${loanerBtn(c)}
         <button class="iconbtn" title="作業中に戻す" onclick="reopenCar('${c.id}')">↩</button>
       </div>
