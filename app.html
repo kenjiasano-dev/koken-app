@@ -6814,7 +6814,7 @@ reclaimFromLineRedirect().then(function(reclaimed) {
     <button class="pcdv-btn" data-pcdview="settings" onclick="pcdSwitchView('settings')">⚙️ 設定</button>
     <button class="pcdv-btn" onclick="pcdOpenChat()" title="グループチャットを開く" style="position:relative;">💬 チャット<span id="pcd-chat-unread-dot" style="display:none;position:absolute;top:2px;right:2px;min-width:15px;height:15px;padding:0 3px;border-radius:8px;background:#e74c3c;color:#fff;font-size:9px;font-weight:700;line-height:15px;text-align:center;"></span></button>
     <button class="pcdv-btn" onclick="openYoteiGrid()" title="入庫予定表（月間ガントチャート）を表示">📋 入庫予定表</button>
-    <button class="pcdv-btn" onclick="openShukkoCal()" title="納車予定日ベースで、いつ車が出るか確認できます">📤 出庫予定</button>
+    <button class="pcdv-btn" onclick="openYoteiCal()" title="入庫・出庫予定を月カレンダーで表示">📆 入出庫カレンダー</button>
     <button class="pcdv-btn" onclick="openDaishaGrid()" title="代車管理を表示">🚙 代車管理</button>
     <button class="pcdv-btn" onclick="openShiftGrid()" title="シフト（出勤・休み）を表示">🗓 シフト</button>
   </div>
@@ -10130,8 +10130,8 @@ function _yoteiDayColWidth(days){
   var w = Math.floor((avail - YOTEI_LABEL_W) / days);
   return Math.max(YOTEI_DAY_W, w);
 }
-var _yoteiCalMode='in'; // 'in'=入庫予定のみ・'out'=出庫予定のみ・'both'=両方同時。1つのカレンダーをトグルで切り替える(2026-09-30)
-function _yoteiCalHeading(mode){ return mode==='out'?'📤 出庫予定カレンダー':(mode==='both'?'📆📤 入庫・出庫予定カレンダー':'📆 入庫予定カレンダー'); }
+var _yoteiCalMode='both'; // 入庫予定・出庫予定を常に1つのカレンダーで同時表示する(2026-10-01、別モード切替は廃止)
+function _yoteiCalHeading(mode){ return '📆📤 入庫・出庫予定カレンダー'; }
 function openYoteiCal(){
   if(_yoteiCalY==null){ var now=new Date(); _yoteiCalY=now.getFullYear(); _yoteiCalM=now.getMonth()+1; }
   // PCで見た時に小さすぎる(スマホ向けの520px幅シートのまま)という指摘を受け、入庫予定表と
@@ -10139,11 +10139,6 @@ function openYoteiCal(){
   // wide時は拡大して見やすくする。
   showSheet(
     '<h2 id="yotei-cal-heading">'+_yoteiCalHeading(_yoteiCalMode)+'</h2>'
-    + '<div style="display:flex;gap:8px;margin:10px 0;">'
-    +   '<button class="kbtn'+(_yoteiCalMode==='in'?' sel':'')+'" id="yotei-cal-mode-in" onclick="switchYoteiCalMode(\'in\')">📆 入庫予定</button>'
-    +   '<button class="kbtn'+(_yoteiCalMode==='out'?' sel':'')+'" id="yotei-cal-mode-out" onclick="switchYoteiCalMode(\'out\')">📤 出庫予定</button>'
-    +   '<button class="kbtn'+(_yoteiCalMode==='both'?' sel':'')+'" id="yotei-cal-mode-both" onclick="switchYoteiCalMode(\'both\')">📆📤 両方</button>'
-    + '</div>'
     + '<div class="cal-header" style="margin-top:6px;">'
     +   '<button class="cal-nav" onclick="changeYoteiCalMonth(-1)">◀</button>'
     +   '<h2 id="yotei-cal-title" style="font-size:16px;"></h2>'
@@ -10152,16 +10147,6 @@ function openYoteiCal(){
     + '<div class="cal-grid yotei-cal-grid-lg" id="yotei-cal-grid"></div>'
     + '<button class="btn ghost" style="margin-top:12px;" onclick="openYoteiGrid()">📋 日付を横に並べた表で見る</button>'
   , true, true);
-  renderYoteiCal();
-}
-function switchYoteiCalMode(mode){
-  _yoteiCalMode=mode;
-  var headingEl=document.getElementById('yotei-cal-heading');
-  if(headingEl) headingEl.textContent = _yoteiCalHeading(mode);
-  var inBtn=document.getElementById('yotei-cal-mode-in'), outBtn=document.getElementById('yotei-cal-mode-out'), bothBtn=document.getElementById('yotei-cal-mode-both');
-  if(inBtn) inBtn.classList.toggle('sel', mode==='in');
-  if(outBtn) outBtn.classList.toggle('sel', mode==='out');
-  if(bothBtn) bothBtn.classList.toggle('sel', mode==='both');
   renderYoteiCal();
 }
 /* ===== 1〜31日を横軸に、各日の車種・ナンバーを縦に並べる一覧表(加盟店の紙の入庫予定表と同じ見方) ===== */
@@ -10723,11 +10708,6 @@ function openYoteiCalDay(dateStr){
     + '<div style="max-height:50vh;overflow:auto;margin-bottom:12px;">'+body+'</div>'
     + '<button class="btn ghost" onclick="openYoteiCal()">← カレンダーに戻る</button>'
   );
-}
-// PCナビバーの「📤 出庫予定」ボタンから、出庫予定モードで直接開くためのショートカット
-function openShukkoCal(){
-  _yoteiCalMode='out';
-  openYoteiCal();
 }
 /* ===== 段階4: PCダッシュボードのロジック ===== */
 var _pcdQ='', _pcdDoneFilter='today', _pcdStoreTotal=null;
