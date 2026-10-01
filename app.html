@@ -9132,8 +9132,11 @@ async function loadGroupStages(){
   // 既にローカルに何か1件でも登録があるスマホには永遠に反映されない、という同期漏れの原因になって
   // いた。保存のたびに即サーバーへも送る作りなので、常にサーバーを正としても取りこぼしは起きない)。
   if(Array.isArray(res.loanerCars)){ state.store.loanerCars = res.loanerCars; changed = true; }
-  if(res.shifts && typeof res.shifts==='object' && !Array.isArray(res.shifts)){
+  // シフトに未確定の下書き(確定ボタン待ち)がある間は、他端末からの定期同期でサーバー側の
+  // 古い値に上書きしないようにする(2026-10-01、確定前のタップが消える事故の再発防止)。
+  if(res.shifts && typeof res.shifts==='object' && !Array.isArray(res.shifts) && !_shiftDraftDirty){
     state.store.shifts = res.shifts; changed = true;
+    _shiftDraft = null; // 次に開いた時、最新のサーバー値から下書きを作り直す
   }
   if(Array.isArray(res.areas)){ state.store.areas = res.areas; changed = true; }
   if(!changed) return;
@@ -10553,25 +10556,47 @@ function daishaGridHTML(){
    時間帯までは持たず「休みだけ記録・それ以外は出勤扱い」にしてデータ量を小さく保つ。 */
 function getShifts(){ return (state.store && state.store.shifts && typeof state.store.shifts==='object' && !Array.isArray(state.store.shifts)) ? state.store.shifts : {}; }
 function isShiftOff(dateStr, name){ var day = getShifts()[dateStr]; return !!(day && day[name]); }
+/* タップのたびに即GASへ送っていたため、25〜30秒ごとの他端末同期(loadGroupStages)が
+   まだGASに届いていない直前の変更を古いサーバー値で上書きしてしまい、「入力しても消える」
+   事故が起きていた(2026-10-01、ユーザー報告)。タップは下書き(_shiftDraft)だけを書き換え、
+   「✅ 確定」を押した時に1回だけまとめて保存・送信する方式に変更。下書きがある間は
+   loadGroupStages側もshiftsの上書きを止める(下のガード参照)。 */
+var _shiftDraft = null;
+var _shiftDraftDirty = false;
+function _shiftEnsureDraft(){ if(!_shiftDraft) _shiftDraft = JSON.parse(JSON.stringify(getShifts())); }
+function isShiftOffDraft(dateStr, name){ _shiftEnsureDraft(); var day=_shiftDraft[dateStr]; return !!(day && day[name]); }
 function toggleShift(dateStr, name){
-  if(!state.store) return;
-  if(!state.store.shifts || typeof state.store.shifts!=='object' || Array.isArray(state.store.shifts)) state.store.shifts = {};
-  var day = Object.assign({}, state.store.shifts[dateStr]);
+  _shiftEnsureDraft();
+  var day = Object.assign({}, _shiftDraft[dateStr]);
   if(day[name]) delete day[name]; else day[name] = true;
-  if(Object.keys(day).length) state.store.shifts[dateStr] = day; else delete state.store.shifts[dateStr];
-  bd_saveLocal();
-  // 工程設定・代車一覧と同じ経路でGASにも保存(端末側のstorageが空で返る不具合が起きても復元できるように)
-  if(state.store.group){
-    postToBoardGAS('setGroupStages', { groupCode: state.store.group, shifts: state.store.shifts });
-  }
+  if(Object.keys(day).length) _shiftDraft[dateStr] = day; else delete _shiftDraft[dateStr];
+  _shiftDraftDirty = true;
   var cell = document.getElementById('shiftcell-'+dateStr+'-'+_shiftCellIdx(name));
   if(cell){
-    var off = isShiftOff(dateStr, name);
+    var off = isShiftOffDraft(dateStr, name);
     cell.style.background = off ? 'var(--red-bg,#3a1a1a)' : 'var(--card2)';
     cell.style.borderColor = off ? 'var(--red,#e74c3c)' : 'var(--line2)';
     cell.style.color = off ? 'var(--red,#e74c3c)' : 'var(--muted)';
     cell.textContent = off ? '休' : '';
   }
+  bd_updateShiftConfirmUI();
+}
+function bd_updateShiftConfirmUI(){
+  var note = document.getElementById('shift-dirty-note');
+  if(note) note.style.display = _shiftDraftDirty ? '' : 'none';
+}
+function confirmShiftDraft(){
+  if(!_shiftDraftDirty || !_shiftDraft){ toast('未確定の変更はありません'); return; }
+  if(!state.store) return;
+  state.store.shifts = _shiftDraft;
+  bd_saveLocal();
+  // 工程設定・代車一覧と同じ経路でGASにも保存(端末側のstorageが空で返る不具合が起きても復元できるように)
+  if(state.store.group){
+    postToBoardGAS('setGroupStages', { groupCode: state.store.group, shifts: state.store.shifts });
+  }
+  _shiftDraftDirty = false;
+  bd_updateShiftConfirmUI();
+  toast('✅ シフトを確定しました');
 }
 /* メンバー名には記号や空白が入りうるので、id生成には配列内インデックスを使う(名前を直接idに埋め込まない) */
 var _shiftMemberOrder = [];
@@ -10584,10 +10609,15 @@ function openShiftGrid(){
 }
 function shiftGridBodyHTML(){
   _shiftMemberOrder = [];
+  _shiftEnsureDraft();
   var days=new Date(_yoteiCalY,_yoteiCalM,0).getDate();
   var members=getMembers();
-  var head = '<p style="color:var(--muted);font-size:11px;margin:2px 0 8px;">マスをタップで出勤⇄休みを切り替え（空欄＝出勤、赤の「休」＝休み）</p>'
-    + '<button class="btn ghost" style="padding:6px 14px;font-size:12px;margin-bottom:8px;" onclick="openMembers()">担当者（メンバー）を編集</button>';
+  var head = '<p style="color:var(--muted);font-size:11px;margin:2px 0 8px;">マスをタップで出勤⇄休みを切り替え（空欄＝出勤、赤の「休」＝休み）。タップしただけではまだ保存されません。入力し終わったら必ず「✅ 確定」を押してください。</p>'
+    + '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px;">'
+    +   '<button class="btn ghost" style="padding:6px 14px;font-size:12px;" onclick="openMembers()">担当者（メンバー）を編集</button>'
+    +   '<button class="btn" style="padding:6px 16px;font-size:12px;" onclick="confirmShiftDraft()">✅ 確定</button>'
+    +   '<span id="shift-dirty-note" style="font-size:11px;color:var(--amber,#f39c12);font-weight:700;'+(_shiftDraftDirty?'':'display:none;')+'">●未確定の変更があります</span>'
+    + '</div>';
   if(!members.length){
     return head + '<div style="text-align:center;padding:20px 12px;">'
       + '<p style="color:var(--muted);font-size:12px;margin:0 0 12px;">メンバーが登録されていません。</p>'
@@ -10610,7 +10640,7 @@ function shiftGridBodyHTML(){
       + '<div style="font-size:12px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding-right:4px;" title="'+esc(name)+'">'+esc(name)+'</div>';
     for(var d=1; d<=days; d++){
       var ds=_yoteiCalY+'-'+String(_yoteiCalM).padStart(2,'0')+'-'+String(d).padStart(2,'0');
-      var off=isShiftOff(ds,name);
+      var off=isShiftOffDraft(ds,name);
       row += '<div id="shiftcell-'+ds+'-'+idx+'" onclick="toggleShift(\''+ds+'\',\''+esc(name)+'\')" style="height:26px;border-radius:5px;cursor:pointer;background:'+(off?'var(--red-bg,#3a1a1a)':'var(--card2)')+';border:1px solid '+(off?'var(--red,#e74c3c)':'var(--line2)')+';color:'+(off?'var(--red,#e74c3c)':'var(--muted)')+';display:flex;align-items:center;justify-content:center;font-size:10px;">'+(off?'休':'')+'</div>';
     }
     row += '</div>';
